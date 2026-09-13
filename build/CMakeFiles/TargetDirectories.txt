@@ -1,0 +1,5 @@
+/home/kaidaidk/Documents/linuxCAD/build/CMakeFiles/linuxcad.dir
+/home/kaidaidk/Documents/linuxCAD/build/CMakeFiles/edit_cache.dir
+/home/kaidaidk/Documents/linuxCAD/build/CMakeFiles/rebuild_cache.dir
+/home/kaidaidk/Documents/linuxCAD/build/CMakeFiles/linuxcad_autogen_timestamp_deps.dir
+/home/kaidaidk/Documents/linuxCAD/build/CMakeFiles/linuxcad_autogen.dir
