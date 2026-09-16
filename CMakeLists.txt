@@ -10,15 +10,16 @@ set(CMAKE_AUTORCC ON)
 find_package(OpenCASCADE REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets OpenGLWidgets)
 
-add_executable(linuxcad
-    src/main.cpp
-    src/MainWindow.cpp
-    src/OcctViewport.cpp
-    src/StepImport.cpp
-    src/StlExport.cpp
-)
+# Globbed so new subsystem files get picked up without editing this file
+# (which would otherwise be a constant merge conflict between parallel
+# workstreams). CONFIGURE_DEPENDS re-globs on each build.
+file(GLOB_RECURSE LINUXCAD_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE LINUXCAD_HEADERS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
+
+add_executable(linuxcad ${LINUXCAD_SOURCES} ${LINUXCAD_HEADERS})
 
 target_include_directories(linuxcad PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OpenCASCADE_INCLUDE_DIR}
 )
 
@@ -38,6 +39,12 @@ target_link_libraries(linuxcad PRIVATE
     TKG2d
     TKShHealing
     TKTopAlgo
+    TKPrim
+    TKBO
+    TKBool
+    TKFillet
+    TKOffset
+    TKFeat
     TKMesh
     TKService
     TKV3d
@@ -45,4 +52,7 @@ target_link_libraries(linuxcad PRIVATE
     TKDESTEP
     TKDESTL
     TKXSBase
+    TKCAF
+    TKLCAF
+    TKVCAF
 )
