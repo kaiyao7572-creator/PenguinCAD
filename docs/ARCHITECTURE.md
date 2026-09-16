@@ -226,3 +226,71 @@ TKV3d TKOpenGl TKDESTEP TKDESTL TKXSBase TKCAF TKLCAF TKVCAF`
 Note OCCT 7.9 renamed data-exchange libs (`TKSTEP` → `TKDESTEP`,
 `TKStl` → `TKDESTL`). If you need another lib, report it — don't edit
 the build file.
+
+## Seeing your own work (REQUIRED — do not work blind)
+
+This app can drive itself and photograph the result. Sketching is all
+*feel*, and feel cannot be judged by reading source. Every UI or
+interaction change must be verified with a screenshot before you report
+it done.
+
+### Flags
+
+```
+linuxcad --screenshot out.png [--screenshot-delay 2500] [--screenshot-tab Solid]
+linuxcad --run-command sketch.create --screenshot out.png
+linuxcad --script path/to/script.txt
+```
+
+`--screenshot` writes two files: `out.png` (the Qt UI — ribbon, panels,
+menus) and `out-viewport.png` (the 3D view, dumped by OCCT, because the
+GL viewport never appears in a Qt widget grab). **The viewport file is
+the one that shows your geometry.**
+
+### Input scripts
+
+`--script` replays synthetic mouse and key events (see `src/InputScript.h`
+for the full command list):
+
+```
+run sketch.create      # invoke a command by id
+wait 500
+click 450 300          # viewport-LOCAL logical pixels; (450,300) is about
+                       # the centre of the viewport and hits the origin planes
+wait 900
+run sketch.line
+click 350 250
+move  550 250          # hover, so the rubber band updates
+shot  rubberband.png
+click 550 250
+key   Escape
+shot  done.png
+```
+
+Coordinates are relative to the viewport's top-left, not the window's.
+The origin planes are small: clicking far from centre misses them and
+silently creates nothing — check the Browser panel or the presence of the
+contextual Sketch tab to confirm a sketch actually opened.
+
+### Running it
+
+```
+DISPLAY=:0 QT_QPA_PLATFORM=xcb QT_QPA_PLATFORMTHEME=xdgdesktopportal \
+  ./build/linuxcad --script yourscript.txt
+```
+
+Then crop/zoom the result to inspect it:
+
+```
+magick out-viewport.png -crop 1100x700+420+150 +repage -resize 760x zoom.png
+```
+
+### Tests
+
+```
+./tests/run_tests.sh
+```
+
+Covers unit parsing, the unit-aware input widget, and a
+sketch -> extrude -> edit -> undo pipeline against real OCCT volumes. Add
+to these when you add model-level behaviour.

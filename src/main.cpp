@@ -1,3 +1,4 @@
+#include "InputScript.h"
 #include "MainWindow.h"
 #include "OcctViewport.h"
 
@@ -102,6 +103,17 @@ int main(int argc, char* argv[])
     // can't see into) then exits. Lets UI work be checked without a human
     // driving the app, which matters on headless/CI boxes.
     const QStringList args = app.arguments();
+
+    // --script replays synthetic input so interactive behaviour can be
+    // exercised and screenshotted without a human driving the mouse.
+    const int scriptIndex = args.indexOf("--script");
+    if (scriptIndex >= 0 && scriptIndex + 1 < args.size()) {
+        const QString scriptPath = args.at(scriptIndex + 1);
+        QTimer::singleShot(0, &window,
+                           [&window, scriptPath]() { lcad::RunInputScript(&window, scriptPath); });
+        return app.exec();
+    }
+
     const int shotIndex = args.indexOf("--screenshot");
     if (shotIndex >= 0 && shotIndex + 1 < args.size()) {
         const QString path = args.at(shotIndex + 1);
