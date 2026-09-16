@@ -93,6 +93,30 @@ std::vector<Command*> CommandRegistry::InSection(const std::string& theGroup,
     return result;
 }
 
+void CommandRegistry::SetGroupVisibility(
+    const std::string&                         theGroup,
+    std::function<bool(const CommandContext&)> thePredicate)
+{
+    for (auto& entry : myGroupVisibility) {
+        if (entry.first == theGroup) {
+            entry.second = std::move(thePredicate);
+            return;
+        }
+    }
+    myGroupVisibility.emplace_back(theGroup, std::move(thePredicate));
+}
+
+bool CommandRegistry::IsGroupVisible(const std::string&    theGroup,
+                                      const CommandContext& theContext) const
+{
+    for (const auto& entry : myGroupVisibility) {
+        if (entry.first == theGroup) {
+            return !entry.second || entry.second(theContext);
+        }
+    }
+    return true;   // no predicate registered: an ordinary, always-on tab
+}
+
 Command* CommandRegistry::Find(const std::string& theId) const
 {
     for (const CommandPtr& command : myCommands) {

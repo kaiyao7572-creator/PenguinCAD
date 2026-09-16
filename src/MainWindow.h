@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -50,6 +51,7 @@ private:
     void buildMenus();
     void runCommand(lcad::Command* theCommand);
     void refreshCommandStates();
+    void refreshRibbonTabs();
     void redisplayDocument();
     lcad::CommandContext makeContext();
 
@@ -64,6 +66,10 @@ private:
     // Flyout buttons drive their primary command directly, so their
     // enabled state has to be refreshed alongside the plain actions.
     std::vector<std::pair<QToolButton*, lcad::Command*>> m_familyButtons;
+    // Every ribbon page in registration order, kept even while hidden so a
+    // contextual tab can be slotted back at the right position.
+    std::vector<std::pair<std::string, QWidget*>> m_ribbonPages;
+    std::vector<std::string>                      m_visibleGroups;
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
 };

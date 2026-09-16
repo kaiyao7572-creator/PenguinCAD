@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 class QWidget;
@@ -119,6 +120,14 @@ public:
 
     Command* Find(const std::string& theId) const;
 
+    // Mark a tab as contextual: it only appears while the predicate holds.
+    // Fusion's Sketch tab works this way -- it doesn't exist until you're
+    // in a sketch, and vanishes again when you finish. A group with no
+    // predicate registered is always visible.
+    void SetGroupVisibility(const std::string&                             theGroup,
+                             std::function<bool(const CommandContext&)>     thePredicate);
+    bool IsGroupVisible(const std::string& theGroup, const CommandContext& theContext) const;
+
     const std::vector<CommandPtr>& All() const { return myCommands; }
 
 private:
@@ -126,6 +135,8 @@ private:
 
     std::vector<CommandPtr>  myCommands;
     std::vector<std::string> myGroupOrder;
+    std::vector<std::pair<std::string, std::function<bool(const CommandContext&)>>>
+        myGroupVisibility;
 };
 
 } // namespace lcad

@@ -25,6 +25,9 @@ namespace lcad {
 namespace {
 
 const char* const kSketchGroup = "Sketch";
+// Entering a sketch is a Solid-tab action in Fusion, not a Sketch-tab
+// one -- the Sketch tab does not exist yet at that point.
+const char* const kSolidGroup = "Solid";
 
 // Fusion's own ribbon captions, in Fusion's own order.
 const char* const kCreateSection = "Create";
@@ -102,7 +105,8 @@ class CreateSketchCommand : public Command
 public:
     std::string Id() const override { return "sketch.create"; }
     std::string Title() const override { return "Create Sketch"; }
-    std::string Group() const override { return kSketchGroup; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return kCreateSection; }
     std::string Icon() const override { return "📐"; }  // triangular ruler
     std::string Shortcut() const override { return "Ctrl+Shift+S"; }
 
@@ -148,7 +152,8 @@ class EditSketchCommand : public Command
 public:
     std::string Id() const override { return "sketch.edit"; }
     std::string Title() const override { return "Edit Sketch"; }
-    std::string Group() const override { return kSketchGroup; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return kCreateSection; }
     std::string Icon() const override { return "✏️"; }
     std::string Shortcut() const override { return "Ctrl+Shift+E"; }
     std::string Description() const override
@@ -237,7 +242,8 @@ class ShowSketchesCommand : public Command
 public:
     std::string Id() const override { return "sketch.visible"; }
     std::string Title() const override { return "Show Sketches"; }
-    std::string Group() const override { return kSketchGroup; }
+    std::string Group() const override { return "View"; }
+    std::string Section() const override { return "Show"; }
     std::string Icon() const override { return "👁"; }  // eye
     std::string Description() const override { return "Show or hide all sketch geometry"; }
 
@@ -661,6 +667,12 @@ public:
 
 void RegisterSketchCommands(CommandRegistry& theRegistry)
 {
+    // The Sketch tab appears only while a sketch is open, and disappears
+    // again on Finish -- exactly how Fusion's contextual tab behaves.
+    theRegistry.SetGroupVisibility(kSketchGroup, [](const CommandContext&) {
+        return SketchSession::Instance().IsActive();
+    });
+
     // Leading section, no caption: entering and leaving sketch mode, the
     // way Fusion keeps Create Sketch and Finish Sketch apart from the
     // tools themselves.

@@ -21,6 +21,7 @@
 #include <QPalette>
 #include <QScrollArea>
 #include <QStatusBar>
+#include <QTimer>
 #include <QTabWidget>
 #include <QToolBar>
 #include <QToolButton>
@@ -133,6 +134,17 @@ MainWindow::MainWindow(QWidget* parent)
     resize(1400, 900);
     setWindowTitle("linuxCAD");
     statusBar()->showMessage("Ready");
+
+    // Button states depend on things that appear after this constructor
+    // runs -- the OCCT view is created lazily on first paint, and tools
+    // like the view cube materialise themselves the first time they are
+    // polled. A light periodic refresh keeps enable/checked state and the
+    // contextual tabs honest without every subsystem needing to signal us.
+    QTimer* stateTimer = new QTimer(this);
+    stateTimer->setInterval(300);
+    connect(stateTimer, &QTimer::timeout, this, &MainWindow::refreshCommandStates);
+    stateTimer->start();
+
     refreshCommandStates();
 }
 
@@ -303,7 +315,11 @@ void MainWindow::buildRibbon()
         scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
-        m_ribbon->addTab(scroll, QString::fromStdString(group));
+        // Parented to the tab widget but not yet in it, a page would show
+        // as a stray child painted over the ribbon. refreshRibbonTabs()
+        // decides which ones actually get shown.
+        scroll->hide();
+        m_ribbonPages.emplace_back(group, scroll);
     }
 }
 
@@ -341,6 +357,69 @@ QString WrapButtonLabel(const QString& theTitle, int theMaxChars)
 }
 
 } // namespace
+
+// Adds or removes contextual tabs so the ribbon matches the current mode.
+// Fusion's Sketch tab only exists while a sketch is open; this is what
+// makes that true here.
+void MainWindow::refreshRibbonTabs()
+{
+    if (m_ribbon == nullptr) {
+        return;
+    }
+
+    CommandRegistry& registry = CommandRegistry::Instance();
+    CommandContext context = makeContext();
+
+    std::vector<std::string> shouldBeVisible;
+    for (const auto& page : m_ribbonPages) {
+        if (registry.IsGroupVisible(page.first, context)) {
+            shouldBeVisible.push_back(page.first);
+        }
+    }
+    if (shouldBeVisible == m_visibleGroups) {
+        return;
+    }
+
+    // A tab that has just appeared is the one the user wants to be on --
+    // entering a sketch should land you in the sketch tools. This only
+    // applies to a genuine transition; on the very first build every tab
+    // is "new", and jumping to the last one would be wrong.
+    std::string newlyShown;
+    if (!m_visibleGroups.empty()) {
+        for (const std::string& group : shouldBeVisible) {
+            if (std::find(m_visibleGroups.begin(), m_visibleGroups.end(), group)
+                == m_visibleGroups.end()) {
+                newlyShown = group;
+            }
+        }
+    }
+
+    // Rebuild the tab bar in registration order. Pages are kept alive, not
+    // destroyed, so their buttons and state survive being hidden.
+    //
+    // removeTab() only detaches a page from the tab bar -- it stays a child
+    // of the QTabWidget and would otherwise keep painting itself on top of
+    // everything as a stray floating widget, so hide it explicitly.
+    while (m_ribbon->count() > 0) {
+        QWidget* detached = m_ribbon->widget(0);
+        m_ribbon->removeTab(0);
+        if (detached != nullptr) {
+            detached->hide();
+        }
+    }
+    for (const auto& page : m_ribbonPages) {
+        if (std::find(shouldBeVisible.begin(), shouldBeVisible.end(), page.first)
+            != shouldBeVisible.end()) {
+            m_ribbon->addTab(page.second, QString::fromStdString(page.first));
+            page.second->show();
+        }
+    }
+    m_visibleGroups = shouldBeVisible;
+
+    if (!newlyShown.empty()) {
+        ActivateTab(QString::fromStdString(newlyShown));
+    }
+}
 
 QAction* MainWindow::makeCommandAction(lcad::Command* theCommand)
 {
@@ -419,6 +498,8 @@ void MainWindow::runCommand(Command* theCommand)
 
 void MainWindow::refreshCommandStates()
 {
+    refreshRibbonTabs();
+
     CommandContext context = makeContext();
     for (auto& entry : m_commandActions) {
         Command* command = entry.first;
