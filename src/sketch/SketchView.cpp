@@ -6,6 +6,7 @@
 #include <AIS_AnimationCamera.hxx>
 #include <AIS_ListOfInteractive.hxx>
 #include <AIS_Shape.hxx>
+#include <Aspect_Grid.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopExp_Explorer.hxx>
@@ -87,7 +88,45 @@ void SketchView::Enter(const CommandContext& theContext, const gp_Ax3& theSketch
 
     LookAt(theSketchPlane);
     Realign(theSketchPlane);
+    FadeGrid();
     RefreshDimming();
+}
+
+void SketchView::FadeGrid()
+{
+    if (myView.IsNull() || myView->Viewer().IsNull()) {
+        return;
+    }
+    Handle(Aspect_Grid) grid = myView->Viewer()->Grid();
+    if (grid.IsNull()) {
+        return;
+    }
+
+    if (!myHasGridColors) {
+        // Only the first Enter records these: a second one would save the
+        // already-faded colours as "what the viewport had".
+        grid->Colors(myGridColor, myGridTenthColor);
+        myHasGridColors = true;
+    }
+
+    // Barely off the GRAY30 background. Looking straight down at the plane
+    // puts the grid directly behind every curve, so what reads as a
+    // restrained reference in a 3D orbit reads as noise here.
+    grid->SetColors(Quantity_Color(0.34, 0.34, 0.34, Quantity_TOC_sRGB),
+                    Quantity_Color(0.42, 0.42, 0.42, Quantity_TOC_sRGB));
+}
+
+void SketchView::RestoreGrid()
+{
+    if (!myHasGridColors || myView.IsNull() || myView->Viewer().IsNull()) {
+        return;
+    }
+    Handle(Aspect_Grid) grid = myView->Viewer()->Grid();
+    if (grid.IsNull()) {
+        return;
+    }
+    grid->SetColors(myGridColor, myGridTenthColor);
+    myHasGridColors = false;
 }
 
 void SketchView::Realign(const gp_Ax3& theSketchPlane)
@@ -112,6 +151,7 @@ void SketchView::Leave(const CommandContext& theContext)
 
     myIsActive = false;
     Undim();
+    RestoreGrid();
 
     // Back to the Z-up world grid OcctViewport set up at startup. The
     // camera is deliberately left where it is: the user has usually just

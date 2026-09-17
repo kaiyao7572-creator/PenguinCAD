@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QImage>
 #include <QPixmap>
 #include <QPointF>
 #include <QRegularExpression>
@@ -21,6 +22,53 @@
 #include <iostream>
 
 namespace lcad {
+
+bool DumpViewportImage(OcctViewport* theViewport, const QString& thePath)
+{
+    if (theViewport == nullptr) {
+        return false;
+    }
+    Handle(V3d_View) view = theViewport->View();
+    if (view.IsNull()) {
+        return false;
+    }
+
+    QString viewPath = thePath;
+    viewPath.replace(QRegularExpression("\\.(png|jpg|jpeg)$",
+                                        QRegularExpression::CaseInsensitiveOption),
+                     "-viewport.png");
+    if (viewPath == thePath) {
+        viewPath = thePath + "-viewport.png";
+    }
+
+    view->Redraw();
+    if (!view->Dump(viewPath.toLocal8Bit().constData())) {
+        return false;
+    }
+
+    // Undo the channel rotation described in the header. Note this is a
+    // rotation, not an R/B swap: a pure-red probe looks identical under
+    // both, so it alone is not enough to pin the transform down. Solving
+    // it against two independent colours gives out = (in.B, in.R, in.G).
+    QImage dumped(viewPath);
+    if (dumped.isNull()) {
+        return false;
+    }
+    dumped = dumped.convertToFormat(QImage::Format_RGB888);
+    for (int y = 0; y < dumped.height(); ++y) {
+        uchar* row = dumped.scanLine(y);
+        for (int x = 0; x < dumped.width(); ++x) {
+            uchar* pixel = row + x * 3;
+            const uchar r = pixel[0];
+            const uchar g = pixel[1];
+            const uchar b = pixel[2];
+            pixel[0] = b;
+            pixel[1] = r;
+            pixel[2] = g;
+        }
+    }
+    return dumped.save(viewPath);
+}
 
 namespace {
 
@@ -92,23 +140,7 @@ void SendKey(MainWindow* theWindow, const QString& theName)
 void TakeShot(MainWindow* theWindow, const QString& thePath)
 {
     theWindow->grab().save(thePath);
-
-    // The GL viewport never appears in a widget grab, so dump it too --
-    // that image is the only way to see what a sketch actually looks like.
-    if (OcctViewport* viewport = theWindow->Viewport()) {
-        Handle(V3d_View) view = viewport->View();
-        if (!view.IsNull()) {
-            QString viewPath = thePath;
-            viewPath.replace(QRegularExpression("\\.(png|jpg|jpeg)$",
-                                                QRegularExpression::CaseInsensitiveOption),
-                             "-viewport.png");
-            if (viewPath == thePath) {
-                viewPath = thePath + "-viewport.png";
-            }
-            view->Redraw();
-            view->Dump(viewPath.toLocal8Bit().constData());
-        }
-    }
+    DumpViewportImage(theWindow->Viewport(), thePath);
     std::cout << "  shot -> " << thePath.toStdString() << std::endl;
 }
 

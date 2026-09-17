@@ -2,6 +2,7 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <Quantity_Color.hxx>
 #include <V3d_View.hxx>
 #include <gp_Ax3.hxx>
 
@@ -52,6 +53,14 @@ private:
     void LookAt(const gp_Ax3& thePlane);
     void Undim();
 
+    // In a sketch the grid is paper, not content: it has to sit far enough
+    // under the curves that the eye reads the sketch first. Outside a
+    // sketch it is the only thing giving the empty viewport a sense of
+    // scale, so the viewport's own choice is restored on the way out
+    // rather than a guess at what it was.
+    void FadeGrid();
+    void RestoreGrid();
+
     // An object we faded, plus the transparency it had before we did, so
     // Finish Sketch puts back what the user actually had rather than an
     // assumed zero.
@@ -65,6 +74,10 @@ private:
     Handle(V3d_View)               myView;
     std::vector<Dimmed>            myDimmed;
     bool                           myIsActive = false;
+
+    Quantity_Color myGridColor;
+    Quantity_Color myGridTenthColor;
+    bool           myHasGridColors = false;
 };
 
 } // namespace lcad

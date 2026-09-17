@@ -1,5 +1,6 @@
 #include "sketch/SketchDisplay.h"
 
+#include "OcctViewport.h"
 #include "core/Command.h"
 #include "sketch/SketchAnnotations.h"
 #include "sketch/SketchFeature.h"
@@ -10,25 +11,66 @@
 #include <AIS_TextLabel.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <Aspect_TypeOfMarker.hxx>
-#include <Graphic3d_ZLayerId.hxx>
+#include <BRep_Builder.hxx>
+#include <Graphic3d_AspectFillArea3d.hxx>
+#include <Graphic3d_TypeOfShadingModel.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_PointAspect.hxx>
+#include <Prs3d_ShadingAspect.hxx>
+#include <Standard_Failure.hxx>
 #include <TCollection_ExtendedString.hxx>
+#include <TopoDS_Compound.hxx>
+#include <TopoDS_Face.hxx>
 
 namespace lcad {
 
 namespace {
 
-// Sketch geometry has to read as sketch geometry at a glance, so it gets
-// its own palette rather than the shape's default yellow-grey.
-const Quantity_Color kActiveSketchColor(0.36, 0.86, 1.00, Quantity_TOC_RGB);
-const Quantity_Color kSketchColor(0.58, 0.70, 0.88, Quantity_TOC_RGB);
-const Quantity_Color kPreviewColor(1.00, 0.78, 0.25, Quantity_TOC_RGB);
-const Quantity_Color kConstructionColor(0.95, 0.60, 0.20, Quantity_TOC_RGB);
-const Quantity_Color kSelectionColor(0.25, 1.00, 0.45, Quantity_TOC_RGB);
-const Quantity_Color kConstraintColor(0.75, 0.75, 0.85, Quantity_TOC_RGB);
-const Quantity_Color kDimensionColor(1.00, 0.95, 0.55, Quantity_TOC_RGB);
+// The palette, written in sRGB -- i.e. in the numbers a colour picker
+// would report off a screenshot. Quantity_TOC_RGB means *linear* RGB in
+// OCCT 7.9, so specifying colours that way makes every value here a third
+// darker than it looks and turns picking a palette into guesswork.
+//
+// The whole family is one hue on purpose. Fusion draws sketch curves in a
+// light blue and says everything else -- committed vs in-progress,
+// profile vs construction, selected vs not -- with lightness, weight and
+// dashes. A second hue reads as a different KIND of thing, which is why
+// the old amber preview looked like debug output next to a blue curve.
+const Quantity_Color kActiveSketchColor(0.62, 0.82, 1.00, Quantity_TOC_sRGB);
+const Quantity_Color kActiveMarkerColor(0.80, 0.91, 1.00, Quantity_TOC_sRGB);
+const Quantity_Color kSketchColor(0.44, 0.55, 0.66, Quantity_TOC_sRGB);
+const Quantity_Color kPreviewColor(0.84, 0.93, 1.00, Quantity_TOC_sRGB);
+const Quantity_Color kConstructionColor(0.68, 0.56, 0.38, Quantity_TOC_sRGB);
+const Quantity_Color kSelectionColor(0.20, 0.72, 1.00, Quantity_TOC_sRGB);
+const Quantity_Color kProfileFillColor(0.45, 0.66, 0.86, Quantity_TOC_sRGB);
+const Quantity_Color kConstraintColor(0.60, 0.64, 0.72, Quantity_TOC_sRGB);
+const Quantity_Color kDimensionColor(0.95, 0.85, 0.55, Quantity_TOC_sRGB);
+
+// Faint enough that the grid still reads through a filled profile, strong
+// enough to be unmistakable at a glance -- which is the whole job of the
+// fill, since it is the only thing on screen that says "this region is
+// extrudable".
+constexpr Standard_Real kProfileFillTransparency = 0.82;
+
+// Line widths and marker sizes in LOGICAL pixels; DeviceWidth() scales
+// them. Fusion's sketch curves sit clearly above the grid, and the
+// in-progress curve matches the committed one in weight so that clicking
+// changes nothing but the colour.
+constexpr double kActiveWidth       = 2.0;
+constexpr double kInactiveWidth     = 1.3;
+constexpr double kConstructionWidth = 1.3;
+constexpr double kPreviewWidth      = 2.0;
+constexpr double kSelectionWidth    = 3.0;
+constexpr double kAnnotationWidth   = 1.2;
+constexpr double kMarkerScale       = 4.5;
+constexpr double kPointScale        = 1.6;
+
+// Far finer than OCCT's defaults (0.001 and 20 degrees). A sketch is
+// looked at straight on and close up: at the stock coefficient the
+// boundary of a filled circular region breaks into chords you can count.
+constexpr Standard_Real kDeviation      = 1.0e-4;
+constexpr Standard_Real kDeviationAngle = 0.07;  // radians, ~4 degrees
 
 // No selection: sketch lines would otherwise sit between the cursor and
 // the faces the user is trying to pick, and picking inside a sketch is
@@ -40,6 +82,19 @@ constexpr Standard_Integer kNoSelectionMode = -1;
 constexpr Standard_Integer kAnnotationPixels = 11;
 
 constexpr double kTextHeight = 14.0;
+
+// Curves and markers go one layer above the profile fill rather than
+// sharing a layer with it: within a layer OCCT draws translucent surfaces
+// last, so a coplanar fill would otherwise wash over the very curves it
+// is meant to be filling between.
+constexpr Graphic3d_ZLayerId kFillLayer  = Graphic3d_ZLayerId_Top;
+constexpr Graphic3d_ZLayerId kCurveLayer = Graphic3d_ZLayerId_Topmost;
+
+void RefineTessellation(const Handle(AIS_Shape)& theObject)
+{
+    theObject->SetOwnDeviationCoefficient(kDeviation);
+    theObject->SetOwnDeviationAngle(kDeviationAngle);
+}
 
 } // namespace
 
@@ -65,6 +120,11 @@ void SketchDisplay::Attach(const CommandContext& theContext)
     myDocument = theContext.document;
     myContext = aisContext;
     myView = theContext.View();
+    if (theContext.viewport != nullptr) {
+        // OCCT's Xw_Window doesn't know about Qt's display scaling, so the
+        // ratio has to come from the widget that owns the surface.
+        myPixelRatio = theContext.viewport->devicePixelRatioF();
+    }
 
     if (myDocument != nullptr) {
         myDocument->AddObserver(this);  // AddObserver de-duplicates
@@ -154,6 +214,22 @@ double SketchDisplay::PixelSize() const
     return myView->Convert(1);
 }
 
+double SketchDisplay::DeviceWidth(double theLogicalPixels) const
+{
+    return theLogicalPixels * (myPixelRatio > 0.0 ? myPixelRatio : 1.0);
+}
+
+void SketchDisplay::Show(const Handle(AIS_InteractiveObject)& theObject,
+                         Standard_Integer                     theDisplayMode,
+                         Graphic3d_ZLayerId                   theLayer)
+{
+    myContext->Display(theObject, theDisplayMode, kNoSelectionMode, Standard_False);
+    // Sketches are usually drawn right on a face of the body they belong
+    // to; the top layers keep them out of the z-fight.
+    myContext->SetZLayer(theObject, theLayer);
+    mySketchObjects.push_back(theObject);
+}
+
 void SketchDisplay::AddShape(const TopoDS_Shape&   theShape,
                              const Quantity_Color& theColor,
                              double                theWidth,
@@ -163,15 +239,18 @@ void SketchDisplay::AddShape(const TopoDS_Shape&   theShape,
         return;
     }
 
+    const double width = DeviceWidth(theWidth);
+
     Handle(AIS_Shape) object = new AIS_Shape(theShape);
     object->SetColor(theColor);
-    object->SetWidth(theWidth);
+    object->SetWidth(width);
+    RefineTessellation(object);
 
     if (theIsDashed) {
         // Construction geometry reads as a guide rather than a boundary,
         // which is exactly what the dashes are for.
         Handle(Prs3d_LineAspect) aspect =
-            new Prs3d_LineAspect(theColor, Aspect_TOL_DASH, theWidth);
+            new Prs3d_LineAspect(theColor, Aspect_TOL_DASH, width);
         const Handle(Prs3d_Drawer)& drawer = object->Attributes();
         drawer->SetWireAspect(aspect);
         drawer->SetLineAspect(aspect);
@@ -181,15 +260,74 @@ void SketchDisplay::AddShape(const TopoDS_Shape&   theShape,
     }
 
     // Sketch points have no edges, so the marker aspect is the only way
-    // they show up at all.
+    // they show up at all. A ringed point rather than a plain dot, so a
+    // deliberate sketch point is still distinguishable from the endpoint
+    // markers AddMarkers puts on every curve.
     object->Attributes()->SetPointAspect(
-        new Prs3d_PointAspect(Aspect_TOM_O_PLUS, theColor, 1.6));
+        new Prs3d_PointAspect(Aspect_TOM_O_PLUS, theColor, DeviceWidth(kPointScale)));
 
-    myContext->Display(object, AIS_WireFrame, kNoSelectionMode, Standard_False);
-    // Sketches are usually drawn right on a face of the body they belong
-    // to; the top layer keeps them out of the z-fight.
-    myContext->SetZLayer(object, Graphic3d_ZLayerId_Top);
-    mySketchObjects.push_back(object);
+    Show(object, AIS_WireFrame, kCurveLayer);
+}
+
+void SketchDisplay::AddMarkers(SketchFeature& theSketch, const Quantity_Color& theColor)
+{
+    // SnapPoints is deliberately the source: the dots then land exactly
+    // where the tools snap, so what the user can see and what they can
+    // catch are the same set of points.
+    std::vector<SketchEntity> markers;
+    for (const gp_Pnt2d& point : theSketch.SnapPoints()) {
+        markers.push_back(SketchEntity::MakePoint(point));
+    }
+
+    const TopoDS_Shape compound = theSketch.BuildCompound(markers);
+    if (compound.IsNull() || myContext.IsNull()) {
+        return;
+    }
+
+    Handle(AIS_Shape) object = new AIS_Shape(compound);
+    object->SetColor(theColor);
+    object->Attributes()->SetPointAspect(
+        new Prs3d_PointAspect(Aspect_TOM_POINT, theColor, DeviceWidth(kMarkerScale)));
+    Show(object, AIS_WireFrame, kCurveLayer);
+}
+
+void SketchDisplay::AddProfileFill(SketchFeature& theSketch)
+{
+    if (myContext.IsNull()) {
+        return;
+    }
+
+    TopoDS_Compound compound;
+    try {
+        BRep_Builder builder;
+        builder.MakeCompound(compound);
+
+        bool any = false;
+        for (const TopoDS_Face& face : theSketch.ProfileFaces()) {
+            if (face.IsNull()) {
+                continue;
+            }
+            builder.Add(compound, face);
+            any = true;
+        }
+        if (!any) {
+            return;
+        }
+    } catch (const Standard_Failure&) {
+        return;  // a sketch whose regions won't face is simply not filled
+    }
+
+    Handle(AIS_Shape) object = new AIS_Shape(compound);
+    object->SetColor(kProfileFillColor);
+    object->SetTransparency(kProfileFillTransparency);
+    RefineTessellation(object);
+    // Unlit and with no face boundary: this is a flat tint, not a
+    // surface. Lighting it would shade the fill by the plane's angle to
+    // the camera, and the boundary would double every curve underneath.
+    object->Attributes()->ShadingAspect()->Aspect()->SetShadingModel(Graphic3d_TOSM_UNLIT);
+    object->Attributes()->SetFaceBoundaryDraw(Standard_False);
+
+    Show(object, AIS_Shaded, kFillLayer);
 }
 
 void SketchDisplay::AddSketch(SketchFeature& theSketch, bool theIsActive)
@@ -198,11 +336,23 @@ void SketchDisplay::AddSketch(SketchFeature& theSketch, bool theIsActive)
     // The sketch being edited is the thing on screen that matters, and it
     // is drawn over a model faded to near-transparent -- a hairline would
     // read as an artifact rather than as geometry.
-    const double width = theIsActive ? 2.6 : 1.8;
+    const double width = theIsActive ? kActiveWidth : kInactiveWidth;
+
+    if (theIsActive) {
+        // Under the curves, so the outline of a filled region stays as
+        // crisp as an unfilled one.
+        AddProfileFill(theSketch);
+    }
 
     AddShape(theSketch.ProfileCompound(), color, width, false);
-    AddShape(theSketch.ConstructionCompound(), kConstructionColor, 1.5, true);
-    AddShape(theSketch.PointCompound(), color, 1.0);
+    AddShape(theSketch.ConstructionCompound(), kConstructionColor, kConstructionWidth, true);
+    AddShape(theSketch.PointCompound(), color, width);
+
+    if (theIsActive) {
+        // Only while editing: endpoint dots on every finished sketch in
+        // the document would bury the model they sit on.
+        AddMarkers(theSketch, kActiveMarkerColor);
+    }
 }
 
 void SketchDisplay::AddSelection(SketchFeature& theSketch)
@@ -231,7 +381,7 @@ void SketchDisplay::AddSelection(SketchFeature& theSketch)
         }
     }
 
-    AddShape(theSketch.BuildCompound(highlighted), kSelectionColor, 3.5);
+    AddShape(theSketch.BuildCompound(highlighted), kSelectionColor, kSelectionWidth);
 }
 
 void SketchDisplay::AddAnnotations(SketchFeature& theSketch)
@@ -246,9 +396,9 @@ void SketchDisplay::AddAnnotations(SketchFeature& theSketch)
     }
 
     AddShape(theSketch.BuildCompound(SketchAnnotations::ConstraintGlyphs(theSketch, scale)),
-             kConstraintColor, 1.5);
+             kConstraintColor, kAnnotationWidth);
     AddShape(theSketch.BuildCompound(SketchAnnotations::DimensionGeometry(theSketch, scale)),
-             kDimensionColor, 1.5);
+             kDimensionColor, kAnnotationWidth);
 
     if (myContext.IsNull()) {
         return;
@@ -259,9 +409,7 @@ void SketchDisplay::AddAnnotations(SketchFeature& theSketch)
         text->SetPosition(theSketch.To3d(label.position));
         text->SetColor(kDimensionColor);
         text->SetHeight(kTextHeight);
-        myContext->Display(text, 0, kNoSelectionMode, Standard_False);
-        myContext->SetZLayer(text, Graphic3d_ZLayerId_Top);
-        mySketchObjects.push_back(text);
+        Show(text, 0, kCurveLayer);
     }
 }
 
@@ -305,11 +453,12 @@ void SketchDisplay::ShowPreview(const TopoDS_Shape& theShape)
     if (myPreview.IsNull()) {
         myPreview = new AIS_Shape(theShape);
         myPreview->SetColor(kPreviewColor);
-        myPreview->SetWidth(2.0);
+        myPreview->SetWidth(DeviceWidth(kPreviewWidth));
+        RefineTessellation(myPreview);
         myPreview->Attributes()->SetPointAspect(
-            new Prs3d_PointAspect(Aspect_TOM_O_PLUS, kPreviewColor, 1.6));
+            new Prs3d_PointAspect(Aspect_TOM_POINT, kPreviewColor, DeviceWidth(kMarkerScale)));
         myContext->Display(myPreview, AIS_WireFrame, kNoSelectionMode, Standard_False);
-        myContext->SetZLayer(myPreview, Graphic3d_ZLayerId_Top);
+        myContext->SetZLayer(myPreview, kCurveLayer);
         return;
     }
 

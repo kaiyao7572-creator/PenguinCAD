@@ -3,6 +3,8 @@
 #include <QString>
 
 class MainWindow;
+class OcctViewport;
+class QString;
 
 // Replays a text script of synthetic input against the running app, so
 // interactive behaviour can be exercised and screenshotted without a human
@@ -30,6 +32,20 @@ class MainWindow;
 // Coordinates are in viewport LOGICAL pixels with (0,0) at the viewport's
 // top-left, matching what a user's cursor would report.
 namespace lcad {
+
+// Writes the 3D viewport to a PNG with correct colours.
+//
+// V3d_View::Dump writes the colour channels in the wrong order on this
+// setup -- verified directly by setting the view background to pure red
+// (1,0,0) and reading pure blue (0,0,255) back out of the file. The
+// background has no lighting or material applied, so the swap can only be
+// in the dump itself, not in the rendering: the app on screen is correct.
+// Left unfixed, every screenshot lies about colour and any UI work done
+// against these images is being judged on false evidence.
+//
+// Re-test with that same pure-red background if you ever suspect OCCT has
+// changed behaviour.
+bool DumpViewportImage(OcctViewport* theViewport, const QString& thePath);
 
 // Runs the script asynchronously against the window, stepping through the
 // event loop so the app repaints between actions.

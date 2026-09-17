@@ -5,6 +5,7 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
 #include <AIS_Shape.hxx>
+#include <Graphic3d_ZLayerId.hxx>
 #include <Quantity_Color.hxx>
 #include <TopoDS_Shape.hxx>
 #include <V3d_View.hxx>
@@ -66,12 +67,29 @@ private:
 
     void ClearSketchObjects();
 
+    // Hand an object to the viewer and remember it so the next Refresh can
+    // take it back out again.
+    void Show(const Handle(AIS_InteractiveObject)& theObject,
+              Standard_Integer                     theDisplayMode,
+              Graphic3d_ZLayerId                   theLayer);
+
     // Display one shape with a colour and line width, remembering it so
-    // the next Refresh can take it back out again.
+    // the next Refresh can take it back out again. Widths are in logical
+    // pixels; DeviceWidth scales them to the framebuffer.
     void AddShape(const TopoDS_Shape& theShape,
                   const Quantity_Color& theColor,
                   double                theWidth,
                   bool                  theIsDashed = false);
+
+    // The dots Fusion puts on every endpoint and curve centre. They are a
+    // separate object from the curves because AIS only draws the vertices
+    // of a shape that has no edges at all.
+    void AddMarkers(SketchFeature& theSketch, const Quantity_Color& theColor);
+
+    // Translucent tint over every closed region. This is the one signal
+    // that tells the user a profile is extrudable before they reach for
+    // Extrude, so it is drawn from the same wires Extrude will consume.
+    void AddProfileFill(SketchFeature& theSketch);
 
     void AddSketch(SketchFeature& theSketch, bool theIsActive);
     void AddAnnotations(SketchFeature& theSketch);
@@ -80,6 +98,11 @@ private:
     // Model size of one screen pixel, used to keep glyphs and arrowheads
     // the same size however far the view is zoomed.
     double PixelSize() const;
+
+    // Logical pixels -> framebuffer pixels. OCCT line widths and marker
+    // scales are in framebuffer pixels, so on a scaled display a width of
+    // 2 draws the one-pixel hairline the user complained about.
+    double DeviceWidth(double theLogicalPixels) const;
 
     Document*                      myDocument = nullptr;
     Handle(AIS_InteractiveContext) myContext;
@@ -91,6 +114,7 @@ private:
     std::string myActiveSketchName;
     bool        myAreSketchesVisible = true;
     bool        myAreConstraintsVisible = true;
+    double      myPixelRatio = 1.0;
 };
 
 } // namespace lcad

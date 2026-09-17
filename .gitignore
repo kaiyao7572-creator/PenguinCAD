@@ -18,3 +18,8 @@ ui_*.h
 *.o
 *.so
 *.a
+
+# Scratch output from screenshot/verification runs
+*.png
+/*.txt
+!docs/*.png

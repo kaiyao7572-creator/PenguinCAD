@@ -144,22 +144,9 @@ int main(int argc, char* argv[])
             }
             window.grab().save(path);
 
-            // The OpenGL viewport doesn't appear in a Qt widget grab, so
-            // ask OCCT to render it to its own file next to the UI shot.
-            if (OcctViewport* viewport = window.Viewport()) {
-                Handle(V3d_View) view = viewport->View();
-                if (!view.IsNull()) {
-                    QString viewPath = path;
-                    viewPath.replace(QRegularExpression("\\.(png|jpg|jpeg)$",
-                                                        QRegularExpression::CaseInsensitiveOption),
-                                      "-viewport.png");
-                    if (viewPath == path) {
-                        viewPath = path + "-viewport.png";
-                    }
-                    view->Redraw();
-                    view->Dump(viewPath.toLocal8Bit().constData());
-                }
-            }
+            // Same helper as the script runner, so both paths write colour
+            // correct images.
+            lcad::DumpViewportImage(window.Viewport(), path);
             QCoreApplication::quit();
         });
     }
