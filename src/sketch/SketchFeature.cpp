@@ -369,7 +369,13 @@ std::vector<gp_Pnt2d> SketchFeature::EndPoints() const
 std::vector<gp_Pnt2d> SketchFeature::SnapPoints() const
 {
     std::vector<gp_Pnt2d> points;
-    points.reserve(myEntities.size() * 3);
+    points.reserve(myEntities.size() * 4 + 1);
+
+    // The sketch origin is always snappable. Anchoring geometry to it is
+    // how a sketch stays put when it is later dimensioned, and Fusion
+    // snaps to it from the very first click of an empty sketch.
+    points.emplace_back(0.0, 0.0);
+
     for (const SketchEntity& entity : myEntities) {
         if (!entity.IsCurve()) {
             points.push_back(entity.first);
@@ -385,7 +391,14 @@ std::vector<gp_Pnt2d> SketchFeature::SnapPoints() const
             case SketchEntity::Kind::Ellipse:
                 points.push_back(entity.first);
                 break;
-            case SketchEntity::Kind::Line:
+            case SketchEntity::Kind::Line: {
+                // Midpoint: heavily used in Fusion for centring and
+                // symmetry, and cheap to offer.
+                const gp_Pnt2d start = entity.StartPoint();
+                const gp_Pnt2d end = entity.EndPoint();
+                points.emplace_back(0.5 * (start.X() + end.X()), 0.5 * (start.Y() + end.Y()));
+                break;
+            }
             case SketchEntity::Kind::Spline:
             case SketchEntity::Kind::Point:
                 break;

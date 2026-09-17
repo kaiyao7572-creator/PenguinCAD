@@ -26,6 +26,20 @@ namespace SketchGeometry {
 // corner.
 constexpr double kTolerance = 1.0e-6;
 
+// How far off axis a segment may be and still be pulled onto it. Fusion
+// uses a few degrees; tighter than this and hand-drawn lines never lock,
+// looser and you cannot draw a deliberate shallow angle.
+constexpr double kAxisInferenceRadians = 3.0 * 3.14159265358979323846 / 180.0;
+
+// Pull thePoint onto the horizontal or vertical through theAnchor when it
+// is within theTolerance of one of them, which is what makes a hand-drawn
+// line come out actually straight instead of half a degree off. Returns
+// thePoint unchanged when it is not close to either axis, so a
+// deliberate diagonal is still possible.
+gp_Pnt2d AxisInferred(const gp_Pnt2d& theAnchor,
+                      const gp_Pnt2d& thePoint,
+                      double          theTolerance = kAxisInferenceRadians);
+
 // The entity's underlying curve, untrimmed where the kind allows it (a
 // line comes back infinite, a circle whole). Null for Kind::Point and for
 // degenerate entities.

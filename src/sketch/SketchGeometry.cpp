@@ -34,6 +34,31 @@
 namespace lcad {
 namespace SketchGeometry {
 
+gp_Pnt2d AxisInferred(const gp_Pnt2d& theAnchor, const gp_Pnt2d& thePoint, double theTolerance)
+{
+    const double dx = thePoint.X() - theAnchor.X();
+    const double dy = thePoint.Y() - theAnchor.Y();
+    const double length = std::sqrt(dx * dx + dy * dy);
+    if (length <= kTolerance) {
+        return thePoint;   // nothing to infer from a zero-length segment
+    }
+
+    // Angle away from each axis, via the opposite side over the hypotenuse.
+    const double offHorizontal = std::asin(std::min(1.0, std::fabs(dy) / length));
+    const double offVertical   = std::asin(std::min(1.0, std::fabs(dx) / length));
+
+    // Whichever axis is nearer wins, so a 45-degree drag is left alone
+    // rather than flickering between the two.
+    if (offHorizontal <= theTolerance && offHorizontal <= offVertical) {
+        return gp_Pnt2d(thePoint.X(), theAnchor.Y());
+    }
+    if (offVertical <= theTolerance) {
+        return gp_Pnt2d(theAnchor.X(), thePoint.Y());
+    }
+    return thePoint;
+}
+
+
 namespace {
 
 constexpr double kPi    = 3.14159265358979323846;

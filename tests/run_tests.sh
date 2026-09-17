@@ -63,9 +63,21 @@ build_pipeline() {
     "$OUT/pipeline_test"
 }
 
+# ---- sketch inference: axis lock + snap candidates, no display needed ----
+build_inference() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/inference_test.cpp" \
+        "$SRC/core/ProfileProvider.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/inference_test" || return 1
+    "$OUT/inference_test"
+}
+
 run "Units: parsing and formatting" build_units
 run "Widget: unit-aware input field" build_widget
 run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
+run "Sketch: axis inference and snapping" build_inference
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

@@ -225,6 +225,7 @@ void SketchTool::Start(const CommandContext& theContext)
 
     Reset();
     myIsRunning = true;
+    myHasAnchor = false;   // a new tool infers from nothing until its first point
     myHasHover = false;
     theRunningTool = this;
 
@@ -240,6 +241,7 @@ void SketchTool::Stop()
         return;
     }
     myIsRunning = false;
+    myHasAnchor = false;
     if (theRunningTool == this) {
         theRunningTool = nullptr;
     }
@@ -256,6 +258,7 @@ void SketchTool::Stop()
 void SketchTool::OnDeactivated()
 {
     myIsRunning = false;
+    myHasAnchor = false;
     myHasHover = false;
     if (theRunningTool == this) {
         theRunningTool = nullptr;
@@ -277,6 +280,57 @@ SketchFeature* SketchTool::Sketch() const
     return SketchSession::Instance().ActiveSketch(myContext.document);
 }
 
+// True when the sketch already constrains this entity that way. AddConstraint
+// does not deduplicate, and a tool that constrains its own geometry (the
+// rectangle does) would otherwise end up with the constraint twice.
+bool HasConstraintOn(const SketchFeature& theSketch, SketchConstraintType theType, int theId)
+{
+    for (const SketchConstraint& constraint : theSketch.Constraints()) {
+        if (constraint.type == theType
+            && (constraint.a.entity == theId || constraint.b.entity == theId)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Fusion stamps a horizontal or vertical constraint on a segment that was
+// drawn on-axis, so it stays on-axis when something downstream is
+// dimensioned. Inference has already pulled the point exactly onto the
+// axis by this stage, so an exact comparison is the right test.
+void ConstrainAxisAlignedLines(SketchFeature& theSketch, const std::vector<int>& theIds)
+{
+    for (int id : theIds) {
+        const SketchEntity* entity = theSketch.FindEntity(id);
+        if (entity == nullptr || entity->kind != SketchEntity::Kind::Line) {
+            continue;
+        }
+        const gp_Pnt2d start = entity->StartPoint();
+        const gp_Pnt2d end = entity->EndPoint();
+        const double dx = std::fabs(end.X() - start.X());
+        const double dy = std::fabs(end.Y() - start.Y());
+        if (dx <= SketchGeometry::kTolerance && dy <= SketchGeometry::kTolerance) {
+            continue;   // degenerate
+        }
+
+        const SketchConstraintType type = (dy <= SketchGeometry::kTolerance)
+                                              ? SketchConstraintType::Horizontal
+                                              : (dx <= SketchGeometry::kTolerance)
+                                                    ? SketchConstraintType::Vertical
+                                                    : SketchConstraintType::Coincident;
+        if (type == SketchConstraintType::Coincident) {
+            continue;   // genuinely diagonal: leave it free
+        }
+        if (HasConstraintOn(theSketch, type, id)) {
+            continue;
+        }
+        SketchConstraint constraint;
+        constraint.type = type;
+        constraint.a = SketchPointRef{id, SketchPointRole::Whole};
+        theSketch.AddConstraint(constraint);
+    }
+}
+
 std::vector<int> SketchTool::Commit(const std::vector<SketchEntity>& theEntities)
 {
     std::vector<int> ids;
@@ -291,6 +345,7 @@ std::vector<int> SketchTool::Commit(const std::vector<SketchEntity>& theEntities
     myContext.document->PushUndoSnapshot();
     ids = sketch->AddEntities(theEntities);
     OnCommitted(*sketch, ids);
+    ConstrainAxisAlignedLines(*sketch, ids);
 
     ClearPreview();
     // Rebuild, not NotifyChanged: anything extruded from this sketch has
@@ -381,6 +436,7 @@ bool SketchTool::PlanePointAt(const Graphic3d_Vec2i& thePos, gp_Pnt2d& theResult
     // is the difference between an extrude that works and one that
     // reports an empty sketch.
     const Standard_Real snap = view->Convert(kSnapPixels);
+    bool snappedToPoint = false;
     if (snap > 0.0) {
         double best = snap * snap;
         for (const gp_Pnt2d& candidate : sketch->SnapPoints()) {
@@ -388,8 +444,16 @@ bool SketchTool::PlanePointAt(const Graphic3d_Vec2i& thePos, gp_Pnt2d& theResult
             if (squared < best) {
                 best = squared;
                 point = candidate;
+                snappedToPoint = true;
             }
         }
+    }
+
+    // A real endpoint always wins: inference only gets to act when nothing
+    // was close enough to snap to, so locking onto an axis can never drag
+    // a point off the corner the user was aiming at.
+    if (!snappedToPoint && myHasAnchor) {
+        point = SketchGeometry::AxisInferred(myAnchor, point);
     }
 
     theResult = point;
@@ -418,6 +482,9 @@ bool SketchTool::OnMousePress(const Graphic3d_Vec2i& thePos,
     gp_Pnt2d point;
     if (PlanePointAt(thePos, point)) {
         OnPoint(point);
+        // Whatever was just placed is what the next segment grows from.
+        myAnchor = point;
+        myHasAnchor = true;
         ShowHint();
     }
     return ConsumedLastPress();

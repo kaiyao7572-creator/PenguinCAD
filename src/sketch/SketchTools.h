@@ -144,6 +144,12 @@ private:
     bool     myIsRunning = false;
     bool     myHasHover  = false;
     gp_Pnt2d myLastHover;
+
+    // The point a new segment is growing from -- the last one the user
+    // committed. Hovering locks onto the horizontal/vertical through it,
+    // which is the inference that makes drawn lines come out straight.
+    bool     myHasAnchor = false;
+    gp_Pnt2d myAnchor;
 };
 
 // Polygon tools carry a side count the command dialog sets, and which the
