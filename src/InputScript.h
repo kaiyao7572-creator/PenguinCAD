@@ -16,6 +16,10 @@ class QString;
 // Commands, one per line, '#' starts a comment:
 //
 //   run <command.id>        invoke a registered command (e.g. sketch.create)
+//   arm <ms> accept|cancel  answer the next modal dialog after <ms>. Arm
+//                           this BEFORE the `run` that opens the dialog:
+//                           the script loop parks inside the dialog's own
+//                           event loop, so only a timer can reach in.
 //   tab <Name>              bring a ribbon tab forward
 //   move <x> <y>            move the cursor in the viewport
 //   click <x> <y>           press+release left button

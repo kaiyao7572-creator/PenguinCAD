@@ -6,6 +6,8 @@
 #include <V3d_View.hxx>
 
 #include <QCoreApplication>
+#include <QApplication>
+#include <QDialog>
 #include <QEventLoop>
 #include <QFile>
 #include <QKeyEvent>
@@ -137,6 +139,36 @@ void SendKey(MainWindow* theWindow, const QString& theName)
     QCoreApplication::sendEvent(target, &up);
 }
 
+// Schedule an action against whatever modal dialog is up in theDelay ms.
+//
+// The script runs as one straight loop, so a command that opens a modal
+// dialog parks the whole script inside the dialog's own event loop and
+// nothing further is ever sent -- which is why no dialog-driven command
+// has been verifiable here. A timer fires inside that nested loop, so
+// arming one BEFORE invoking the command is the way in.
+void ArmDialog(int theDelay, const QString& theAction)
+{
+    const QString action = theAction.trimmed().toLower();
+    QTimer::singleShot(theDelay, qApp, [action]() {
+        QWidget* dialog = QApplication::activeModalWidget();
+        if (dialog == nullptr) {
+            std::cout << "  arm: no dialog was open" << std::endl;
+            return;
+        }
+        if (action == "cancel" || action == "reject") {
+            if (QDialog* box = qobject_cast<QDialog*>(dialog)) {
+                box->reject();
+            }
+            std::cout << "  arm: cancelled the dialog" << std::endl;
+            return;
+        }
+        if (QDialog* box = qobject_cast<QDialog*>(dialog)) {
+            box->accept();
+        }
+        std::cout << "  arm: accepted the dialog" << std::endl;
+    });
+}
+
 void TakeShot(MainWindow* theWindow, const QString& thePath)
 {
     theWindow->grab().save(thePath);
@@ -173,6 +205,13 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         auto number = [&parts](int theIndex) {
             return theIndex < parts.size() ? parts.at(theIndex).toDouble() : 0.0;
         };
+
+        if (verb == "arm" && parts.size() >= 3) {
+            ArmDialog(static_cast<int>(number(1)), parts.at(2));
+            std::cout << "  arm " << parts.at(2).toStdString() << " in "
+                      << static_cast<int>(number(1)) << "ms" << std::endl;
+            continue;
+        }
 
         if (verb == "run" && parts.size() >= 2) {
             const bool ok = theWindow->RunCommandById(parts.at(1));

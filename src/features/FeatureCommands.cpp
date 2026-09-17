@@ -1,6 +1,7 @@
 #include "core/Command.h"
 #include "core/Document.h"
 #include "core/ProfileProvider.h"
+#include "core/ProfileSelection.h"
 #include "core/Registration.h"
 #include "features/FeatureDialogs.h"
 #include "features/FeatureUtils.h"
@@ -10,6 +11,7 @@
 
 #include <gp_Pnt.hxx>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -78,6 +80,19 @@ bool SketchHasProfile(Document* theDocument, const std::string& theName)
         return provider != nullptr && !provider->ProfileFaces().empty();
     }
     return false;
+}
+
+// True when the user has already clicked one or more regions of a sketch
+// that is still in this document. A selection left over from a sketch the
+// user has since deleted must not steer the dialog.
+bool HasPickedProfiles(const CommandContext& theContext)
+{
+    const ProfileSelection& selection = ProfileSelection::Instance();
+    if (selection.IsEmpty() || selection.SketchName().empty()) {
+        return false;
+    }
+    const std::vector<std::string> names = SketchNames(theContext.document);
+    return std::find(names.begin(), names.end(), selection.SketchName()) != names.end();
 }
 
 bool DocumentHasBody(const CommandContext& theContext)
@@ -372,6 +387,51 @@ protected:
         }
         return true;
     }
+
+    // What this feature should act on: the regions the user has already
+    // clicked, or -- when nothing is picked -- a whole sketch chosen from
+    // the dropdown, which is what this command has always done.
+    //
+    // Fusion's flow is to click the region and then press E, so a pick has
+    // to make the dialog be about that pick rather than ask the question
+    // again. The row is still inserted either way so the caller's own
+    // fields keep the same indices whichever path ran; when a pick exists
+    // the row confirms the target instead of offering a choice, which is
+    // the job Fusion's "Profile: 1 selected" row does.
+    static bool AskForTarget(CommandContext&           theContext,
+                             const QString&            theTitle,
+                             std::vector<DialogField>& theFields,
+                             const QString&            theHint,
+                             std::string&              theSketchName,
+                             std::vector<ProfileRef>&  theProfiles)
+    {
+        theProfiles.clear();
+
+        if (!HasPickedProfiles(theContext)) {
+            return AskForSketch(theContext, theTitle, theFields, theHint, theSketchName);
+        }
+
+        const ProfileSelection& selection = ProfileSelection::Instance();
+        const int count = static_cast<int>(selection.Count());
+        const QString target = QString::fromStdString(selection.SketchName())
+                             + QString(" (%1 profile%2)").arg(count).arg(count == 1 ? "" : "s");
+        theFields.insert(theFields.begin(),
+                         DialogField::Choice("Profile", QStringList{target}, 0));
+
+        if (!ShowFeatureDialog(theContext.parent, theTitle, theFields, theHint)) {
+            return false;
+        }
+
+        theSketchName = selection.SketchName();
+        theProfiles = selection.Items();
+        return true;
+    }
+
+    // A profile is consumed once it has been built on. Leaving it picked
+    // would make a second press of E silently build the same thing again,
+    // and the highlight would go on claiming a region the user has already
+    // spent.
+    static void ClearPickedProfiles() { ProfileSelection::Instance().Clear(); }
 };
 
 class ExtrudeCommand : public ProfileCommand
@@ -400,18 +460,21 @@ public:
                                              ToChoices(BooleanOpNames()),
                                              DefaultOperationChoice(theContext)));
 
-        std::string sketchName;
-        if (!AskForSketch(theContext, "Extrude", fields,
+        std::string             sketchName;
+        std::vector<ProfileRef> profiles;
+        if (!AskForTarget(theContext, "Extrude", fields,
                           "Symmetric splits the distance either side of the sketch plane.",
-                          sketchName)) {
+                          sketchName, profiles)) {
             return;
         }
 
         auto extrude = std::make_shared<ExtrudeFeature>(sketchName, fields[1].value);
+        extrude->SetProfiles(profiles);
         extrude->SetReversed(fields[2].toggle);
         extrude->SetSymmetric(fields[3].toggle);
         extrude->SetOperation(BooleanOpFromInt(fields[4].choice));
         AddAndReport(theContext, extrude);
+        ClearPickedProfiles();
     }
 };
 
@@ -444,19 +507,22 @@ public:
                                              ToChoices(BooleanOpNames()),
                                              DefaultOperationChoice(theContext)));
 
-        std::string sketchName;
-        if (!AskForSketch(theContext, "Revolve", fields,
+        std::string             sketchName;
+        std::vector<ProfileRef> profiles;
+        if (!AskForTarget(theContext, "Revolve", fields,
                           "The axis must not cross the profile -- draw the profile to one "
                           "side of it.",
-                          sketchName)) {
+                          sketchName, profiles)) {
             return;
         }
 
         auto revolve = std::make_shared<RevolveFeature>(
             sketchName, fields[1].value, RevolveAxisFromInt(fields[2].choice));
+        revolve->SetProfiles(profiles);
         revolve->SetReversed(fields[3].toggle);
         revolve->SetOperation(BooleanOpFromInt(fields[4].choice));
         AddAndReport(theContext, revolve);
+        ClearPickedProfiles();
     }
 };
 
