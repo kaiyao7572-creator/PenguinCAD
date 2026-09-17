@@ -371,12 +371,20 @@ void SketchDisplay::AddProfileFill(SketchFeature& theSketch)
 
         Handle(AIS_Shape) object = new AIS_Shape(face);
         RefineTessellation(object);
+
+        // The tint goes on FIRST because AIS_Shape only materialises its
+        // shading aspect when a colour is set. Reaching into
+        // ShadingAspect()->Aspect() before that dereferences a null
+        // handle, which segfaults the moment a sketch draws its first
+        // closed region -- and no headless test can catch it, because none
+        // of this exists without a viewer.
+        ApplyProfileTint(object, i);
+
         // Unlit and with no face boundary: this is a flat tint, not a
         // surface. Lighting it would shade the fill by the plane's angle to
         // the camera, and the boundary would double every curve underneath.
         object->Attributes()->ShadingAspect()->Aspect()->SetShadingModel(Graphic3d_TOSM_UNLIT);
         object->Attributes()->SetFaceBoundaryDraw(Standard_False);
-        ApplyProfileTint(object, i);
 
         Show(object, AIS_Shaded, kFillLayer);
         myProfileObjects.push_back(object);
