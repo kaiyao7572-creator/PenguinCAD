@@ -71,7 +71,26 @@ bool ProfileFeature::ResolveProfile(const ComputeContext&     theContext,
 
     try {
         thePlane = provider->ProfilePlane();
-        theFaces = provider->ProfileFaces();
+        if (myProfiles.empty()) {
+            theFaces = provider->ProfileFaces();
+        } else {
+            theFaces.clear();
+            theFaces.reserve(myProfiles.size());
+            for (const ProfileRef& ref : myProfiles) {
+                TopoDS_Face face;
+                if (!provider->FindProfile(ref, face)) {
+                    // Sweeping the refs that still resolve and quietly
+                    // forgetting this one would change the solid behind the
+                    // user's back -- the model would keep rebuilding, just
+                    // not into the shape they designed. Fail instead and
+                    // let them re-pick.
+                    theError = "a profile in '" + mySketchName
+                             + "' no longer exists -- re-select it";
+                    return false;
+                }
+                theFaces.push_back(face);
+            }
+        }
     } catch (const Standard_Failure& failure) {
         theError = OcctMessage(failure, "could not read the sketch profile");
         return false;
@@ -92,13 +111,38 @@ bool ProfileFeature::ResolveProfile(const ComputeContext&     theContext,
 void ProfileFeature::AppendCommonParameters(std::vector<Parameter>& theParameters) const
 {
     theParameters.push_back(Parameter::MakeString("Sketch", mySketchName));
+    // Encoded refs ride the plain string row the properties panel already
+    // knows how to show and edit, so the selection is inspectable and
+    // clearable without a bespoke widget.
+    theParameters.push_back(Parameter::MakeString("Profiles", EncodeProfileRefs(myProfiles)));
     theParameters.push_back(Parameter::MakeString("Operation", BooleanOpName(myOperation)));
 }
 
 bool ProfileFeature::ApplyCommonParameter(const Parameter& theParameter)
 {
     if (theParameter.name == "Sketch") {
+        // Same reasoning as SetSketchName: refs from the old sketch would
+        // resolve against entity ids that mean something else here.
+        if (theParameter.stringValue != mySketchName) {
+            myProfiles.clear();
+        }
         mySketchName = theParameter.stringValue;
+        return true;
+    }
+    if (theParameter.name == "Profiles") {
+        // Empty is the documented way back to the whole sketch.
+        if (theParameter.stringValue.empty()) {
+            myProfiles.clear();
+            return true;
+        }
+        std::vector<ProfileRef> refs = DecodeProfileRefs(theParameter.stringValue);
+        if (refs.empty()) {
+            // Text that decodes to nothing is a typo, not a request for
+            // the whole sketch -- silently widening the feature to every
+            // region would be a surprising way to answer a mistake.
+            return false;
+        }
+        myProfiles = std::move(refs);
         return true;
     }
     if (theParameter.name == "Operation") {
@@ -115,6 +159,9 @@ bool ProfileFeature::ApplyCommonParameter(const Parameter& theParameter)
 void ProfileFeature::CopyProfileTo(ProfileFeature& theOther) const
 {
     theOther.mySketchName = mySketchName;
+    // Undo restores the timeline from clones, so a field missed here is a
+    // field the user loses the moment they press Ctrl+Z.
+    theOther.myProfiles = myProfiles;
     theOther.myOperation = myOperation;
     CopyBaseTo(theOther);
 }

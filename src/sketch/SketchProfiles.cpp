@@ -273,32 +273,4 @@ std::vector<ProfileRegion> ComputeProfileRegions(const SketchFeature& theSketch)
     return regions;
 }
 
-int ProfileRegionAt(const std::vector<ProfileRegion>& theRegions, const gp_Pnt2d& thePoint)
-{
-    int    hit  = -1;
-    double best = 0.0;
-
-    for (std::size_t i = 0; i < theRegions.size(); ++i) {
-        const ProfileRegion& region = theRegions[i];
-        if (region.face.IsNull()) {
-            continue;
-        }
-        if (hit >= 0 && region.area >= best) {
-            continue;  // already holding a smaller candidate
-        }
-        try {
-            BRepTopAdaptor_FClass2d classifier(region.face, kClassifyTolerance);
-            if (classifier.Perform(thePoint) != TopAbs_IN) {
-                continue;
-            }
-        } catch (const Standard_Failure&) {
-            continue;
-        }
-        hit  = static_cast<int>(i);
-        best = region.area;
-    }
-
-    return hit;
-}
-
 } // namespace lcad

@@ -4,6 +4,8 @@
 #include "core/Command.h"
 #include "sketch/SketchAnnotations.h"
 #include "sketch/SketchFeature.h"
+#include "core/ProfileSelection.h"
+#include "sketch/SketchProfiles.h"
 #include "sketch/SketchSelection.h"
 #include "sketch/SketchView.h"
 
@@ -44,6 +46,12 @@ const Quantity_Color kPreviewColor(0.84, 0.93, 1.00, Quantity_TOC_sRGB);
 const Quantity_Color kConstructionColor(0.68, 0.56, 0.38, Quantity_TOC_sRGB);
 const Quantity_Color kSelectionColor(0.20, 0.72, 1.00, Quantity_TOC_sRGB);
 const Quantity_Color kProfileFillColor(0.45, 0.66, 0.86, Quantity_TOC_sRGB);
+// Hover and picked are the same hue as the resting fill, brighter and a
+// good deal more opaque. Fusion says "you are about to get this one" with
+// weight rather than with a new colour, and a second hue here would read
+// as a different kind of thing rather than as the same thing, lit.
+const Quantity_Color kProfileHoverColor(0.66, 0.85, 1.00, Quantity_TOC_sRGB);
+const Quantity_Color kProfileChosenColor(0.24, 0.68, 1.00, Quantity_TOC_sRGB);
 const Quantity_Color kConstraintColor(0.60, 0.64, 0.72, Quantity_TOC_sRGB);
 const Quantity_Color kDimensionColor(0.95, 0.85, 0.55, Quantity_TOC_sRGB);
 
@@ -52,6 +60,11 @@ const Quantity_Color kDimensionColor(0.95, 0.85, 0.55, Quantity_TOC_sRGB);
 // fill, since it is the only thing on screen that says "this region is
 // extrudable".
 constexpr Standard_Real kProfileFillTransparency = 0.82;
+
+// Opaque enough to be unmistakable, translucent enough that the curves
+// bounding the region and the grid under it both still read through.
+constexpr Standard_Real kProfileHoverTransparency  = 0.62;
+constexpr Standard_Real kProfileChosenTransparency = 0.45;
 
 // Line widths and marker sizes in LOGICAL pixels; DeviceWidth() scales
 // them. Fusion's sketch curves sit clearly above the grid, and the
@@ -170,6 +183,10 @@ void SketchDisplay::SetActiveSketchName(const std::string& theName)
         return;
     }
     myActiveSketchName = theName;
+    // A reference names entity ids in ONE sketch, so carrying picks from
+    // the last sketch into this one would point them at whatever happens
+    // to share those ids. ProfileSelection drops them for us.
+    ProfileSelection::Instance().SetSketchName(theName);
     Refresh();
     Redraw();
 }
@@ -204,6 +221,13 @@ void SketchDisplay::ClearSketchObjects()
         }
     }
     mySketchObjects.clear();
+
+    // Drawn by AddProfileFill and owned through mySketchObjects, so they
+    // are already off the screen by here -- these are the handles the
+    // hover uses to find them again.
+    myProfileObjects.clear();
+    myActiveRegions.clear();
+    myHoveredProfile = -1;
 }
 
 double SketchDisplay::PixelSize() const
@@ -291,43 +315,101 @@ void SketchDisplay::AddMarkers(SketchFeature& theSketch, const Quantity_Color& t
     Show(object, AIS_WireFrame, kCurveLayer);
 }
 
+void SketchDisplay::ApplyProfileTint(const Handle(AIS_Shape)& theObject,
+                                     std::size_t              theIndex) const
+{
+    if (theObject.IsNull() || theIndex >= myActiveRegions.size()) {
+        return;
+    }
+
+    const bool isHovered = myHoveredProfile >= 0
+                        && static_cast<std::size_t>(myHoveredProfile) == theIndex;
+    const bool isChosen =
+        ProfileSelection::Instance().Contains(myActiveRegions[theIndex].ref);
+
+    // Picked beats hovered: once a region is chosen, moving the cursor
+    // over it must not make it look less chosen.
+    if (isChosen) {
+        theObject->SetColor(kProfileChosenColor);
+        theObject->SetTransparency(kProfileChosenTransparency);
+    } else if (isHovered) {
+        theObject->SetColor(kProfileHoverColor);
+        theObject->SetTransparency(kProfileHoverTransparency);
+    } else {
+        theObject->SetColor(kProfileFillColor);
+        theObject->SetTransparency(kProfileFillTransparency);
+    }
+}
+
 void SketchDisplay::AddProfileFill(SketchFeature& theSketch)
 {
     if (myContext.IsNull()) {
         return;
     }
 
-    TopoDS_Compound compound;
     try {
-        BRep_Builder builder;
-        builder.MakeCompound(compound);
-
-        bool any = false;
-        for (const TopoDS_Face& face : theSketch.ProfileFaces()) {
-            if (face.IsNull()) {
-                continue;
-            }
-            builder.Add(compound, face);
-            any = true;
-        }
-        if (!any) {
-            return;
-        }
+        myActiveRegions = theSketch.ProfileRegions();
     } catch (const Standard_Failure&) {
-        return;  // a sketch whose regions won't face is simply not filled
+        myActiveRegions.clear();  // a sketch whose regions won't build is simply not filled
+        return;
     }
 
-    Handle(AIS_Shape) object = new AIS_Shape(compound);
-    object->SetColor(kProfileFillColor);
-    object->SetTransparency(kProfileFillTransparency);
-    RefineTessellation(object);
-    // Unlit and with no face boundary: this is a flat tint, not a
-    // surface. Lighting it would shade the fill by the plane's angle to
-    // the camera, and the boundary would double every curve underneath.
-    object->Attributes()->ShadingAspect()->Aspect()->SetShadingModel(Graphic3d_TOSM_UNLIT);
-    object->Attributes()->SetFaceBoundaryDraw(Standard_False);
+    // Stale picks go before anything is drawn, so a region the user chose
+    // and then trimmed away doesn't leave a highlight with nothing under it.
+    ProfileSelection::Instance().Prune(myActiveRegions);
 
-    Show(object, AIS_Shaded, kFillLayer);
+    if (myHoveredProfile >= static_cast<int>(myActiveRegions.size())) {
+        myHoveredProfile = -1;
+    }
+
+    for (std::size_t i = 0; i < myActiveRegions.size(); ++i) {
+        const TopoDS_Face& face = myActiveRegions[i].face;
+        if (face.IsNull()) {
+            myProfileObjects.push_back(Handle(AIS_Shape)());  // keep the lists parallel
+            continue;
+        }
+
+        Handle(AIS_Shape) object = new AIS_Shape(face);
+        RefineTessellation(object);
+        // Unlit and with no face boundary: this is a flat tint, not a
+        // surface. Lighting it would shade the fill by the plane's angle to
+        // the camera, and the boundary would double every curve underneath.
+        object->Attributes()->ShadingAspect()->Aspect()->SetShadingModel(Graphic3d_TOSM_UNLIT);
+        object->Attributes()->SetFaceBoundaryDraw(Standard_False);
+        ApplyProfileTint(object, i);
+
+        Show(object, AIS_Shaded, kFillLayer);
+        myProfileObjects.push_back(object);
+    }
+}
+
+void SketchDisplay::SetHoveredProfile(int theIndex)
+{
+    if (theIndex >= static_cast<int>(myActiveRegions.size())) {
+        theIndex = -1;
+    }
+    if (theIndex == myHoveredProfile) {
+        return;
+    }
+
+    const int previous = myHoveredProfile;
+    myHoveredProfile = theIndex;
+
+    if (myContext.IsNull()) {
+        return;
+    }
+    // Only the two regions whose state actually changed are touched.
+    for (const int index : {previous, theIndex}) {
+        if (index < 0 || static_cast<std::size_t>(index) >= myProfileObjects.size()) {
+            continue;
+        }
+        const Handle(AIS_Shape)& object = myProfileObjects[static_cast<std::size_t>(index)];
+        if (object.IsNull()) {
+            continue;
+        }
+        ApplyProfileTint(object, static_cast<std::size_t>(index));
+        myContext->Redisplay(object, Standard_False);
+    }
 }
 
 void SketchDisplay::AddSketch(SketchFeature& theSketch, bool theIsActive)

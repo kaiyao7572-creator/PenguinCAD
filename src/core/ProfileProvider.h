@@ -47,6 +47,11 @@ struct ProfileRef
 std::string EncodeProfileRefs(const std::vector<ProfileRef>& theRefs);
 std::vector<ProfileRef> DecodeProfileRefs(const std::string& theText);
 
+// True when two boundaries have any curve in common. This is the guard
+// that stops a reference sliding onto a region that merely swallowed its
+// seed point once the curve enclosing it was deleted.
+bool ShareBoundaryCurve(const std::vector<int>& theLeft, const std::vector<int>& theRight);
+
 // One minimal closed region of a sketch -- what Fusion calls a profile.
 struct ProfileRegion
 {
@@ -90,6 +95,13 @@ public:
     // are NOW. False when the region it names no longer exists.
     bool FindProfile(const ProfileRef& theRef, TopoDS_Face& theFace) const;
 };
+
+// Index of the region under a point in sketch-plane coordinates, or -1.
+//
+// The SMALLEST containing region wins: a region nested inside another
+// would otherwise be unreachable, and the smaller one is always the more
+// specific thing to mean by a click.
+int ProfileRegionAt(const std::vector<ProfileRegion>& theRegions, const gp_Pnt2d& thePoint);
 
 // Safe downcast: returns nullptr if the feature isn't a profile source.
 ProfileProvider* AsProfileProvider(Feature* theFeature);

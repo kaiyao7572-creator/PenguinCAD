@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Feature.h"
+#include "core/ProfileProvider.h"
 #include "features/FeatureUtils.h"
 
 #include <TopoDS_Face.hxx>
@@ -22,29 +23,49 @@ class ProfileFeature : public Feature
 {
 public:
     const std::string& SketchName() const { return mySketchName; }
-    void SetSketchName(std::string theName) { mySketchName = std::move(theName); }
+
+    void SetSketchName(std::string theName)
+    {
+        // A ProfileRef names entities of ONE sketch, so pointing the
+        // feature at another sketch makes the stored choice meaningless --
+        // and worse than meaningless, since those ids exist in the new
+        // sketch too and would resolve to whatever happens to carry them.
+        // Falling back to the whole sketch is the only honest default.
+        if (theName != mySketchName) {
+            myProfiles.clear();
+        }
+        mySketchName = std::move(theName);
+    }
+
+    // Which regions of the sketch this feature consumes. EMPTY means the
+    // whole sketch -- every region -- which is both the historical
+    // behaviour and what a user gets before picking anything.
+    const std::vector<ProfileRef>& Profiles() const { return myProfiles; }
+    void SetProfiles(std::vector<ProfileRef> theProfiles) { myProfiles = std::move(theProfiles); }
 
     BooleanOp Operation() const { return myOperation; }
     void SetOperation(BooleanOp theOperation) { myOperation = theOperation; }
 
 protected:
-    // Faces of the named sketch. Fails with a message meant to be shown
-    // to the user as-is: a missing sketch and an open sketch are both
-    // ordinary mistakes, not kernel errors.
+    // Faces of the named sketch -- the chosen regions, or all of them when
+    // nothing is chosen. Fails with a message meant to be shown to the
+    // user as-is: a missing sketch, an open sketch and a profile that has
+    // been drawn away are all ordinary mistakes, not kernel errors.
     bool ResolveProfile(const ComputeContext&     theContext,
                         std::vector<TopoDS_Face>& theFaces,
                         gp_Pln&                   thePlane,
                         std::string&              theError) const;
 
-    // Shared "Sketch" and "Operation" rows.
+    // Shared "Sketch", "Profiles" and "Operation" rows.
     void AppendCommonParameters(std::vector<Parameter>& theParameters) const;
     bool ApplyCommonParameter(const Parameter& theParameter);
 
     void CopyProfileTo(ProfileFeature& theOther) const;
 
 private:
-    std::string mySketchName;
-    BooleanOp   myOperation = BooleanOp::NewBody;
+    std::string             mySketchName;
+    std::vector<ProfileRef> myProfiles;
+    BooleanOp               myOperation = BooleanOp::NewBody;
 };
 
 // Sketch profile pushed along its own normal.

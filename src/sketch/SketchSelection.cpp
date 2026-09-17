@@ -3,6 +3,8 @@
 #include "core/Document.h"
 #include "sketch/SketchDisplay.h"
 #include "sketch/SketchGeometry.h"
+#include "core/ProfileSelection.h"
+#include "sketch/SketchProfiles.h"
 
 #include <algorithm>
 #include <cmath>
@@ -195,9 +197,15 @@ class SelectToolImpl : public SketchTool
 public:
     std::string Hint() const override
     {
+        const std::size_t profiles = ProfileSelection::Instance().Count();
+        if (profiles != 0) {
+            return std::to_string(profiles)
+                 + (profiles == 1 ? " profile selected - press E to extrude it. Esc clears."
+                                  : " profiles selected - press E to extrude them. Esc clears.");
+        }
         const std::size_t count = SketchSelection::Instance().Count();
         if (count == 0) {
-            return "Sketch: click geometry to select it. Ctrl+click adds, Del removes.";
+            return "Sketch: click a curve to select it, or a shaded region to pick a profile.";
         }
         return std::to_string(count)
              + " selected - pick a constraint or modify tool. Esc clears.";
@@ -218,7 +226,23 @@ protected:
         const double tolerance = std::max(PixelSize() * kPickPixels, 1.0e-4);
         myHitSomething = PickSketchEntity(*sketch, thePoint, tolerance, picked);
 
-        SketchSelection::Instance().Add(picked, myAdditive);
+        if (myHitSomething) {
+            // A curve under the cursor beats the area behind it. The
+            // boundary is the smaller and more deliberate target, and it
+            // is the only one the constraint tools can use.
+            if (!myAdditive) {
+                ProfileSelection::Instance().Clear();
+            }
+            SketchSelection::Instance().Add(picked, myAdditive);
+        } else if (PickProfile(thePoint, myAdditive)) {
+            myHitSomething = true;
+        } else {
+            // Empty space: clear both, which is how the user backs out of
+            // a selection without reaching for Escape.
+            SketchSelection::Instance().Add(picked, myAdditive);
+            ProfileSelection::Instance().Toggle(ProfileRef(), myAdditive);
+        }
+
         SketchDisplay::Instance().Refresh();
         SketchDisplay::Instance().Redraw();
     }
@@ -240,8 +264,17 @@ protected:
         const double tolerance = std::max(PixelSize() * kPickPixels, 1.0e-4);
         if (!PickSketchEntity(*sketch, thePoint, tolerance, hovered)) {
             ClearPreview();
+            // Nothing on the boundary, so light the region behind the
+            // cursor instead. This is the whole tell that a shaded area is
+            // a thing you can pick rather than just decoration.
+            SketchDisplay::Instance().SetHoveredProfile(
+                ProfileRegionAt(SketchDisplay::Instance().ActiveProfileRegions(), thePoint));
             return;
         }
+
+        // A curve is about to win the click, so nothing behind it should
+        // still look primed.
+        SketchDisplay::Instance().SetHoveredProfile(-1);
 
         const SketchEntity* entity = sketch->FindEntity(hovered.entity);
         if (entity == nullptr) {
@@ -280,8 +313,10 @@ protected:
             // drawing tools (first Escape drops the curve, second drops
             // the tool back to here), Escape is a reliable way out of
             // wherever the user is.
-            if (!SketchSelection::Instance().IsEmpty()) {
+            if (!SketchSelection::Instance().IsEmpty()
+                || !ProfileSelection::Instance().IsEmpty()) {
                 SketchSelection::Instance().Clear();
+                ProfileSelection::Instance().Clear();
                 SketchDisplay::Instance().Refresh();
                 SketchDisplay::Instance().Redraw();
                 return true;
@@ -300,6 +335,27 @@ protected:
     }
 
 private:
+    // Pick the region under a click, if there is one. The regions come
+    // from the display rather than being recomputed here: it already has
+    // the arrangement it drew, and rebuilding it per click would answer a
+    // question that has already been answered.
+    static bool PickProfile(const gp_Pnt2d& thePoint, bool theAdditive)
+    {
+        const std::vector<ProfileRegion>& regions =
+            SketchDisplay::Instance().ActiveProfileRegions();
+        const int index = ProfileRegionAt(regions, thePoint);
+        if (index < 0) {
+            return false;
+        }
+
+        if (!theAdditive) {
+            SketchSelection::Instance().Clear();
+        }
+        ProfileSelection::Instance().Toggle(regions[static_cast<std::size_t>(index)].ref,
+                                            theAdditive);
+        return true;
+    }
+
     void DeleteSelection()
     {
         SketchFeature* sketch = Sketch();

@@ -23,11 +23,4 @@ class SketchFeature;
 // user cannot say which part of their sketch they meant.
 std::vector<ProfileRegion> ComputeProfileRegions(const SketchFeature& theSketch);
 
-// Index of the region under a point in sketch coordinates, or -1.
-//
-// The SMALLEST containing region wins: a region nested inside another
-// would otherwise be unreachable, and the small one is always the more
-// specific thing to mean by a click.
-int ProfileRegionAt(const std::vector<ProfileRegion>& theRegions, const gp_Pnt2d& thePoint);
-
 } // namespace lcad

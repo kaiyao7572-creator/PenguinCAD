@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Document.h"
+#include "core/ProfileProvider.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
@@ -51,6 +52,18 @@ public:
     bool AreConstraintsVisible() const { return myAreConstraintsVisible; }
     void SetConstraintsVisible(bool theValue);
 
+    // The active sketch's regions as they were last drawn. Hit-testing a
+    // hover against these costs nothing, where recomputing the planar
+    // arrangement on every mouse move would not keep up with the cursor.
+    const std::vector<ProfileRegion>& ActiveProfileRegions() const { return myActiveRegions; }
+
+    // Light up one region under the cursor, or -1 for none. Recolours the
+    // objects already on screen rather than rebuilding them: a Refresh per
+    // mouse move would tear down and re-display every sketch object in the
+    // document, which reads as a stutter rather than as a highlight.
+    void SetHoveredProfile(int theIndex);
+    int HoveredProfile() const { return myHoveredProfile; }
+
     // True for the AIS objects this display put in the viewport. Code that
     // walks everything on screen -- the plane picker looking for pickable
     // faces, the sketch-mode fade looking for the model -- has to be able
@@ -86,10 +99,16 @@ private:
     // of a shape that has no edges at all.
     void AddMarkers(SketchFeature& theSketch, const Quantity_Color& theColor);
 
-    // Translucent tint over every closed region. This is the one signal
-    // that tells the user a profile is extrudable before they reach for
-    // Extrude, so it is drawn from the same wires Extrude will consume.
+    // One translucent tint per closed region -- the signal that tells the
+    // user an area is extrudable before they reach for Extrude, and the
+    // thing they click to say which area they meant. Drawn from the same
+    // regions Extrude will consume, so what is lit is what is built.
     void AddProfileFill(SketchFeature& theSketch);
+
+    // Colour and opacity for one region, given whether it is hovered or
+    // picked. Kept in one place so the resting, hovered and selected
+    // states can't drift apart between the initial draw and a recolour.
+    void ApplyProfileTint(const Handle(AIS_Shape)& theObject, std::size_t theIndex) const;
 
     void AddSketch(SketchFeature& theSketch, bool theIsActive);
     void AddAnnotations(SketchFeature& theSketch);
@@ -110,6 +129,12 @@ private:
 
     std::vector<Handle(AIS_InteractiveObject)> mySketchObjects;
     Handle(AIS_Shape)                          myPreview;
+
+    // Parallel to each other: the regions of the active sketch and the
+    // object drawn for each, so a hover can recolour exactly one.
+    std::vector<ProfileRegion>     myActiveRegions;
+    std::vector<Handle(AIS_Shape)> myProfileObjects;
+    int                            myHoveredProfile = -1;
 
     std::string myActiveSketchName;
     bool        myAreSketchesVisible = true;
