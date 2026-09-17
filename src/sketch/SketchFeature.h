@@ -155,6 +155,19 @@ public:
     // boundary as the face and the rest as holes.
     std::vector<TopoDS_Wire> ProfileWires() const override;
 
+    // Minimal closed regions -- what the user can point at. Computed from
+    // scratch each time: a sketch small enough to draw by hand costs a
+    // millisecond or two, and a cache here would have to be invalidated by
+    // every tool that touches geometry, which is a far better source of
+    // bugs than it is of speed.
+    std::vector<ProfileRegion> ProfileRegions() const override;
+
+    // Every region's face, rather than the outer wire with the rest
+    // punched out as holes. Two disjoint squares are two faces, not one
+    // face with an absurd hole in it; a rectangle drawn around a circle is
+    // the ring AND the disc, which is what selecting both in Fusion gives.
+    std::vector<TopoDS_Face> ProfileFaces() const override;
+
     // ---- display ----
 
     bool IsVisible() const { return myIsVisible; }

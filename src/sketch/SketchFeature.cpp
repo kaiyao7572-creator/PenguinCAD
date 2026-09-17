@@ -1,6 +1,7 @@
 #include "sketch/SketchFeature.h"
 
 #include "sketch/SketchGeometry.h"
+#include "sketch/SketchProfiles.h"
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
@@ -775,6 +776,22 @@ std::vector<TopoDS_Wire> SketchFeature::ProfileWires() const
         wires.push_back(loop.wire);
     }
     return wires;
+}
+
+std::vector<ProfileRegion> SketchFeature::ProfileRegions() const
+{
+    return ComputeProfileRegions(*this);
+}
+
+std::vector<TopoDS_Face> SketchFeature::ProfileFaces() const
+{
+    std::vector<TopoDS_Face> faces;
+    for (const ProfileRegion& region : ProfileRegions()) {
+        if (!region.face.IsNull()) {
+            faces.push_back(region.face);
+        }
+    }
+    return faces;
 }
 
 } // namespace lcad

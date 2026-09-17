@@ -57,10 +57,23 @@ build_pipeline() {
         "$SRC/core/Document.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/ShapeFeature.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
         "$SRC/features/ProfileFeatures.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
         "$SRC/features/ModifyFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/pipeline_test" || return 1
     "$OUT/pipeline_test"
+}
+
+# ---- profiles: a sketch split into the regions a user can point at ----
+build_profiles() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/profile_test.cpp" \
+        "$SRC/core/ProfileProvider.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/profile_test" || return 1
+    "$OUT/profile_test"
 }
 
 # ---- sketch inference: axis lock + snap candidates, no display needed ----
@@ -70,6 +83,7 @@ build_inference() {
         "$SRC/core/ProfileProvider.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/inference_test" || return 1
     "$OUT/inference_test"
 }
@@ -78,6 +92,7 @@ run "Units: parsing and formatting" build_units
 run "Widget: unit-aware input field" build_widget
 run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
 run "Sketch: axis inference and snapping" build_inference
+run "Sketch: profile regions and references" build_profiles
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."
