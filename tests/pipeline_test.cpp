@@ -235,6 +235,58 @@ int main()
     check(std::fabs(VolumeOf(pdoc.Shape()) - 12000.0) < 0.01,
           "clearing 'Profiles' reverts to the whole sketch");
 
+    // ---- 9b. a MULTI-ref string is all-or-nothing ----
+    //
+    // Picking both regions by hand must come back to the same 12000 the
+    // whole sketch gives -- ring + disc = 11214.602 + 785.398 = 12000 --
+    // because the two are disjoint and cover it exactly.
+    //
+    // The interesting case is the corrupt one. DecodeProfileRefs drops
+    // segments it cannot parse, so a row hand-edited into "<good>;oops"
+    // would decode to ONE ref: the feature would silently narrow from
+    // 12000 to the ring's 11214.602 with nothing reported. Narrowing a
+    // model behind the user's back is the same sin as widening it, so the
+    // whole string has to be refused.
+    liveRegionExtrude->SetProfiles({ringRef, discRef});
+    pdoc.Rebuild();
+    check(std::fabs(VolumeOf(pdoc.Shape()) - 12000.0) < 0.01,
+          "selecting both regions by hand equals the whole sketch");
+
+    std::string encodedBoth;
+    for (const Parameter& parameter : liveRegionExtrude->Parameters()) {
+        if (parameter.name == "Profiles") {
+            encodedBoth = parameter.stringValue;
+        }
+    }
+    check(encodedBoth.find(';') != std::string::npos,
+          "two chosen profiles encode as two ';'-separated refs");
+    check(liveRegionExtrude->SetParameter(Parameter::MakeString("Profiles", encodedBoth)),
+          "the two-ref 'Profiles' string is accepted back");
+    pdoc.Rebuild();
+    check(std::fabs(VolumeOf(pdoc.Shape()) - 12000.0) < 0.01,
+          "a round-tripped two-ref string resolves to the same solid");
+
+    const std::string mangled = encodedBoth.substr(0, encodedBoth.find(';') + 1) + "oops";
+    check(!liveRegionExtrude->SetParameter(Parameter::MakeString("Profiles", mangled)),
+          "a string with one unparseable ref is refused whole");
+    check(liveRegionExtrude->Profiles().size() == 2,
+          "the refused string left the selection untouched");
+    pdoc.Rebuild();
+    std::cout << "  after refused edit -> " << VolumeOf(pdoc.Shape()) << " (expect 12000)"
+              << std::endl;
+    check(std::fabs(VolumeOf(pdoc.Shape()) - 12000.0) < 0.01,
+          "a refused 'Profiles' edit does not shrink the solid");
+
+    // The same region twice is one region: sweeping it twice would stack
+    // two coincident prisms into the compound and report 2 * 785.398.
+    liveRegionExtrude->SetProfiles({discRef, discRef});
+    check(liveRegionExtrude->Profiles().size() == 1, "a repeated profile is stored once");
+    pdoc.Rebuild();
+    std::cout << "  disc picked twice -> " << VolumeOf(pdoc.Shape()) << " (expect 785.398)"
+              << std::endl;
+    check(std::fabs(VolumeOf(pdoc.Shape()) - kDiscVolume) < 0.01,
+          "picking the disc twice still extrudes one disc");
+
     // ---- 10. a profile whose boundary was deleted fails loudly ----
     //
     // Deleting the circle leaves the disc's seed point sitting inside the
@@ -252,6 +304,82 @@ int main()
     }
     check(VolumeOf(pdoc.Shape()) < 1.0,
           "the lost profile produces nothing rather than the wrong solid");
+
+    // ---- 11. the RING is the dangerous half of the same deletion ----
+    //
+    // The disc above is the easy case: its only bounding curve was the
+    // circle, so once the circle goes nothing shares a curve with it and
+    // the reference is plainly dead. The ring is the trap. It is bounded
+    // by {4 rectangle edges + the circle}, so after the delete the plain
+    // rectangle still shares four of those five curves AND still holds the
+    // ring's seed point -- a reference that looks alive from every angle
+    // but now names an area fifteen times bigger:
+    //
+    //   what the user picked : (1200 - pi * 25) * 10 = 11214.602
+    //   what it would become : 40 * 30 * 10          = 12000
+    //
+    // A 7% change to the model with no error is exactly the outcome the
+    // whole ProfileRef design exists to prevent, so it must fail like the
+    // disc does. Needs its own document: pdoc's circle is gone by now.
+    Document rdoc;
+    auto ring_sketch = std::make_shared<SketchFeature>(SketchFeature::PlaneXY(), 0.0);
+    ring_sketch->SetName("Sketch1");
+    ring_sketch->AddRectangle(gp_Pnt2d(-20.0, -15.0), gp_Pnt2d(20.0, 15.0));
+    const int ringCircleId =
+        ring_sketch->AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(0.0, 0.0), 5.0));
+    rdoc.AddFeature(ring_sketch);
+
+    ProfileRef ringOnly;
+    for (const ProfileRegion& region : ring_sketch->ProfileRegions()) {
+        if (region.area >= 100.0) {
+            ringOnly = region.ref;
+        }
+    }
+    check(!ringOnly.IsNull(), "the ring of a fresh sketch has a usable reference");
+
+    auto ringExtrude = std::make_shared<ExtrudeFeature>();
+    ringExtrude->SetName("Extrude1");
+    ringExtrude->SetSketchName("Sketch1");
+    ringExtrude->SetDistance(10.0);
+    ringExtrude->SetProfiles({ringOnly});
+    rdoc.AddFeature(ringExtrude);
+    check(std::fabs(VolumeOf(rdoc.Shape()) - kRingVolume) < 0.01,
+          "the ring still resolves before the circle is deleted");
+    check(rdoc.Errors().empty(), "and does so without an error");
+
+    ring_sketch->RemoveEntity(ringCircleId);
+    rdoc.Rebuild();
+    std::cout << "  ring after deleting its circle -> " << VolumeOf(rdoc.Shape())
+              << " (expect 0, NOT 12000)" << std::endl;
+    check(!rdoc.Errors().empty(), "deleting the circle makes the ring extrude fail");
+    if (!rdoc.Errors().empty()) {
+        std::cout << "    reported: " << rdoc.Errors().front() << std::endl;
+    }
+    check(VolumeOf(rdoc.Shape()) < 1.0,
+          "the ring does not silently become the whole rectangle");
+
+    // ---- 12. re-pointing at another sketch drops the selection ----
+    //
+    // Entity ids are per-sketch, so a ref carried across would resolve
+    // against whatever happens to hold the same numbers over there. Worth
+    // pinning: this also fires when a sketch is RENAMED and the feature
+    // re-pointed at the very same geometry, because a feature only sees
+    // that the name changed. Losing the pick there is deliberate, not an
+    // oversight -- re-picking costs a click, resolving onto a stranger's
+    // ids costs a wrong model.
+    auto pointed = std::make_shared<ExtrudeFeature>();
+    pointed->SetSketchName("Sketch1");
+    pointed->SetProfiles({ringOnly});
+    pointed->SetSketchName("Sketch1");
+    check(pointed->Profiles().size() == 1, "re-setting the SAME sketch name keeps the pick");
+    pointed->SetSketchName("Sketch2");
+    check(pointed->Profiles().empty(), "pointing at another sketch clears the pick");
+
+    pointed->SetSketchName("Sketch1");
+    pointed->SetProfiles({ringOnly});
+    check(pointed->SetParameter(Parameter::MakeString("Sketch", "Sketch2")),
+          "the 'Sketch' parameter accepts another sketch");
+    check(pointed->Profiles().empty(), "and clears the pick the same way");
 
     std::cout << (failures == 0 ? "\nALL PIPELINE TESTS PASSED\n" : "\nFAILURES\n");
     return failures == 0 ? 0 : 1;

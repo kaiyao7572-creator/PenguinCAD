@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <sstream>
 
 namespace lcad {
 
@@ -31,6 +32,42 @@ std::string OcctMessage(const Standard_Failure& theFailure, const std::string& t
     return (message != nullptr && message[0] != '\0') ? std::string(message) : theFallback;
 }
 
+void DedupeProfileRefs(std::vector<ProfileRef>& theRefs)
+{
+    std::vector<ProfileRef> kept;
+    kept.reserve(theRefs.size());
+    for (const ProfileRef& ref : theRefs) {
+        if (ref.IsNull()) {
+            continue;
+        }
+        const bool seen = std::any_of(kept.begin(), kept.end(),
+                                      [&ref](const ProfileRef& theKept) {
+                                          return theKept.SameRegion(ref);
+                                      });
+        if (!seen) {
+            kept.push_back(ref);
+        }
+    }
+    theRefs = std::move(kept);
+}
+
+// How many refs an encoded string CLAIMS to hold. DecodeProfileRefs drops
+// the segments it cannot parse, so without this a hand-edited row with one
+// mangled ref would come back as a smaller selection and the solid would
+// quietly shrink -- the same sin as widening it, through the other door.
+std::size_t CountProfileRefSegments(const std::string& theText)
+{
+    std::size_t count = 0;
+    std::istringstream parts(theText);
+    std::string part;
+    while (std::getline(parts, part, ';')) {
+        if (!part.empty()) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 std::string ToLower(const std::string& theText)
 {
     std::string lower = theText;
@@ -43,6 +80,12 @@ std::string ToLower(const std::string& theText)
 } // namespace
 
 // ---- ProfileFeature ----
+
+void ProfileFeature::SetProfiles(std::vector<ProfileRef> theProfiles)
+{
+    DedupeProfileRefs(theProfiles);
+    myProfiles = std::move(theProfiles);
+}
 
 bool ProfileFeature::ResolveProfile(const ComputeContext&     theContext,
                                     std::vector<TopoDS_Face>& theFaces,
@@ -84,6 +127,12 @@ bool ProfileFeature::ResolveProfile(const ComputeContext&     theContext,
                     // user's back -- the model would keep rebuilding, just
                     // not into the shape they designed. Fail instead and
                     // let them re-pick.
+                    //
+                    // Deciding WHICH region a ref still names is
+                    // FindProfile's job and only its job: it is the one
+                    // place that can weigh a changed boundary against the
+                    // seed, and a second opinion here would either repeat
+                    // that judgement or quietly disagree with it.
                     theError = "a profile in '" + mySketchName
                              + "' no longer exists -- re-select it";
                     return false;
@@ -142,6 +191,14 @@ bool ProfileFeature::ApplyCommonParameter(const Parameter& theParameter)
             // region would be a surprising way to answer a mistake.
             return false;
         }
+        if (refs.size() != CountProfileRefSegments(theParameter.stringValue)) {
+            // Some segments parsed and some did not. Taking the survivors
+            // would narrow the feature just as silently as the empty case
+            // would widen it, so refuse the string whole and leave the
+            // stored selection exactly as it was.
+            return false;
+        }
+        DedupeProfileRefs(refs);
         myProfiles = std::move(refs);
         return true;
     }

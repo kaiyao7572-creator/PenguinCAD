@@ -41,7 +41,12 @@ public:
     // whole sketch -- every region -- which is both the historical
     // behaviour and what a user gets before picking anything.
     const std::vector<ProfileRef>& Profiles() const { return myProfiles; }
-    void SetProfiles(std::vector<ProfileRef> theProfiles) { myProfiles = std::move(theProfiles); }
+
+    // Out of line because it drops nulls and duplicates on the way in: the
+    // same region twice would be swept twice into a compound of coincident
+    // solids, which doubles the reported volume and gives every downstream
+    // boolean a self-overlapping tool to chew on.
+    void SetProfiles(std::vector<ProfileRef> theProfiles);
 
     BooleanOp Operation() const { return myOperation; }
     void SetOperation(BooleanOp theOperation) { myOperation = theOperation; }

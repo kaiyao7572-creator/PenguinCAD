@@ -41,25 +41,6 @@ bool FaceContains(const TopoDS_Face& theFace, const gp_Pnt2d& thePoint)
 
 } // namespace
 
-// True when two boundaries have any curve in common. Both are sorted, so
-// this is a merge rather than a search.
-bool ShareBoundaryCurve(const std::vector<int>& theLeft, const std::vector<int>& theRight)
-{
-    std::size_t left = 0;
-    std::size_t right = 0;
-    while (left < theLeft.size() && right < theRight.size()) {
-        if (theLeft[left] == theRight[right]) {
-            return true;
-        }
-        if (theLeft[left] < theRight[right]) {
-            ++left;
-        } else {
-            ++right;
-        }
-    }
-    return false;
-}
-
 // ---- ProfileRef ----
 
 std::string ProfileRef::Encode() const
@@ -125,6 +106,13 @@ bool ProfileRef::Decode(const std::string& theText, ProfileRef& theResult)
 bool ProfileRef::SameBoundary(const ProfileRef& theOther) const
 {
     return boundary == theOther.boundary;
+}
+
+bool ProfileRef::SameRegion(const ProfileRef& theOther) const
+{
+    constexpr double kSeedTolerance = 1.0e-6;
+    return SameBoundary(theOther)
+        && seed.SquareDistance(theOther.seed) <= kSeedTolerance * kSeedTolerance;
 }
 
 std::string EncodeProfileRefs(const std::vector<ProfileRef>& theRefs)
@@ -219,23 +207,26 @@ bool ProfileProvider::FindProfile(const ProfileRef& theRef, TopoDS_Face& theFace
         return !theFace.IsNull();
     }
 
-    // Step two: the seed point. Needed both when the boundary changed (a
-    // trim splits an edge and renumbers it) and when it is ambiguous --
-    // two overlapping circles give all three of their regions the same
-    // pair of bounding ids, so only the seed can tell them apart.
-    // Nothing matched exactly, so the region's outline changed -- a trim
-    // split one of its curves, or a neighbour was redrawn. Fall back to
-    // the seed, but only among regions that still share at least one of
-    // the original bounding curves. Without that guard, deleting the
-    // circle out of a ring leaves the seed sitting inside the plain
-    // rectangle, and an extrude of the disc silently becomes an extrude
-    // of the whole rectangle -- the one outcome worth failing to avoid.
+    // Step two: the seed point, which is here to break ties rather than to
+    // rescue a lost region. Two overlapping circles give all three of
+    // their regions the same pair of bounding ids, so the ids alone can
+    // never name one of them and only a point inside can.
+    // No region is bounded by those curves any more, so the region the
+    // user picked is gone. Refuse.
+    //
+    // An earlier version fell back to "whichever region now contains the
+    // seed, as long as it still shares a bounding curve", to survive a
+    // trim renumbering an edge. That is too generous, and generous is the
+    // wrong direction here: pick the RING of a rectangle-around-a-circle,
+    // delete the circle, and the plain rectangle shares four of the
+    // ring's five curves and swallows its seed -- so the extrude quietly
+    // became the whole rectangle instead of the ring. Any rule loose
+    // enough to survive a renumber is loose enough to do that, because
+    // the two are the same shape of change: a bounding curve stopped
+    // existing. Breaking loudly costs the user one re-pick; guessing
+    // wrong costs them a wrong model they may not notice.
     if (candidates.empty()) {
-        for (const ProfileRegion& region : regions) {
-            if (ShareBoundaryCurve(region.ref.boundary, theRef.boundary)) {
-                candidates.push_back(&region);
-            }
-        }
+        return false;
     }
 
     const ProfileRegion* hit = nullptr;

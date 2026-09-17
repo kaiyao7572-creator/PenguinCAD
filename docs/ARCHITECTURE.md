@@ -124,9 +124,56 @@ class ProfileProvider {
 ProfileProvider* AsProfileProvider(Feature*);   // safe dynamic_cast
 ```
 
+A sketch is also split into **profiles** -- the minimal closed regions the
+user can point at, exactly as Fusion means the word. A rectangle drawn
+around a circle is TWO regions (the ring and the disc), two overlapping
+circles are three, a line across a rectangle splits it into two.
+
+```cpp
+struct ProfileRef {                 // durable name for ONE region
+    std::vector<int> boundary;      // sketch entity ids, ascending
+    gp_Pnt2d         seed;          // a point inside it
+};
+struct ProfileRegion { TopoDS_Face face; ProfileRef ref; double area; };
+
+virtual std::vector<ProfileRegion> ProfileRegions() const;
+bool FindProfile(const ProfileRef&, TopoDS_Face&) const;   // resolve a ref
+int  ProfileRegionAt(const std::vector<ProfileRegion>&, const gp_Pnt2d&);
+```
+
+`ComputeProfileRegions` (`src/sketch/SketchProfiles.cpp`) builds the planar
+arrangement. Two things about it are load-bearing and non-obvious:
+
+1. A general fuse (`BOPAlgo_Builder`) runs over the edges first. It splits
+   curves where they cross -- without it two overlapping circles share no
+   vertex and have no lens between them -- and its history maps every
+   fragment back to the entity it came from.
+2. Each fragment is then fed to `BOPAlgo_BuilderFace` **twice, once in each
+   orientation**. It only walks an edge in the direction it is handed, so
+   with one orientation apiece it finds the cells on one side of a curve
+   and silently drops the others. The unbounded cell comes back with a
+   NEGATIVE signed area, which is how it is told from the real regions.
+
+**Identity.** A `ProfileRef` resolves by its bounding entity ids; the seed
+only breaks ties between regions sharing a boundary (all three regions of
+two overlapping circles are bounded by the same two curves). If no region
+has those bounding curves any more, `FindProfile` **fails** rather than
+falling back to whatever now contains the seed. That fallback was tried and
+removed: pick the ring of a rectangle-around-a-circle, delete the circle,
+and the plain rectangle shares four of the ring's five curves *and*
+swallows its seed -- so an extrude of the ring quietly became an extrude of
+the whole rectangle. Breaking loudly costs one re-pick; guessing wrong
+costs a wrong model nobody notices. **Do not loosen this** without a test
+covering that case (`tests/profile_test.cpp`, section 11b).
+
+Profiles the user has clicked live in `core/ProfileSelection.h`. It is in
+core rather than with the sketch code because it is the hand-off between
+two subsystems that deliberately know nothing about each other: the sketch
+fills it in, `Extrude` reads it, and `src/features` never includes a sketch
+header.
+
 - **Sketch side:** your sketch feature inherits `Feature` *and*
-  `ProfileProvider`, returning its closed wires. First wire = outer
-  boundary, the rest are treated as holes.
+  `ProfileProvider`, returning its closed wires and its regions.
 - **Solid side:** store the sketch's name; at compute time do
   ```cpp
   Feature* f = theContext.FindFeature(mySketchName);
@@ -136,6 +183,13 @@ ProfileProvider* AsProfileProvider(Feature*);   // safe dynamic_cast
   ```
   If `ProfileFaces()` is empty, fail with a clear message ("sketch has no
   closed profile") rather than producing a degenerate solid.
+
+  To act on chosen regions instead of the whole sketch, hold a
+  `std::vector<ProfileRef>` and resolve each through `FindProfile`. An
+  empty list means the whole sketch. If **any** stored ref fails to
+  resolve, fail the whole compute -- building from the ones that survived
+  changes the model silently, which is the failure this design exists to
+  prevent. `ProfileFeature` already does all of this; inherit it.
 
 ### `core/Command.h` — a toolbar/menu tool
 
@@ -254,6 +308,9 @@ for the full command list):
 
 ```
 run sketch.create      # invoke a command by id
+arm 900 accept         # answer the next modal dialog (arm BEFORE the run
+                       # that opens it -- the script parks inside the
+                       # dialog's own event loop, so only a timer gets in)
 wait 500
 click 450 300          # viewport-LOCAL logical pixels; (450,300) is about
                        # the centre of the viewport and hits the origin planes

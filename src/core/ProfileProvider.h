@@ -28,7 +28,11 @@ struct ProfileRef
     // Bounding sketch entity ids, ascending, so two refs compare directly.
     std::vector<int> boundary;
 
-    // A point strictly inside the region, in sketch coordinates.
+    // A point strictly inside the region, in sketch coordinates. It breaks
+    // ties between regions that share a boundary -- all three regions of
+    // two overlapping circles are bounded by the same two curves -- and it
+    // is what a click is tested against. It is deliberately NOT allowed to
+    // rescue a reference whose bounding curves are gone: see FindProfile.
     gp_Pnt2d seed;
 
     bool IsNull() const { return boundary.empty(); }
@@ -41,16 +45,21 @@ struct ProfileRef
 
     // Same bounding curves -- a candidate for being the same region.
     bool SameBoundary(const ProfileRef& theOther) const;
+
+    // The same region, boundary and seed both. Loose on the seed because a
+    // rebuild nudges geometry by float noise, but far tighter than the gap
+    // between any two regions a user could tell apart.
+    //
+    // One definition on purpose: the selection uses it to decide what
+    // Ctrl+click is toggling and a feature uses it to drop a region listed
+    // twice, and the two must not drift -- they are answering the same
+    // question about the same reference.
+    bool SameRegion(const ProfileRef& theOther) const;
 };
 
 // Several refs in one string, for a feature built on more than one region.
 std::string EncodeProfileRefs(const std::vector<ProfileRef>& theRefs);
 std::vector<ProfileRef> DecodeProfileRefs(const std::string& theText);
-
-// True when two boundaries have any curve in common. This is the guard
-// that stops a reference sliding onto a region that merely swallowed its
-// seed point once the curve enclosing it was deleted.
-bool ShareBoundaryCurve(const std::vector<int>& theLeft, const std::vector<int>& theRight);
 
 // One minimal closed region of a sketch -- what Fusion calls a profile.
 struct ProfileRegion

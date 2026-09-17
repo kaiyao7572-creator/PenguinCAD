@@ -5,22 +5,6 @@
 
 namespace lcad {
 
-namespace {
-
-// Two references name the same region when they are bounded by the same
-// curves and their seeds agree. The seed comparison is loose because a
-// re-solve can nudge geometry by float noise; it is far tighter than the
-// gap between any two regions a user could tell apart.
-constexpr double kSameSeedTolerance = 1.0e-6;
-
-bool SameRegion(const ProfileRef& theLeft, const ProfileRef& theRight)
-{
-    return theLeft.SameBoundary(theRight)
-        && theLeft.seed.SquareDistance(theRight.seed)
-               <= kSameSeedTolerance * kSameSeedTolerance;
-}
-
-} // namespace
 
 ProfileSelection& ProfileSelection::Instance()
 {
@@ -55,7 +39,7 @@ void ProfileSelection::Toggle(const ProfileRef& theRef, bool theAdditive)
 
     const auto found = std::find_if(myItems.begin(), myItems.end(),
                                     [&theRef](const ProfileRef& theItem) {
-                                        return SameRegion(theItem, theRef);
+                                        return theItem.SameRegion(theRef);
                                     });
     if (found != myItems.end()) {
         myItems.erase(found);
@@ -72,7 +56,7 @@ void ProfileSelection::Clear()
 bool ProfileSelection::Contains(const ProfileRef& theRef) const
 {
     return std::any_of(myItems.begin(), myItems.end(), [&theRef](const ProfileRef& theItem) {
-        return SameRegion(theItem, theRef);
+        return theItem.SameRegion(theRef);
     });
 }
 
@@ -90,17 +74,18 @@ void ProfileSelection::Prune(const std::vector<ProfileRegion>& theRegions)
         }
         const ProfileRef& current = theRegions[static_cast<std::size_t>(index)].ref;
 
-        // The region under the old seed has to still be bounded by at
-        // least one of the curves that bounded the original, or it is a
-        // different region that merely swallowed the point -- which is
-        // exactly what happens when the circle enclosing a small region is
-        // deleted and the surrounding region spreads over where it was.
-        if (!ShareBoundaryCurve(current.boundary, item.boundary)) {
+        // The region under the old seed has to be bounded by the same
+        // curves, or it is a different region that merely swallowed the
+        // point -- which is what happens when the curve enclosing a small
+        // region is deleted and the surrounding one spreads over it. The
+        // highlight must never claim a region the user did not pick, for
+        // the same reason FindProfile refuses to resolve one.
+        if (!current.SameBoundary(item)) {
             continue;
         }
 
         if (std::none_of(kept.begin(), kept.end(), [&current](const ProfileRef& theKept) {
-                return SameRegion(theKept, current);
+                return theKept.SameRegion(current);
             })) {
             kept.push_back(current);
         }

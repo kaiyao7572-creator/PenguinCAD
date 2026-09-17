@@ -264,6 +264,40 @@ int main()
         check(!sketch.FindProfile(discRef, face), "deleting the circle breaks the reference");
     }
 
+    // ---- 11b. the RING is the dangerous case, not the disc ----
+    //
+    // The disc's reference names one curve, so losing it shares nothing
+    // with what is left. The ring names FIVE, four of which survive the
+    // circle being deleted -- and the plain rectangle that takes its place
+    // also contains the ring's seed. Any rule that resolves on "shares a
+    // curve and contains the seed" silently turns an extrude of the ring
+    // into an extrude of the whole rectangle.
+    {
+        SketchFeature sketch = MakeSketch();
+        sketch.AddRectangle(gp_Pnt2d(-20.0, -15.0), gp_Pnt2d(20.0, 15.0));
+        const int circleId = sketch.AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(0.0, 0.0), 5.0));
+
+        ProfileRef ringRef;
+        for (const ProfileRegion& region : sketch.ProfileRegions()) {
+            if (region.area > 1000.0) {
+                ringRef = region.ref;
+            }
+        }
+        check(ringRef.boundary.size() == 5, "the ring is bounded by all five curves");
+
+        TopoDS_Face face;
+        check(sketch.FindProfile(ringRef, face), "the ring resolves while the circle is there");
+
+        sketch.RemoveEntity(circleId);
+        check(!sketch.FindProfile(ringRef, face),
+              "deleting the circle breaks the RING reference, rather than "
+              "silently promoting it to the whole rectangle");
+
+        // And the rectangle that replaced it is a region in its own right,
+        // so the failure above is a refusal to guess, not an empty sketch.
+        check(sketch.ProfileRegions().size() == 1, "the rectangle is still a region");
+    }
+
     // ---- 12. identical boundaries are told apart by the seed ----
     //
     // All three regions of two overlapping circles are bounded by exactly

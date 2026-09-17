@@ -46,6 +46,24 @@ deliberately free of UI, document and AIS for exactly this reason.
 Only reach for `--script`/`--screenshot` when the thing under test is
 genuinely visual, and expect it to fail harmlessly when nothing is awake.
 
+### 1.2b Check the instrument before believing "no display"
+
+A session concluded the machine was asleep because `xset` and `xdpyinfo`
+failed. Neither is installed on this box. The X sockets were accepting
+connections the whole time and the app ran fine on `:0`.
+
+Test the display by **running the app** (`--script` with a `shot`), never
+by probing with a tool you have not confirmed exists. Same lesson as 1.1
+in different clothes: a surprising measurement is more often a broken
+instrument than a broken world.
+
+### 1.2c A green suite does not mean it runs
+
+Profile regions passed 48 headless assertions while the app **segfaulted**
+on the second click of drawing a rectangle — `AIS_Shape` only materialises
+its shading aspect once a colour is set, and nothing without a viewer can
+catch that. Drive anything touching AIS on screen before calling it done.
+
 ### 1.3 Sessions die mid-task on usage limits
 
 Repeatedly. **Commit working increments as you go.** Several agents were
@@ -93,6 +111,12 @@ stale. A test asserts this.
 trim/extend/offset/mirror/patterns, 12 constraint types with a solver,
 dimensions, axis inference, snapping to endpoints/centres/midpoints/origin.
 
+**Profiles** (`src/sketch/SketchProfiles.*`, `src/core/Profile*`) — a
+sketch splits into the minimal closed regions a user can point at, each
+selectable in the viewport and referenceable from a feature in a way that
+survives undo. ~60 headless assertions in `tests/profile_test.cpp`, every
+area computed by hand.
+
 **Features** (`src/features/`) — box/cylinder/sphere/cone/torus, extrude,
 revolve, fillet, chamfer, shell. All parametric and re-editable. Verified
 against real OCCT volumes (a 40×30×10 extrude is exactly 12000mm³).
@@ -111,19 +135,31 @@ views, display modes, view cube, model properties, measure, section.
 Roughly highest value first. The user's own words: "theres like a billion
 more" — treat this as a starting set, not a complete one.
 
-### 3.1 Sketch profiles are not selectable (the user's example)
+### 3.1 ~~Sketch profiles are not selectable~~ DONE
 
-**This is the biggest single gap.** In Fusion, closed sketch regions
-become *profiles* you hover, highlight and click; Extrude then acts on
-the chosen profile. Here, closed regions are shaded (good) but are not
-pickable, and `ExtrudeFeature` consumes an entire sketch **by name**.
+Done. A sketch now splits into minimal *profiles*: hover lights the one
+under the cursor, a click picks it, and Extrude/Revolve build on what was
+picked. Verified on screen end to end — rectangle drawn around a circle,
+click the disc, press E, and a cylinder stands inside an untouched
+rectangle. The contract and the two non-obvious OCCT details it rests on
+are in `docs/ARCHITECTURE.md`.
 
-You cannot model like Fusion without this: a sketch with two closed
-regions can only be extruded as a whole. Needs: profile detection into
-discrete faces, selectable AIS objects per profile, a stable way to
-reference one from a feature that survives edit and undo (by index is
-fragile — think about it), and Extrude taking a profile rather than a
-sketch.
+What is NOT done, in rough order of value:
+
+- Extruding several adjoining profiles at once makes a **compound of
+  touching solids** where Fusion makes one body. Fusing the prisms is
+  probably ten lines in `ExtrudeFeature::Compute`.
+- The Extrude dialog names its target ("Sketch1 (1 profile)") but offers
+  no way to change the picked profiles from inside the dialog, and no
+  manipulator arrow to drag. Fusion has both.
+- Profiles are only pickable while the sketch is open. In Fusion a
+  finished sketch's profiles stay pickable from the model view.
+- No box selection of several profiles at once.
+- Regions are recomputed on every `Refresh()`. Measured fine for
+  hand-drawn sketches (~1ms; 25 overlapping circles ~20ms), but a
+  pathological sketch would be felt. Measure before adding a cache — a
+  cache here must be invalidated by every tool that touches geometry,
+  which is a far better source of bugs than of speed.
 
 ### 3.2 The document is a single body
 
