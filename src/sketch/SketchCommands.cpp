@@ -502,6 +502,12 @@ LCAD_TOOL_COMMAND(SlotCommand, SketchToolCommand, "sketch.slot", "Center to Cent
 LCAD_TOOL_COMMAND(SplineCommand, SketchToolCommand, "sketch.spline", "Fit Point Spline",
                   "〰", SplineTool(),
                   "Draw a spline through fit points; Enter or double-click finishes it");
+LCAD_TOOL_COMMAND(ControlPointSplineCommand, SketchToolCommand, "sketch.spline.control_point",
+                  "Control Point Spline", "⌇", ControlPointSplineTool(),
+                  "Draw a spline shaped by control points rather than through them");
+LCAD_TOOL_COMMAND(ConicCommand, SketchToolCommand, "sketch.conic", "Conic Curve", "◠",
+                  ConicTool(),
+                  "Draw a conic from two ends and a point on it; [ and ] change rho");
 LCAD_TOOL_COMMAND(PointCommand, SketchToolCommand, "sketch.point", "Point", "⏺",
                   PointTool(), "Place a sketch point to constrain other geometry to");
 
@@ -699,6 +705,8 @@ void RegisterSketchCommands(CommandRegistry& theRegistry)
     theRegistry.Add(std::make_unique<EllipseCommand>());
     theRegistry.Add(std::make_unique<SlotCommand>());
     theRegistry.Add(std::make_unique<SplineCommand>());
+    theRegistry.Add(std::make_unique<ControlPointSplineCommand>());
+    theRegistry.Add(std::make_unique<ConicCommand>());
     theRegistry.Add(std::make_unique<PointCommand>());
 
     // MODIFY

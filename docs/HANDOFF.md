@@ -111,6 +111,11 @@ stale. A test asserts this.
 trim/extend/offset/mirror/patterns, 12 constraint types with a solver,
 dimensions, axis inference, snapping to endpoints/centres/midpoints/origin.
 
+**Sketch tools** — line/rect/circle/arc/polygon/ellipse/slot/point plus
+all three of Fusion's spline-family tools: fit point spline, control
+point spline, and the conic curve (two ends and a point on it, with `[`
+and `]` sliding rho between ellipse, parabola and hyperbola).
+
 **Object model** (`src/core/Entity.h`, `Body.h`, `GeometryRef.h`,
 `Origin.h`, `ConstructionGeometry.h`) — Fusion's taxonomy by its own
 names: bodies with faces/edges/vertices, the Origin folder, construction

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include <QMainWindow>
 #include <QStatusBar>
@@ -1543,6 +1544,216 @@ private:
     std::vector<gp_Pnt2d> myPoints;
 };
 
+// Same three clicks as the spline tool's first three, but the points are
+// CONTROL poles: the curve is pulled towards them rather than through
+// them. Two different tools because they are two different intentions,
+// and a user who wants one is never served by the other.
+class ControlPointSplineToolImpl : public SketchTool
+{
+public:
+    std::string Hint() const override
+    {
+        if (myPoints.size() < 2) {
+            return "Control point spline: click control points. Esc exits the tool.";
+        }
+        return "Control point spline: click more, or press Enter / double-click to finish.";
+    }
+
+protected:
+    void Reset() override { myPoints.clear(); }
+    bool IsCollecting() const override { return !myPoints.empty(); }
+
+    void OnPoint(const gp_Pnt2d& thePoint) override
+    {
+        if (!myPoints.empty()
+            && myPoints.back().SquareDistance(thePoint) <= kMinimumLength * kMinimumLength) {
+            return;
+        }
+        myPoints.push_back(thePoint);
+    }
+
+    void OnHover(const gp_Pnt2d& thePoint) override
+    {
+        if (myPoints.empty()) {
+            return;
+        }
+        std::vector<gp_Pnt2d> preview = myPoints;
+        preview.push_back(thePoint);
+        const SketchEntity spline = SketchEntity::MakeControlPointSpline(preview);
+        if (!spline.IsDegenerate()) {
+            ShowPreview({spline});
+        }
+    }
+
+    void OnDoubleClick(const gp_Pnt2d& thePoint) override
+    {
+        if (myPoints.empty()
+            || myPoints.back().SquareDistance(thePoint) > kMinimumLength * kMinimumLength) {
+            myPoints.push_back(thePoint);
+        }
+        Finish();
+    }
+
+    bool OnKey(int theKey, Qt::KeyboardModifiers theModifiers) override
+    {
+        (void)theModifiers;
+        if (theKey != Qt::Key_Return && theKey != Qt::Key_Enter) {
+            return false;
+        }
+        Finish();
+        return true;
+    }
+
+private:
+    void Finish()
+    {
+        if (myPoints.size() >= 2) {
+            const SketchEntity spline = SketchEntity::MakeControlPointSpline(myPoints);
+            if (!spline.IsDegenerate()) {
+                Commit({spline});
+            }
+        }
+        myPoints.clear();
+        ClearPreview();
+    }
+
+    std::vector<gp_Pnt2d> myPoints;
+};
+
+// Two ends, then a point the curve must pass THROUGH.
+//
+// The apex -- where the two end tangents meet -- is what the geometry
+// actually stores, but it is not a thing a user can point at. So the
+// third click is the shoulder, the visible middle of the curve, and the
+// apex is derived from it: shoulder = (1 - rho) * chordMidpoint +
+// rho * apex, so apex = midpoint + (shoulder - midpoint) / rho. Changing
+// rho with the bracket keys then slides the apex while the curve keeps
+// passing through the point that was clicked, which is the behaviour that
+// makes rho explorable rather than abstract.
+class ConicToolImpl : public SketchTool
+{
+public:
+    std::string Hint() const override
+    {
+        if (myPoints.empty()) {
+            return "Conic: click the start point. Esc exits the tool.";
+        }
+        if (myPoints.size() == 1) {
+            return "Conic: click the end point.";
+        }
+        return "Conic: click a point on the curve. [ and ] change rho ("
+             + FormatRho() + ": " + Family() + ").";
+    }
+
+protected:
+    void Reset() override { myPoints.clear(); }
+    bool IsCollecting() const override { return !myPoints.empty(); }
+
+    void OnPoint(const gp_Pnt2d& thePoint) override
+    {
+        if (myPoints.size() < 2) {
+            if (!myPoints.empty()
+                && myPoints.back().SquareDistance(thePoint) <= kMinimumLength * kMinimumLength) {
+                return;
+            }
+            myPoints.push_back(thePoint);
+            return;
+        }
+
+        SketchEntity conic;
+        if (!BuildFrom(thePoint, conic)) {
+            return;
+        }
+        Commit({conic});
+        myPoints.clear();
+        ClearPreview();
+    }
+
+    void OnHover(const gp_Pnt2d& thePoint) override
+    {
+        if (myPoints.empty()) {
+            return;
+        }
+        if (myPoints.size() == 1) {
+            // Nothing to bulge towards yet, so show the chord the conic
+            // will span rather than nothing at all.
+            const SketchEntity chord = SketchEntity::MakeLine(myPoints.front(), thePoint);
+            if (!chord.IsDegenerate()) {
+                ShowPreview({chord});
+            }
+            return;
+        }
+
+        SketchEntity conic;
+        if (BuildFrom(thePoint, conic)) {
+            ShowPreview({conic});
+        }
+    }
+
+    bool OnKey(int theKey, Qt::KeyboardModifiers theModifiers) override
+    {
+        (void)theModifiers;
+        if (theKey == Qt::Key_BracketRight || theKey == Qt::Key_Plus || theKey == Qt::Key_Equal) {
+            SetRho(myRho + kRhoStep);
+            RefreshPreview();
+            return true;
+        }
+        if (theKey == Qt::Key_BracketLeft || theKey == Qt::Key_Minus) {
+            SetRho(myRho - kRhoStep);
+            RefreshPreview();
+            return true;
+        }
+        return false;
+    }
+
+private:
+    static constexpr double kRhoStep = 0.05;
+
+    void SetRho(double theValue)
+    {
+        // Held clear of both ends: at 0 the curve collapses onto the
+        // chord and at 1 it runs off to the apex.
+        myRho = std::min(std::max(theValue, 0.05), 0.95);
+    }
+
+    std::string FormatRho() const
+    {
+        char text[16];
+        std::snprintf(text, sizeof(text), "rho %.2f", myRho);
+        return std::string(text);
+    }
+
+    std::string Family() const
+    {
+        if (myRho < 0.5 - 1.0e-9) {
+            return "ellipse";
+        }
+        return myRho > 0.5 + 1.0e-9 ? "hyperbola" : "parabola";
+    }
+
+    bool BuildFrom(const gp_Pnt2d& theShoulder, SketchEntity& theResult) const
+    {
+        if (myPoints.size() < 2) {
+            return false;
+        }
+        const gp_Pnt2d start = myPoints[0];
+        const gp_Pnt2d end = myPoints[1];
+        const gp_Pnt2d middle(0.5 * (start.X() + end.X()), 0.5 * (start.Y() + end.Y()));
+
+        const gp_Vec2d bulge(theShoulder.X() - middle.X(), theShoulder.Y() - middle.Y());
+        if (bulge.SquareMagnitude() <= kMinimumLength * kMinimumLength) {
+            return false;  // no bulge means no conic, only the chord
+        }
+
+        const gp_Pnt2d apex(middle.X() + bulge.X() / myRho, middle.Y() + bulge.Y() / myRho);
+        theResult = SketchEntity::MakeConic(start, apex, end, myRho);
+        return !theResult.IsDegenerate();
+    }
+
+    std::vector<gp_Pnt2d> myPoints;
+    double                myRho = 0.5;
+};
+
 class PointToolImpl : public SketchTool
 {
 public:
@@ -1661,6 +1872,18 @@ SketchTool& SlotTool()
 SketchTool& SplineTool()
 {
     static SplineToolImpl theTool;
+    return theTool;
+}
+
+SketchTool& ControlPointSplineTool()
+{
+    static ControlPointSplineToolImpl theTool;
+    return theTool;
+}
+
+SketchTool& ConicTool()
+{
+    static ConicToolImpl theTool;
     return theTool;
 }
 

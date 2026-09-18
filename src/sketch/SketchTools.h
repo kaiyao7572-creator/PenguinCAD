@@ -185,7 +185,9 @@ SketchPolygonTool& CircumscribedPolygonTool();
 SketchPolygonTool& EdgePolygonTool();
 SketchTool& EllipseTool();
 SketchTool& SlotTool();
-SketchTool& SplineTool();
+SketchTool& SplineTool();               // interpolates the points clicked
+SketchTool& ControlPointSplineTool();   // the points are control poles
+SketchTool& ConicTool();                // two ends plus a point on the curve
 SketchTool& PointTool();
 
 // Stop whichever drawing tool is running, if any.
