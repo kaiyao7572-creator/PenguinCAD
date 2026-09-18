@@ -5,7 +5,11 @@
 
 #include <QColor>
 #include <QFrame>
+#include <QAction>
 #include <QHBoxLayout>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QMenu>
 #include <QPalette>
 #include <QScrollArea>
 #include <QSignalBlocker>
@@ -15,6 +19,7 @@
 #include <QVariant>
 
 #include <algorithm>
+#include <string>
 
 namespace lcad {
 
@@ -168,6 +173,12 @@ void TimelinePanel::RebuildStrip(const std::vector<FeaturePtr>& theFeatures)
             }
         });
 
+        button->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(button, &QToolButton::customContextMenuRequested, this,
+                [this, button, raw](const QPoint& thePos) {
+                    ShowFeatureMenu(raw, button->mapToGlobal(thePos));
+                });
+
         m_stripLayout->addWidget(button);
         m_featureButtons.push_back(button);
 
@@ -208,6 +219,47 @@ void TimelinePanel::UpdateButtonRow(std::size_t theIndex, const FeaturePtr& theF
         button->setPalette(pal);
     } else {
         button->setPalette(QPalette());
+    }
+}
+
+void TimelinePanel::ShowFeatureMenu(const Feature* theRaw, const QPoint& theGlobalPos)
+{
+    if (m_document == nullptr) {
+        return;
+    }
+    FeaturePtr feature = FindFeatureByRaw(*m_document, theRaw);
+    if (!feature) {
+        return;
+    }
+
+    QMenu menu(this);
+    QAction* renameAction = menu.addAction(QStringLiteral("Rename"));
+    QAction* suppressAction = menu.addAction(feature->IsSuppressed()
+                                                 ? QStringLiteral("Unsuppress")
+                                                 : QStringLiteral("Suppress"));
+    menu.addSeparator();
+    QAction* deleteAction = menu.addAction(QStringLiteral("Delete"));
+
+    QAction* chosen = menu.exec(theGlobalPos);
+    if (chosen == renameAction) {
+        bool accepted = false;
+        const QString name = QInputDialog::getText(this, QStringLiteral("Rename Feature"),
+                                                   QStringLiteral("Name:"), QLineEdit::Normal,
+                                                   QString::fromStdString(feature->Name()),
+                                                   &accepted);
+        const std::string trimmed = name.trimmed().toStdString();
+        if (accepted && !trimmed.empty() && trimmed != feature->Name()) {
+            feature->SetName(trimmed);
+            // A rename can break a downstream FindFeature() that still
+            // holds the old name, so rebuild now rather than letting the
+            // breakage surface on some later, unrelated edit.
+            m_document->Rebuild();
+        }
+    } else if (chosen == suppressAction) {
+        feature->SetSuppressed(!feature->IsSuppressed());
+        m_document->Rebuild();
+    } else if (chosen == deleteAction) {
+        m_document->RemoveFeature(feature);
     }
 }
 

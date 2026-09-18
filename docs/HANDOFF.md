@@ -111,6 +111,13 @@ stale. A test asserts this.
 trim/extend/offset/mirror/patterns, 12 constraint types with a solver,
 dimensions, axis inference, snapping to endpoints/centres/midpoints/origin.
 
+**Object model** (`src/core/Entity.h`, `Body.h`, `GeometryRef.h`,
+`Origin.h`, `ConstructionGeometry.h`) — Fusion's taxonomy by its own
+names: bodies with faces/edges/vertices, the Origin folder, construction
+planes/axes/points, and durable references to individual sub-shapes.
+Sketch curves cover all of Fusion's drawable types including conics and
+control point splines.
+
 **Profiles** (`src/sketch/SketchProfiles.*`, `src/core/Profile*`) — a
 sketch splits into the minimal closed regions a user can point at, each
 selectable in the viewport and referenceable from a feature in a way that
@@ -161,13 +168,28 @@ What is NOT done, in rough order of value:
   cache here must be invalidated by every tool that touches geometry,
   which is a far better source of bugs than of speed.
 
-### 3.2 The document is a single body
+### 3.2 ~~The document is a single body~~ DONE
 
-`MainWindow::redisplayDocument` displays `document->Shape()` as **one
-`AIS_Shape`**. So there is no per-body selection, no Bodies folder that
-means anything, and Move/gizmo acts on the whole model. Fusion is
-body-centric throughout. This blocks Combine, per-body appearance,
-per-body visibility, and assemblies.
+Done. `Document::Bodies()` splits the evaluated shape into named bodies
+that keep their names across a rebuild, `MainWindow` draws one AIS object
+per body, and the browser lists them with a visibility checkbox. Faces,
+edges and vertices are enumerated per body and referenceable through
+`GeometryRef`. Construction geometry and the Origin folder exist too. See
+`docs/ARCHITECTURE.md` for the contract.
+
+Still missing here:
+
+- **Per-face and per-edge SELECTION in the viewport.** The references
+  exist and resolve; nothing yet lets a user click a face to make one.
+  That is what Press/Pull (3.3) needs, and it is the next thing to build.
+- Per-body appearance and material. Bodies have no colour of their own.
+- Components and occurrences: `EntityType` names them, nothing creates
+  them. No assemblies, no joints.
+- Body visibility is wired but was never driven by hand — the checkbox
+  path is three lines and obvious, but it is untested by anything.
+- Folder light-bulbs (hide every body at once) are deliberately absent:
+  they need per-entity visibility wired first, and a checkbox that does
+  nothing is worse than none.
 
 ### 3.3 Press/Pull is missing
 
@@ -202,10 +224,22 @@ Replace/Split Face, Split Body. Extrude also lacks taper angle and
 
 ### 3.8 Browser and timeline are half-Fusion
 
-Per-item eye icons were started and not finished — visibility is still a
-single global "show all sketches" toggle, which is not how Fusion works.
-The tree is flat rather than nested under Origin/Bodies/Sketches, and the
-timeline is plain buttons rather than a compact draggable icon strip.
+The browser is now Fusion-shaped: Origin / Bodies / Sketches /
+Construction, in Fusion's order, each folder appearing only when it has
+something in it. Feature rename/suppress/delete moved to the timeline's
+right-click menu, because the browser lists what the design CONTAINS and
+a feature is not that.
+
+What is left:
+
+- The timeline is still plain buttons rather than a compact draggable
+  icon strip, and features cannot be reordered by dragging.
+- No icons anywhere in the browser — Fusion leans on them heavily, and
+  the Type column here is standing in for them.
+- Long names elide in a narrow dock. Cosmetic and font-dependent; the
+  dock is resizable. Real fix is icons plus dropping the Type column.
+- No Document Settings or Named Views folders. Deliberate: both would be
+  inert, and a folder that does nothing is worse than a missing one.
 
 ### 3.9 Never verified by anyone
 

@@ -544,16 +544,24 @@ void MainWindow::redisplayDocument()
         return;
     }
 
-    if (!m_displayedShape.IsNull()) {
-        context->Remove(m_displayedShape, Standard_False);
-        m_displayedShape.Nullify();
+    for (const Handle(AIS_InteractiveObject)& object : m_displayedBodies) {
+        if (!object.IsNull()) {
+            context->Remove(object, Standard_False);
+        }
     }
+    m_displayedBodies.clear();
 
-    const TopoDS_Shape& shape = m_document.Shape();
-    if (!shape.IsNull()) {
-        Handle(AIS_Shape) aisShape = new AIS_Shape(shape);
+    // One AIS object per body rather than one for the whole document.
+    // Selection mode 0 is the object itself, so clicking anywhere on a
+    // body picks that body -- which is what makes the Bodies folder, and
+    // eventually per-body appearance and Combine, mean anything.
+    for (const lcad::BodyPtr& body : m_document.Bodies()) {
+        if (!body || !body->IsVisible() || body->Shape().IsNull()) {
+            continue;
+        }
+        Handle(AIS_Shape) aisShape = new AIS_Shape(body->Shape());
         context->Display(aisShape, AIS_Shaded, 0, Standard_False);
-        m_displayedShape = aisShape;
+        m_displayedBodies.push_back(aisShape);
     }
 
     Handle(V3d_View) view = m_viewport->View();

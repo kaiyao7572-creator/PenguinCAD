@@ -1,12 +1,14 @@
 #include "core/Command.h"
 #include "core/Document.h"
 #include "core/ProfileProvider.h"
+#include "core/Origin.h"
 #include "core/ProfileSelection.h"
 #include "core/Registration.h"
 #include "features/FeatureDialogs.h"
 #include "features/FeatureUtils.h"
 #include "features/ModifyFeatures.h"
 #include "features/PrimitiveFeatures.h"
+#include "features/ConstructionFeatures.h"
 #include "features/ProfileFeatures.h"
 
 #include <gp_Pnt.hxx>
@@ -93,6 +95,45 @@ bool HasPickedProfiles(const CommandContext& theContext)
     }
     const std::vector<std::string> names = SketchNames(theContext.document);
     return std::find(names.begin(), names.end(), selection.SketchName()) != names.end();
+}
+
+// Everything a construction feature can be built from: the origin
+// entities of that kind, then any construction geometry already in the
+// timeline. Origin first because it is always there and is what a user
+// reaches for by default.
+std::vector<std::string> ConstructionNames(const Document* theDocument, EntityType theType)
+{
+    std::vector<std::string> names;
+    for (const OriginEntity& entity : OriginEntities()) {
+        if (entity.type == theType) {
+            names.push_back(entity.name);
+        }
+    }
+    if (theDocument == nullptr) {
+        return names;
+    }
+
+    const std::string wanted = EntityTypeName(theType);
+    for (const FeaturePtr& feature : theDocument->Features()) {
+        if (feature && feature->TypeName() == wanted) {
+            names.push_back(feature->Name());
+        }
+    }
+    return names;
+}
+
+// Construction features are named the way Fusion names them -- "Plane1",
+// "Axis1", "Point1" -- rather than after their type. Their TypeName stays
+// the full API name ("ConstructionPlane"), which is what the browser's
+// type column and any future file format want; this is only what the user
+// reads and types.
+void NameAsFusionWould(const CommandContext& theContext,
+                       const FeaturePtr&     theFeature,
+                       const std::string&    theBase)
+{
+    if (theContext.document != nullptr && theFeature) {
+        theFeature->SetName(theContext.document->MakeUniqueName(theBase));
+    }
 }
 
 bool DocumentHasBody(const CommandContext& theContext)
@@ -640,6 +681,268 @@ public:
 
 } // namespace
 
+// ---- CONSTRUCT ----
+//
+// Fusion's CONSTRUCT panel, in the Solid tab. Only the fully parametric
+// ways of building each one are offered: the versions that start from a
+// picked face or edge need selection plumbing that does not exist yet,
+// and a menu entry that cannot work is worse than one that is missing.
+
+class ConstructCommand : public Command
+{
+public:
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return "Construct"; }
+};
+
+class OffsetPlaneCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.plane_offset"; }
+    std::string Title() const override { return "Offset Plane"; }
+    std::string Icon() const override { return "▱"; }
+    std::string Description() const override
+    {
+        return "A plane parallel to another, a set distance away";
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        const std::vector<std::string> planes =
+            ConstructionNames(theContext.document, EntityType::ConstructionPlane);
+
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Choice("Plane", ToChoices(planes), 0));
+        fields.push_back(DialogField::Number("Distance", 10.0, kAnyNumber));
+        if (!ShowFeatureDialog(theContext.parent, "Offset Plane", fields)) {
+            return;
+        }
+
+        auto plane = std::make_shared<ConstructionPlaneFeature>(
+            planes[static_cast<std::size_t>(fields[0].choice)], fields[1].value);
+        NameAsFusionWould(theContext, plane, "Plane");
+        AddAndReport(theContext, plane);
+    }
+};
+
+class AnglePlaneCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.plane_angle"; }
+    std::string Title() const override { return "Plane at Angle"; }
+    std::string Icon() const override { return "◪"; }
+    std::string Description() const override
+    {
+        return "A plane turned about another plane's own X axis";
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        const std::vector<std::string> planes =
+            ConstructionNames(theContext.document, EntityType::ConstructionPlane);
+
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Choice("Plane", ToChoices(planes), 0));
+        fields.push_back(DialogField::Number("Angle", 45.0, kAnyNumber, " °"));
+        if (!ShowFeatureDialog(theContext.parent, "Plane at Angle", fields)) {
+            return;
+        }
+
+        auto plane = std::make_shared<ConstructionPlaneFeature>();
+        plane->SetKind(PlaneKind::AtAngle);
+        plane->SetBasePlane(planes[static_cast<std::size_t>(fields[0].choice)]);
+        plane->SetAngleDegrees(fields[1].value);
+        NameAsFusionWould(theContext, plane, "Plane");
+        AddAndReport(theContext, plane);
+    }
+};
+
+class MidplaneCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.plane_midplane"; }
+    std::string Title() const override { return "Midplane"; }
+    std::string Icon() const override { return "⬓"; }
+    std::string Description() const override { return "Halfway between two parallel planes"; }
+
+    bool IsEnabled(const CommandContext& theContext) const override
+    {
+        // Two planes to sit between, and the three origin planes are never
+        // parallel to each other -- so this needs a construction plane.
+        return ConstructionNames(theContext.document, EntityType::ConstructionPlane).size() > 3;
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        const std::vector<std::string> planes =
+            ConstructionNames(theContext.document, EntityType::ConstructionPlane);
+
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Choice("First Plane", ToChoices(planes), 0));
+        fields.push_back(DialogField::Choice("Second Plane", ToChoices(planes),
+                                             static_cast<int>(planes.size()) - 1));
+        if (!ShowFeatureDialog(theContext.parent, "Midplane", fields,
+                               "The two planes must be parallel.")) {
+            return;
+        }
+
+        auto plane = std::make_shared<ConstructionPlaneFeature>();
+        plane->SetKind(PlaneKind::Midplane);
+        plane->SetBasePlane(planes[static_cast<std::size_t>(fields[0].choice)]);
+        plane->SetSecondPlane(planes[static_cast<std::size_t>(fields[1].choice)]);
+        NameAsFusionWould(theContext, plane, "Plane");
+        AddAndReport(theContext, plane);
+    }
+};
+
+class ThreePointPlaneCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.plane_three_points"; }
+    std::string Title() const override { return "Plane Through Three Points"; }
+    std::string Icon() const override { return "◺"; }
+    std::string Description() const override { return "A plane through three points"; }
+
+    void Execute(CommandContext& theContext) override
+    {
+        std::vector<DialogField> fields;
+        const char* const labels[] = {"A X", "A Y", "A Z", "B X", "B Y", "B Z",
+                                      "C X", "C Y", "C Z"};
+        const double defaults[] = {0, 0, 0, 10, 0, 0, 0, 10, 0};
+        for (int i = 0; i < 9; ++i) {
+            fields.push_back(DialogField::Number(labels[i], defaults[i], kAnyNumber));
+        }
+        if (!ShowFeatureDialog(theContext.parent, "Plane Through Three Points", fields,
+                               "The three points must not be in a line.")) {
+            return;
+        }
+
+        auto plane = std::make_shared<ConstructionPlaneFeature>();
+        plane->SetKind(PlaneKind::ThreePoints);
+        plane->SetPoints(gp_Pnt(fields[0].value, fields[1].value, fields[2].value),
+                         gp_Pnt(fields[3].value, fields[4].value, fields[5].value),
+                         gp_Pnt(fields[6].value, fields[7].value, fields[8].value));
+        NameAsFusionWould(theContext, plane, "Plane");
+        AddAndReport(theContext, plane);
+    }
+};
+
+class TwoPointAxisCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.axis_two_points"; }
+    std::string Title() const override { return "Axis Through Two Points"; }
+    std::string Icon() const override { return "╱"; }
+    std::string Description() const override { return "A construction axis through two points"; }
+
+    void Execute(CommandContext& theContext) override
+    {
+        std::vector<DialogField> fields;
+        const char* const labels[] = {"From X", "From Y", "From Z", "To X", "To Y", "To Z"};
+        const double defaults[] = {0, 0, 0, 0, 0, 10};
+        for (int i = 0; i < 6; ++i) {
+            fields.push_back(DialogField::Number(labels[i], defaults[i], kAnyNumber));
+        }
+        if (!ShowFeatureDialog(theContext.parent, "Axis Through Two Points", fields)) {
+            return;
+        }
+
+        auto axis = std::make_shared<ConstructionAxisFeature>();
+        axis->SetKind(AxisKind::TwoPoints);
+        axis->SetPoints(gp_Pnt(fields[0].value, fields[1].value, fields[2].value),
+                        gp_Pnt(fields[3].value, fields[4].value, fields[5].value));
+        NameAsFusionWould(theContext, axis, "Axis");
+        AddAndReport(theContext, axis);
+    }
+};
+
+class NormalAxisCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.axis_perpendicular"; }
+    std::string Title() const override { return "Axis Perpendicular to Plane"; }
+    std::string Icon() const override { return "⊥"; }
+    std::string Description() const override
+    {
+        return "A construction axis along a plane's normal";
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        const std::vector<std::string> planes =
+            ConstructionNames(theContext.document, EntityType::ConstructionPlane);
+
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Choice("Plane", ToChoices(planes), 0));
+        if (!ShowFeatureDialog(theContext.parent, "Axis Perpendicular to Plane", fields)) {
+            return;
+        }
+
+        auto axis = std::make_shared<ConstructionAxisFeature>();
+        axis->SetKind(AxisKind::PerpendicularToPlane);
+        axis->SetBasePlane(planes[static_cast<std::size_t>(fields[0].choice)]);
+        NameAsFusionWould(theContext, axis, "Axis");
+        AddAndReport(theContext, axis);
+    }
+};
+
+class CoordinatePointCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.point_coordinates"; }
+    std::string Title() const override { return "Point at Coordinates"; }
+    std::string Icon() const override { return "•"; }
+    std::string Description() const override { return "A construction point at a typed position"; }
+
+    void Execute(CommandContext& theContext) override
+    {
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Number("X", 0.0, kAnyNumber));
+        fields.push_back(DialogField::Number("Y", 0.0, kAnyNumber));
+        fields.push_back(DialogField::Number("Z", 0.0, kAnyNumber));
+        if (!ShowFeatureDialog(theContext.parent, "Point at Coordinates", fields)) {
+            return;
+        }
+
+        auto point = std::make_shared<ConstructionPointFeature>(
+            gp_Pnt(fields[0].value, fields[1].value, fields[2].value));
+        NameAsFusionWould(theContext, point, "Point");
+        AddAndReport(theContext, point);
+    }
+};
+
+class AxisPlanePointCommand : public ConstructCommand
+{
+public:
+    std::string Id() const override { return "construct.point_axis_plane"; }
+    std::string Title() const override { return "Point at Axis and Plane"; }
+    std::string Icon() const override { return "✛"; }
+    std::string Description() const override { return "Where an axis crosses a plane"; }
+
+    void Execute(CommandContext& theContext) override
+    {
+        const std::vector<std::string> axes =
+            ConstructionNames(theContext.document, EntityType::ConstructionAxis);
+        const std::vector<std::string> planes =
+            ConstructionNames(theContext.document, EntityType::ConstructionPlane);
+
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Choice("Axis", ToChoices(axes), 2));
+        fields.push_back(DialogField::Choice("Plane", ToChoices(planes), 0));
+        if (!ShowFeatureDialog(theContext.parent, "Point at Axis and Plane", fields,
+                               "The axis must not lie in the plane.")) {
+            return;
+        }
+
+        auto point = std::make_shared<ConstructionPointFeature>();
+        point->SetKind(PointKind::AxisPlaneIntersection);
+        point->SetAxisName(axes[static_cast<std::size_t>(fields[0].choice)]);
+        point->SetPlaneName(planes[static_cast<std::size_t>(fields[1].choice)]);
+        NameAsFusionWould(theContext, point, "Point");
+        AddAndReport(theContext, point);
+    }
+};
+
 void RegisterFeatureCommands(CommandRegistry& theRegistry)
 {
     theRegistry.Add(std::make_unique<BoxCommand>());
@@ -653,6 +956,15 @@ void RegisterFeatureCommands(CommandRegistry& theRegistry)
     theRegistry.Add(std::make_unique<FilletCommand>());
     theRegistry.Add(std::make_unique<ChamferCommand>());
     theRegistry.Add(std::make_unique<ShellCommand>());
+
+    theRegistry.Add(std::make_unique<OffsetPlaneCommand>());
+    theRegistry.Add(std::make_unique<AnglePlaneCommand>());
+    theRegistry.Add(std::make_unique<MidplaneCommand>());
+    theRegistry.Add(std::make_unique<ThreePointPlaneCommand>());
+    theRegistry.Add(std::make_unique<TwoPointAxisCommand>());
+    theRegistry.Add(std::make_unique<NormalAxisCommand>());
+    theRegistry.Add(std::make_unique<CoordinatePointCommand>());
+    theRegistry.Add(std::make_unique<AxisPlanePointCommand>());
 }
 
 } // namespace lcad

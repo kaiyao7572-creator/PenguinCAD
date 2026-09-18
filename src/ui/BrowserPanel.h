@@ -3,16 +3,27 @@
 #include "core/Document.h"
 
 #include <QPoint>
+#include <QSet>
+#include <QString>
 #include <QTreeWidget>
 
 namespace lcad {
 
 class Feature;
 
-// Fusion's model tree: every feature in timeline order, with a per-row
-// suppress checkbox and a right-click menu for rename/delete/suppress.
-// Features that failed to compute show in red with the error as a
-// tooltip -- this is how the user finds a broken model at a glance.
+// Fusion's browser: what the design CONTAINS, folder by folder.
+//
+// Deliberately not a list of features. In Fusion the browser holds the
+// origin geometry, the bodies, the sketches and the construction
+// geometry, while the features that made them live in the timeline --
+// they are two different questions ("what is there" versus "how did it
+// get there") and Fusion answers them in two different places. Feature
+// rename, suppress and delete moved to the timeline's own context menu
+// when this stopped listing features, so nothing was lost in the move.
+//
+// Rows are one of four kinds: a folder, a body, a sketch or construction
+// feature, or a read-only origin entity. The checkbox means visibility on
+// a body and suppression on a feature, matching what each one supports.
 //
 // Selection is not wired directly to the timeline/properties panels; all
 // three talk only through Document's observer notifications, so any of
@@ -35,12 +46,14 @@ private slots:
     void onContextMenuRequested(const QPoint& thePos);
 
 private:
-    // Full teardown + repopulate, used only when the feature list actually
-    // changed shape (add/remove/reorder); a pure value or error refresh
-    // updates existing rows in place so scroll position and an in-flight
-    // rename survive a live parameter edit elsewhere.
     void RefreshTree();
     void SyncSelection();
+
+    // Folders the user has opened, remembered by name across the rebuild
+    // that every document change triggers -- a tree that collapsed itself
+    // every time a dimension changed would be unusable.
+    QSet<QString> ExpandedFolders() const;
+    void RestoreExpanded(const QSet<QString>& theOpen);
 
     Document* m_document = nullptr;
 

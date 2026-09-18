@@ -59,8 +59,10 @@ private:
     QTabWidget*   m_ribbon = nullptr;
     lcad::Document m_document;
 
-    // Shape currently shown in the viewer, so we can replace it cleanly.
-    Handle(AIS_InteractiveObject) m_displayedShape;
+    // One object per body, so a body can be hidden, coloured or picked on
+    // its own. A single AIS_Shape for the whole document made "the model"
+    // one anonymous thing the user could not act on part of.
+    std::vector<Handle(AIS_InteractiveObject)> m_displayedBodies;
 
     std::map<lcad::Command*, QAction*> m_commandActions;
     // Flyout buttons drive their primary command directly, so their

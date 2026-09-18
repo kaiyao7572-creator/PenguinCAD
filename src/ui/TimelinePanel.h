@@ -2,6 +2,7 @@
 
 #include "core/Document.h"
 
+#include <QPoint>
 #include <QWidget>
 
 #include <cstddef>
@@ -15,6 +16,11 @@ namespace lcad {
 // Fusion's horizontal feature timeline: one button per feature in order,
 // with a clickable rollback marker before the first feature and after
 // every one of them, plus a "go to end" control that clears rollback.
+//
+// Right-clicking a feature renames, suppresses or deletes it. That lives
+// here rather than in the browser because the browser lists what the
+// design CONTAINS, as Fusion's does, and a feature is not a thing the
+// design contains -- it is a step in how it was made.
 //
 // Selection is shared with the browser panel purely through Document's
 // active-feature notifications -- the two panels never reference each
@@ -41,6 +47,8 @@ private:
     void UpdateButtonRow(std::size_t theIndex, const FeaturePtr& theFeature, std::size_t theEffectiveRollback);
     void UpdateMarker(std::size_t theMarkerIndex, std::size_t theEffectiveRollback);
     void SyncActiveButton();
+
+    void ShowFeatureMenu(const Feature* theRaw, const QPoint& theGlobalPos);
 
     Document* m_document = nullptr;
 

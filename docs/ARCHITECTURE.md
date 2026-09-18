@@ -191,6 +191,45 @@ header.
   changes the model silently, which is the failure this design exists to
   prevent. `ProfileFeature` already does all of this; inherit it.
 
+### `core/Entity.h` — the object model
+
+Fusion's own vocabulary, not an approximation of it. `EntityType` covers
+the B-Rep chain in containment order (`BRepBody > BRepLump > BRepShell >
+BRepFace > BRepLoop > BRepCoEdge > BRepEdge > BRepVertex`), the nine
+`SketchCurve` subtypes, construction planes/axes/points, and the browser
+folders in the order Fusion draws them. `IsSelectable()` records which
+types are structural — a loop and a co-edge are real parts of the model
+that Fusion never lets you pick, and saying so once stops each consumer
+guessing.
+
+`core/Body.h` is `BRepBody`: kind (solid/surface/wire), visibility,
+volume, area, centroid, and the sub-entity collections. **Sub-shapes come
+from an indexed map, never `TopExp_Explorer` directly** — the explorer
+visits once per *use*, so a box yields 48 vertices and 24 edges where
+Fusion says 8 and 12.
+
+`Document::Bodies()` is rebuilt after every evaluation. `BodyTable`
+carries names across by matching each new body to a previous one of the
+same kind with a close enough size and position, exact survivors claiming
+their names first. Numbering never rewinds: a recycled name would attach
+old references to new geometry.
+
+`core/GeometryRef.h` names one face, edge or vertex by what it IS —
+owning body, kind, size, centre — not by an index an upstream fillet
+invalidates. Resolving **refuses when two candidates match equally well**
+rather than picking one. Same rule as `ProfileRef`, same reason.
+
+`core/Origin.h` is the seven origin entities (three planes, three axes, a
+point), defined once — `SketchFeature::PlaneXY()` and friends read them
+back. They are deliberately **not** Features: in Fusion they are
+intrinsic to a component, exist before anything is drawn, and can only be
+hidden.
+
+`core/ConstructionGeometry.h` is the seam for construction planes, axes
+and points, mirroring `ProfileProvider`. Lookup is by NAME, and **origin
+names always win** — a user who names a plane "XY" must not silently
+redefine what every earlier sketch was drawn on.
+
 ### `core/Command.h` — a toolbar/menu tool
 
 ```cpp
@@ -252,6 +291,17 @@ view->ConvertWithProj(pos.x(), pos.y(), x, y, z, vx, vy, vz);
 gp_Lin ray(gp_Pnt(x, y, z), gp_Dir(vx, vy, vz));
 // intersect ray with your sketch plane
 ```
+
+## Where things are shown
+
+The **browser** lists what the design CONTAINS — Origin, Bodies,
+Sketches, Construction — exactly as Fusion's does. The **timeline** lists
+how it was made, one button per feature, and owns feature rename /
+suppress / delete. Those are two different questions and Fusion answers
+them in two different places; don't merge them back.
+
+`MainWindow` displays **one AIS object per body**, not one for the whole
+document, which is what makes a body hideable and individually pickable.
 
 ## Existing viewport behavior (don't re-implement)
 
