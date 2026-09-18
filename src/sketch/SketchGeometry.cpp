@@ -133,6 +133,84 @@ Handle(Geom2d_Curve) BuildSpline(const SketchEntity& theEntity)
     }
 }
 
+// A clamped uniform B-spline through the entity's points as CONTROL
+// poles. Degree 3 where there are enough poles for it, dropping to the
+// highest the pole count allows -- a two-pole "spline" is a straight line
+// and has to be degree 1 or OCCT refuses it outright.
+Handle(Geom2d_Curve) BuildControlPointSpline(const SketchEntity& theEntity)
+{
+    const Standard_Integer poleCount = static_cast<Standard_Integer>(theEntity.points.size());
+    if (poleCount < 2) {
+        return Handle(Geom2d_Curve)();
+    }
+
+    try {
+        const Standard_Integer degree = std::min<Standard_Integer>(3, poleCount - 1);
+        const Standard_Integer knotCount = poleCount - degree + 1;
+
+        TColgp_Array1OfPnt2d poles(1, poleCount);
+        for (Standard_Integer i = 1; i <= poleCount; ++i) {
+            poles.SetValue(i, theEntity.points[static_cast<std::size_t>(i - 1)]);
+        }
+
+        TColStd_Array1OfReal    knots(1, knotCount);
+        TColStd_Array1OfInteger mults(1, knotCount);
+        for (Standard_Integer i = 1; i <= knotCount; ++i) {
+            knots.SetValue(i, static_cast<Standard_Real>(i - 1));
+            // Clamped: full multiplicity at both ends so the curve starts
+            // at the first pole and finishes at the last, which is what
+            // makes its endpoints snappable like every other curve's.
+            mults.SetValue(i, (i == 1 || i == knotCount) ? degree + 1 : 1);
+        }
+
+        return new Geom2d_BSplineCurve(poles, knots, mults, degree);
+    } catch (const Standard_Failure&) {
+        return Handle(Geom2d_Curve)();
+    }
+}
+
+// A conic arc as a rational quadratic: three poles, with the apex
+// weighted w = rho / (1 - rho).
+//
+// Expressed as a B-spline rather than a Geom2d_BezierCurve on purpose --
+// everything downstream (To3dCurve, trim, offset, nearest-point) already
+// handles B-splines, so a conic needs no new case anywhere. Below rho 0.5
+// the weight is under 1 and the curve is an ellipse arc, at exactly 0.5
+// it is 1 and the curve is a parabola, above it the curve is a hyperbola.
+Handle(Geom2d_Curve) BuildConic(const SketchEntity& theEntity)
+{
+    if (theEntity.points.size() != 3) {
+        return Handle(Geom2d_Curve)();
+    }
+
+    try {
+        const double rho = std::min(std::max(theEntity.rho, 0.01), 0.99);
+        const double weight = rho / (1.0 - rho);
+
+        TColgp_Array1OfPnt2d poles(1, 3);
+        poles.SetValue(1, theEntity.points[0]);
+        poles.SetValue(2, theEntity.points[1]);
+        poles.SetValue(3, theEntity.points[2]);
+
+        TColStd_Array1OfReal weights(1, 3);
+        weights.SetValue(1, 1.0);
+        weights.SetValue(2, weight);
+        weights.SetValue(3, 1.0);
+
+        TColStd_Array1OfReal knots(1, 2);
+        knots.SetValue(1, 0.0);
+        knots.SetValue(2, 1.0);
+
+        TColStd_Array1OfInteger mults(1, 2);
+        mults.SetValue(1, 3);
+        mults.SetValue(2, 3);
+
+        return new Geom2d_BSplineCurve(poles, weights, knots, mults, 2);
+    } catch (const Standard_Failure&) {
+        return Handle(Geom2d_Curve)();
+    }
+}
+
 gp_Pnt2d EllipsePoint(const SketchEntity& theEntity, double theAngle)
 {
     const double c = std::cos(theEntity.rotation);
@@ -161,6 +239,8 @@ double PeriodOf(const SketchEntity& theEntity)
         case SketchEntity::Kind::Ellipse:
             return kTwoPi;
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
             return 0.0;  // handled through the curve itself, which knows
         case SketchEntity::Kind::Line:
         case SketchEntity::Kind::Point:
@@ -345,6 +425,12 @@ Handle(Geom2d_Curve) Curve2dOf(const SketchEntity& theEntity)
             case SketchEntity::Kind::Spline:
                 return BuildSpline(theEntity);
 
+            case SketchEntity::Kind::ControlPointSpline:
+                return BuildControlPointSpline(theEntity);
+
+            case SketchEntity::Kind::Conic:
+                return BuildConic(theEntity);
+
             case SketchEntity::Kind::Point:
                 return Handle(Geom2d_Curve)();
         }
@@ -376,7 +462,9 @@ bool ParamRange(const SketchEntity& theEntity, double& theFirst, double& theLast
             theLast = theEntity.endAngle;
             return theLast - theFirst > kTiny;
 
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic: {
             const Handle(Geom2d_Curve) curve = Curve2dOf(theEntity);
             if (curve.IsNull()) {
                 return false;
@@ -497,7 +585,9 @@ gp_Pnt2d PointAt(const SketchEntity& theEntity, double theParam)
         case SketchEntity::Kind::Ellipse:
             return EllipsePoint(theEntity, theParam);
 
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic: {
             const Handle(Geom2d_Curve) curve = Curve2dOf(theEntity);
             if (curve.IsNull()) {
                 return theEntity.points.empty() ? theEntity.first : theEntity.points.front();
@@ -534,7 +624,9 @@ gp_Vec2d TangentAt(const SketchEntity& theEntity, double theParam)
         case SketchEntity::Kind::Ellipse:
             return EllipseTangent(theEntity, theParam);
 
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic: {
             const Handle(Geom2d_Curve) curve = Curve2dOf(theEntity);
             if (curve.IsNull()) {
                 return gp_Vec2d(1.0, 0.0);
@@ -604,7 +696,9 @@ bool NearestParam(const SketchEntity& theEntity,
         }
 
         case SketchEntity::Kind::Ellipse:
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic: {
             const Handle(Geom2d_Curve) curve = Curve2dOf(theEntity);
             if (curve.IsNull()) {
                 return false;
@@ -784,7 +878,9 @@ bool SetParamWindow(SketchEntity& theEntity, double theFirst, double theLast)
             return true;
         }
 
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic: {
             const Handle(Geom2d_Curve) curve = Curve2dOf(theEntity);
             if (curve.IsNull()) {
                 return false;
@@ -888,7 +984,12 @@ SketchEntity Rotated(const SketchEntity& theEntity, const gp_Pnt2d& theCentre, d
             break;
         case SketchEntity::Kind::Line:
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
         case SketchEntity::Kind::Point:
+            // Their shape lives entirely in `points`, which the loop above
+            // has already turned. A conic's rho is a ratio and is
+            // unaffected by a rigid motion.
             break;
     }
     return result;
@@ -955,6 +1056,11 @@ SketchEntity Mirrored(const SketchEntity& theEntity,
         }
 
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
+            // Reflecting the poles reflects the curve, for control points
+            // as much as for fit points. A conic's rho is a ratio along
+            // the apex direction and survives a reflection untouched.
             for (gp_Pnt2d& point : result.points) {
                 point = reflect(point);
             }
@@ -1005,8 +1111,13 @@ bool Offset(const SketchEntity& theEntity, double theDistance, SketchEntity& the
             return true;
         }
 
+        // None of these has an exact offset curve, so all four are refit
+        // as a spline through sampled offset points -- which is what any
+        // CAD kernel does with them.
         case SketchEntity::Kind::Ellipse:
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
             return RefitOffsetAsSpline(theEntity, theDistance, theResult);
 
         case SketchEntity::Kind::Point:

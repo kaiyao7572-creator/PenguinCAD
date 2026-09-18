@@ -66,7 +66,11 @@ double SelfClosedArea(const SketchEntity& theEntity)
         case SketchEntity::Kind::Ellipse:
             return kPi * theEntity.radius * theEntity.minorRadius;
 
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Conic:
+            return 0.0;  // three points and a rho never close a loop
+
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline: {
             double first = 0.0, last = 0.0;
             if (!SketchGeometry::ParamRange(theEntity, first, last)) {
                 return 0.0;
@@ -418,6 +422,8 @@ std::vector<gp_Pnt2d> SketchFeature::SnapPoints() const
                 break;
             }
             case SketchEntity::Kind::Spline:
+            case SketchEntity::Kind::ControlPointSpline:
+            case SketchEntity::Kind::Conic:
             case SketchEntity::Kind::Point:
                 break;
         }

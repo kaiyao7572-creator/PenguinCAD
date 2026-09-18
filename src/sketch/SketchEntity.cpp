@@ -2,6 +2,7 @@
 
 #include "sketch/SketchGeometry.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace lcad {
@@ -127,6 +128,34 @@ SketchEntity SketchEntity::MakeSpline(const std::vector<gp_Pnt2d>& thePoints)
     return entity;
 }
 
+SketchEntity SketchEntity::MakeControlPointSpline(const std::vector<gp_Pnt2d>& thePoints)
+{
+    SketchEntity entity;
+    entity.kind = Kind::ControlPointSpline;
+    entity.points = thePoints;
+    entity.trimFirst = 0.0;
+    entity.trimLast = 1.0;
+    return entity;
+}
+
+SketchEntity SketchEntity::MakeConic(const gp_Pnt2d& theStart,
+                                     const gp_Pnt2d& theApex,
+                                     const gp_Pnt2d& theEnd,
+                                     double          theRho)
+{
+    SketchEntity entity;
+    entity.kind = Kind::Conic;
+    // Stored in the same `points` list the splines use, so every code path
+    // that walks a point-based curve needs no extra case for conics.
+    entity.points = {theStart, theApex, theEnd};
+    // Strictly inside (0, 1): at 0 the curve collapses onto the chord and
+    // at 1 it runs off to the apex, and neither is a curve a user meant.
+    entity.rho = std::min(std::max(theRho, 0.01), 0.99);
+    entity.trimFirst = 0.0;
+    entity.trimLast = 1.0;
+    return entity;
+}
+
 SketchEntity SketchEntity::MakePoint(const gp_Pnt2d& thePosition)
 {
     SketchEntity entity;
@@ -151,7 +180,9 @@ gp_Pnt2d SketchEntity::StartPoint() const
         case Kind::Ellipse:
             return EllipsePoint(*this, startAngle);
 
-        case Kind::Spline: {
+        case Kind::Spline:
+        case Kind::ControlPointSpline:
+        case Kind::Conic: {
             if (points.empty()) {
                 return first;
             }
@@ -184,7 +215,9 @@ gp_Pnt2d SketchEntity::EndPoint() const
         case Kind::Ellipse:
             return EllipsePoint(*this, endAngle);
 
-        case Kind::Spline: {
+        case Kind::Spline:
+        case Kind::ControlPointSpline:
+        case Kind::Conic: {
             if (points.empty()) {
                 return second;
             }
@@ -213,7 +246,9 @@ gp_Pnt2d SketchEntity::CentrePoint() const
         case Kind::Point:
             return first;
 
-        case Kind::Spline: {
+        case Kind::Spline:
+        case Kind::ControlPointSpline:
+        case Kind::Conic: {
             if (points.empty()) {
                 return first;
             }
@@ -238,9 +273,13 @@ bool SketchEntity::IsSelfClosed() const
         case Kind::Ellipse:
             return (endAngle - startAngle) >= kTwoPi - kTiny;
         case Kind::Spline:
+        case Kind::ControlPointSpline:
             return points.size() >= 3 && IsSplineUntrimmed(*this)
                 && points.front().SquareDistance(points.back())
                        <= SketchGeometry::kTolerance * SketchGeometry::kTolerance;
+        // A conic is an ARC of an ellipse, parabola or hyperbola: three
+        // points and a rho can never describe a closed curve.
+        case Kind::Conic:
         case Kind::Line:
         case Kind::Point:
             return false;
@@ -263,11 +302,37 @@ bool SketchEntity::IsDegenerate() const
                 || minorRadius <= SketchGeometry::kTolerance
                 || (endAngle - startAngle) <= kTiny;
         case Kind::Spline:
+        case Kind::ControlPointSpline:
             return points.size() < 2 || trimLast - trimFirst <= kTiny;
+        case Kind::Conic:
+            // Exactly three points, and the two ends must not coincide --
+            // a conic between a point and itself has no shape to take.
+            return points.size() != 3 || trimLast - trimFirst <= kTiny
+                || points.front().SquareDistance(points.back())
+                       <= SketchGeometry::kTolerance * SketchGeometry::kTolerance;
         case Kind::Point:
             return false;  // a point is never "too small" to keep
     }
     return true;
+}
+
+EntityType SketchEntityType(const SketchEntity& theEntity)
+{
+    switch (theEntity.kind) {
+        case SketchEntity::Kind::Line:               return EntityType::SketchLine;
+        case SketchEntity::Kind::Circle:             return EntityType::SketchCircle;
+        case SketchEntity::Kind::Arc:                return EntityType::SketchArc;
+        case SketchEntity::Kind::Ellipse:
+            // Same geometry either way; Fusion just calls the partial one
+            // something else, and the browser has to agree with it.
+            return theEntity.IsSelfClosed() ? EntityType::SketchEllipse
+                                            : EntityType::SketchEllipticalArc;
+        case SketchEntity::Kind::Spline:             return EntityType::SketchFittedSpline;
+        case SketchEntity::Kind::ControlPointSpline: return EntityType::SketchControlPointSpline;
+        case SketchEntity::Kind::Conic:              return EntityType::SketchConicCurve;
+        case SketchEntity::Kind::Point:              return EntityType::SketchPoint;
+    }
+    return EntityType::Unknown;
 }
 
 } // namespace lcad

@@ -76,6 +76,18 @@ build_entities() {
     "$OUT/entity_test"
 }
 
+# ---- sketch types: the Fusion curve taxonomy, conics and control point splines ----
+build_sketchtypes() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/sketchtypes_test.cpp" \
+        "$SRC/core/Entity.cpp" "$SRC/core/Origin.cpp" "$SRC/core/ProfileProvider.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/sketchtypes_test" || return 1
+    "$OUT/sketchtypes_test"
+}
+
 # ---- construction: the origin folder, planes, axes and points ----
 build_construction() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
@@ -119,6 +131,7 @@ run "Sketch: axis inference and snapping" build_inference
 run "Sketch: profile regions and references" build_profiles
 run "Entities: bodies, faces and the Fusion taxonomy" build_entities
 run "Construction: origin folder, planes, axes and points" build_construction
+run "Sketch types: the Fusion curve taxonomy" build_sketchtypes
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

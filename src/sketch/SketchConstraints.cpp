@@ -43,7 +43,12 @@ std::size_t VariableCount(const SketchEntity& theEntity)
         case SketchEntity::Kind::Circle:  return 3;   // centre + radius
         case SketchEntity::Kind::Arc:     return 5;   // centre, radius, both angles
         case SketchEntity::Kind::Ellipse: return 7;   // centre, radii, rotation, angles
-        case SketchEntity::Kind::Spline:  return theEntity.points.size() * 2;
+        // A conic's rho is a shape ratio, not a position, so it is not a
+        // solver variable -- the solver moves its three points and the
+        // curve follows, which is what Fusion lets you do to one too.
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:    return theEntity.points.size() * 2;
         case SketchEntity::Kind::Point:   return 2;
     }
     return 0;
@@ -84,6 +89,8 @@ void ReadEntity(const SketchEntity& theEntity, double* theVars)
             return;
 
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
             for (std::size_t i = 0; i < theEntity.points.size(); ++i) {
                 theVars[i * 2] = theEntity.points[i].X();
                 theVars[i * 2 + 1] = theEntity.points[i].Y();
@@ -138,6 +145,8 @@ void WriteEntity(SketchEntity& theEntity, const double* theVars)
         }
 
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
             for (std::size_t i = 0; i < theEntity.points.size(); ++i) {
                 theEntity.points[i].SetCoord(theVars[i * 2], theVars[i * 2 + 1]);
             }
@@ -276,7 +285,9 @@ Vec2 System::PointOf(const std::vector<double>& theVars,
             return Vec2{v[0] + u * c - w * s, v[1] + u * s + w * c};
         }
 
-        case SketchEntity::Kind::Spline: {
+        case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic: {
             const std::size_t count = myBlocks.at(theEntity).count / 2;
             if (count == 0) {
                 return Vec2{};
@@ -323,8 +334,10 @@ double System::RadiusOf(const std::vector<double>& theVars, std::size_t theEntit
             return direction.Length();
         }
         case SketchEntity::Kind::Spline:
+        case SketchEntity::Kind::ControlPointSpline:
+        case SketchEntity::Kind::Conic:
         case SketchEntity::Kind::Point:
-            return 0.0;
+            return 0.0;  // no radius a constraint could act on
     }
     return 0.0;
 }

@@ -158,6 +158,8 @@ bool PickSketchEntity(const SketchFeature& theSketch,
                 considerPoint(entity.CentrePoint(), SketchPointRole::Centre);
                 break;
             case SketchEntity::Kind::Spline:
+            case SketchEntity::Kind::ControlPointSpline:
+            case SketchEntity::Kind::Conic:
             case SketchEntity::Kind::Point:
                 break;
         }
