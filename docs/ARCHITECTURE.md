@@ -303,6 +303,27 @@ them in two different places; don't merge them back.
 `MainWindow` displays **one AIS object per body**, not one for the whole
 document, which is what makes a body hideable and individually pickable.
 
+## Viewport selection, and four traps in it
+
+Bodies are displayed with selection mode -1 and then **`Load()`**-ed into
+the selection manager; `applySelectionFilters()` activates the modes the
+filter allows. The `Load` is not optional: `Activate()` on an unloaded
+object reports the mode as active while never building the selection
+primitives, so the body looks armed and is completely unpickable.
+
+`mousePressEvent` does a `MoveTo` at the press point before handing the
+click on, because OCCT selects whatever the last MoveTo detected and a
+press is not a move. Without it, any click that arrives without the cursor
+having travelled there first selects nothing.
+
+`SelectInViewer` treats a degenerate rectangle as a point pick. A click is
+a zero-area rectangle, and `SelectRectangle` on one can never match with
+window semantics.
+
+Anything decorative must be displayed with selection mode -1 explicitly.
+The two-argument `Display` overload activates the default mode, which is
+how the origin axis lines ended up stealing clicks from bodies.
+
 ## Existing viewport behavior (don't re-implement)
 
 `OcctViewport` already handles: left-click select, left-drag rubber-band

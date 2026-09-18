@@ -53,6 +53,14 @@ private:
     void refreshCommandStates();
     void refreshRibbonTabs();
     void redisplayDocument();
+
+    // Turn OCCT's picking on for exactly the shape types the selection
+    // filter allows, on every displayed body.
+    void applySelectionFilters();
+
+    // Read OCCT's settled selection back as durable GeometryRefs.
+    void readViewportSelection();
+
     lcad::CommandContext makeContext();
 
     OcctViewport* m_viewport = nullptr;
@@ -72,6 +80,9 @@ private:
     // contextual tab can be slotted back at the right position.
     std::vector<std::pair<std::string, QWidget*>> m_ribbonPages;
     std::vector<std::string>                      m_visibleGroups;
+    // Last selection-filter generation the viewport was configured for.
+    std::size_t m_selectionFilterGeneration = 0;
+
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
 };

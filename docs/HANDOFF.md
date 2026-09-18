@@ -111,6 +111,10 @@ stale. A test asserts this.
 trim/extend/offset/mirror/patterns, 12 constraint types with a solver,
 dimensions, axis inference, snapping to endpoints/centres/midpoints/origin.
 
+**Selection** (`src/core/GeometrySelection.h`) — faces, edges, vertices
+and bodies are pickable in the viewport, with Fusion's SELECT filter panel
+deciding which. Picks become durable `GeometryRef`s that features hold.
+
 **Sketch tools** — line/rect/circle/arc/polygon/ellipse/slot/point plus
 all three of Fusion's spline-family tools: fit point spline, control
 point spline, and the conic curve (two ends and a point on it, with `[`
@@ -196,10 +200,45 @@ Still missing here:
   they need per-entity visibility wired first, and a checkbox that does
   nothing is worse than none.
 
-### 3.3 Press/Pull is missing
+### 3.3 ~~Press/Pull is missing~~ DONE
 
-Fusion's most-used tool (`Q`): select a face, drag it. Everything else in
-Modify is downstream of it in muscle memory.
+Done, and with it face/edge selection in the viewport. Click a face, press
+Q, type a distance: out adds material, in removes it. Verified on screen
+as well as headless -- hover outlines the face, clicking selects it, and
+the box grows.
+
+Getting there turned up three real bugs that had nothing to do with
+Press/Pull and had been there all along:
+
+- **A plain left-click never selected anything.** `SelectInViewer` always
+  called `SelectRectangle`, and a click arrives as a ZERO-AREA rectangle;
+  with window semantics, which require full enclosure, it can never match.
+- **OCCT selects what the last MoveTo detected, and a press is not a
+  move.** A click arriving without the cursor having travelled there first
+  had nothing detected. `mousePressEvent` now detects at the press point
+  before handing the click on.
+- **The origin axis lines were pickable.** The comment beside them said
+  "never activated for selection" but the two-argument `Display` overload
+  activates the default mode, so the axes -- running through the world
+  origin -- stole clicks from any body built there.
+
+Also: `Activate()` on an object displayed with selection mode -1 reports
+the mode as active while never building the selection primitives. The body
+looks armed and is completely unpickable. `Load()` is what actually loads
+it into the selection manager, and it is not optional.
+
+What is left here:
+
+- No drag manipulator. Fusion's Q gives an arrow you pull; this asks for a
+  distance in a dialog.
+- Planar faces only. A cylindrical face should offset radially; it is
+  refused with "press/pull needs a flat face" rather than doing something
+  wrong.
+- No multi-face press/pull. `SoleItem` refuses two faces rather than
+  guessing, so the command greys out.
+- Offsetting a face that meets its neighbours at an angle just sweeps and
+  fuses; Fusion extends the adjacent walls instead. Fine for prismatic
+  parts, wrong for a draft.
 
 ### 3.4 No typed input while drawing
 

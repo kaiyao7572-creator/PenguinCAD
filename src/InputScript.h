@@ -28,6 +28,10 @@ class QString;
 //   release <x> <y>         left button up
 //   drag <x1> <y1> <x2> <y2>   press, several moves, release
 //   key <Name>              Escape, Return, Delete, or a single character
+//   wheel <x> <y> <notches> wheel notches at a point. NEGATIVE zooms in,
+//                           which is what this app's wheel handler does
+//                           with a positive angleDelta -- the verb stays
+//                           faithful to the event rather than flipping it
 //   wait <ms>               let the event loop settle
 //   shot <path>             screenshot the window (+ <path>-viewport.png)
 //   echo <text>             print a marker to stdout

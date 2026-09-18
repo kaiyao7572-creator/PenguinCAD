@@ -61,4 +61,15 @@ bool ResolveGeometryRef(const Body&        theBody,
                         const GeometryRef& theRef,
                         TopoDS_Shape&      theResult);
 
+// The same, against an arbitrary shape rather than a named body.
+//
+// A feature computing mid-timeline sees its INPUT shape, and there are no
+// bodies at that point -- the body table is derived from the finished
+// document. The geometric signature is what does the work either way; the
+// body name is only a first filter, and there is nothing to filter by
+// here.
+bool ResolveGeometryRefInShape(const TopoDS_Shape& theShape,
+                               const GeometryRef&  theRef,
+                               TopoDS_Shape&       theResult);
+
 } // namespace lcad

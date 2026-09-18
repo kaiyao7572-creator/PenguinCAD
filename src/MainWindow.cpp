@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 
+#include "core/GeometrySelection.h"
+
 #include "OcctViewport.h"
 #include "StepImport.h"
 #include "StlExport.h"
@@ -7,6 +9,7 @@
 #include "core/ShapeFeature.h"
 
 #include <AIS_Shape.hxx>
+#include <StdSelect_BRepOwner.hxx>
 
 #include <QAction>
 #include <QFileDialog>
@@ -103,6 +106,10 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
     m_viewport = new OcctViewport(this);
+    // OCCT fires this once the selection has actually settled, which is
+    // after the mouse handler has returned -- reading it from the click
+    // itself would read the previous selection.
+    m_viewport->SetSelectionCallback([this]() { readViewportSelection(); });
 
     // Every subsystem contributes its tools here. Each of these lives in
     // its own directory and knows nothing about this file.
@@ -500,6 +507,12 @@ void MainWindow::refreshCommandStates()
 {
     refreshRibbonTabs();
 
+    // A filter command has no handle on the window or the body list, so
+    // it just bumps a counter and the change is picked up here.
+    if (m_selectionFilterGeneration != lcad::GeometrySelection::Instance().FilterGeneration()) {
+        applySelectionFilters();
+    }
+
     CommandContext context = makeContext();
     for (auto& entry : m_commandActions) {
         Command* command = entry.first;
@@ -560,14 +573,74 @@ void MainWindow::redisplayDocument()
             continue;
         }
         Handle(AIS_Shape) aisShape = new AIS_Shape(body->Shape());
-        context->Display(aisShape, AIS_Shaded, 0, Standard_False);
+        // Displayed with no selection mode, then LOADED into the selection
+        // manager so applySelectionFilters can activate the modes the
+        // filter allows. The Load is not optional: Display with -1 skips
+        // it, and Activate on an unloaded object reports the mode as
+        // active while never building the selection primitives -- the body
+        // looks armed and is completely unpickable.
+        context->Display(aisShape, AIS_Shaded, -1, Standard_False);
+        context->Load(aisShape);
         m_displayedBodies.push_back(aisShape);
     }
+
+    applySelectionFilters();
 
     Handle(V3d_View) view = m_viewport->View();
     if (!view.IsNull()) {
         view->Redraw();
     }
+}
+
+void MainWindow::applySelectionFilters()
+{
+    Handle(AIS_InteractiveContext) context = m_viewport->Context();
+    if (context.IsNull()) {
+        return;
+    }
+
+    m_selectionFilterGeneration = lcad::GeometrySelection::Instance().FilterGeneration();
+
+    for (const Handle(AIS_InteractiveObject)& object : m_displayedBodies) {
+        if (object.IsNull()) {
+            continue;
+        }
+        context->Deactivate(object);
+        for (const lcad::EntityType type : lcad::GeometrySelection::Instance().Filters()) {
+            context->Activate(object, AIS_Shape::SelectionMode(lcad::TopAbsTypeOf(type)),
+                              Standard_False);
+        }
+    }
+}
+
+void MainWindow::readViewportSelection()
+{
+    Handle(AIS_InteractiveContext) context = m_viewport->Context();
+    if (context.IsNull()) {
+        return;
+    }
+
+    std::vector<lcad::GeometryRef> picked;
+    for (context->InitSelected(); context->MoreSelected(); context->NextSelected()) {
+        // A sub-shape pick arrives as a BRep owner carrying the shape;
+        // asked for through the owner rather than the context's own
+        // DetectedShape(), which OCCT 7.9 deprecates with local context.
+        // A sub-shape pick arrives as a BRep owner carrying the shape;
+        // asked for through the owner rather than the context's own
+        // DetectedShape(), which OCCT 7.9 deprecates with local context.
+        const Handle(StdSelect_BRepOwner) owner =
+            Handle(StdSelect_BRepOwner)::DownCast(context->SelectedOwner());
+        if (owner.IsNull() || !owner->HasShape()) {
+            continue;
+        }
+        lcad::GeometryRef ref;
+        if (lcad::MakeGeometryRefIn(m_document, owner->Shape(), ref)) {
+            picked.push_back(ref);
+        }
+    }
+
+    lcad::GeometrySelection::Instance().Set(std::move(picked));
+    refreshCommandStates();
 }
 
 void MainWindow::onOpenStep()

@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QDialog>
 #include <QEventLoop>
+#include <QWheelEvent>
 #include <QFile>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -169,6 +170,25 @@ void ArmDialog(int theDelay, const QString& theAction)
     });
 }
 
+// Zoom the viewport, so a script can frame what it is about to click.
+//
+// Without this every target is whatever size the default camera makes it
+// -- a 20mm box is about twenty pixels across -- and driving the app
+// becomes an exercise in guessing coordinates. QWheelEvent is synthesised
+// rather than the zoom called directly so the real wheel handler runs,
+// cursor anchoring and all.
+void SendWheel(MainWindow* theWindow, const QPointF& thePos, int theNotches)
+{
+    QWindow* target = ViewportWindow(theWindow);
+    if (target == nullptr) {
+        return;
+    }
+    const QPoint angle(0, theNotches * 120);   // 120 units is one detent
+    QWheelEvent event(thePos, target->mapToGlobal(thePos.toPoint()), QPoint(), angle,
+                      Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(target, &event);
+}
+
 void TakeShot(MainWindow* theWindow, const QString& thePath)
 {
     theWindow->grab().save(thePath);
@@ -205,6 +225,13 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         auto number = [&parts](int theIndex) {
             return theIndex < parts.size() ? parts.at(theIndex).toDouble() : 0.0;
         };
+
+        if (verb == "wheel" && parts.size() >= 4) {
+            SendWheel(theWindow, QPointF(number(1), number(2)), static_cast<int>(number(3)));
+            std::cout << "  wheel " << static_cast<int>(number(3)) << " at " << number(1)
+                      << "," << number(2) << std::endl;
+            continue;
+        }
 
         if (verb == "arm" && parts.size() >= 3) {
             ArmDialog(static_cast<int>(number(1)), parts.at(2));

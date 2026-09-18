@@ -1,12 +1,14 @@
 #include "core/Command.h"
 #include "core/Document.h"
 #include "core/ProfileProvider.h"
+#include "core/GeometrySelection.h"
 #include "core/Origin.h"
 #include "core/ProfileSelection.h"
 #include "core/Registration.h"
 #include "features/FeatureDialogs.h"
 #include "features/FeatureUtils.h"
 #include "features/ModifyFeatures.h"
+#include "features/PressPullFeature.h"
 #include "features/PrimitiveFeatures.h"
 #include "features/ConstructionFeatures.h"
 #include "features/ProfileFeatures.h"
@@ -583,6 +585,57 @@ public:
     }
 };
 
+// Fusion's most-used tool: pick a face, press Q, move it. Everything else
+// in Modify sits downstream of it in muscle memory.
+class PressPullCommand : public ModifyCommand
+{
+public:
+    std::string Id() const override { return "modify.press_pull"; }
+    std::string Title() const override { return "Press Pull"; }
+    std::string Icon() const override { return "⇅"; }
+    std::string Shortcut() const override { return "Q"; }
+    std::string Description() const override
+    {
+        return "Move a selected face along its normal; out adds material, in removes it";
+    }
+
+    bool IsEnabled(const CommandContext& theContext) const override
+    {
+        (void)theContext;
+        // Exactly one face. SoleItem returns nothing when two are picked,
+        // so this greys out rather than silently acting on one of them.
+        return !GeometrySelection::Instance().SoleItem(EntityType::BRepFace).IsNull();
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        const GeometryRef face = GeometrySelection::Instance().SoleItem(EntityType::BRepFace);
+        if (face.IsNull()) {
+            ShowStatus(theContext, "Select exactly one face first.");
+            return;
+        }
+
+        std::vector<DialogField> fields;
+        fields.push_back(DialogField::Number("Distance", 10.0, kAnyNumber));
+        if (!ShowFeatureDialog(theContext.parent, "Press Pull", fields,
+                               "A negative distance pushes the face into the body.")) {
+            return;
+        }
+
+        auto pressPull = std::make_shared<PressPullFeature>(face, fields[0].value);
+        AddAndReport(theContext, pressPull);
+
+        // The face the user picked no longer exists once it has moved, so
+        // leaving it selected would leave a highlight on geometry that is
+        // gone and let a second Q act on a stale reference.
+        GeometrySelection::Instance().Clear();
+        const Handle(AIS_InteractiveContext) aisContext = theContext.AisContext();
+        if (!aisContext.IsNull()) {
+            aisContext->ClearSelected(Standard_False);
+        }
+    }
+};
+
 class FilletCommand : public ModifyCommand
 {
 public:
@@ -943,6 +996,70 @@ public:
     }
 };
 
+// ---- SELECT ----
+//
+// Fusion's selection filter, in the Solid tab's SELECT panel. Several
+// types can be on at once and OCCT then picks the most specific thing
+// under the cursor, so pointing at a face gives the face and pointing at
+// its edge gives the edge -- the filter is for narrowing that when
+// geometry is crowded, not for choosing one type at a time.
+class SelectionFilterCommand : public Command
+{
+public:
+    SelectionFilterCommand(EntityType theType, std::string theId, std::string theTitle,
+                           std::string theIcon)
+        : myType(theType)
+        , myId(std::move(theId))
+        , myTitle(std::move(theTitle))
+        , myIcon(std::move(theIcon))
+    {
+    }
+
+    std::string Id() const override { return myId; }
+    std::string Title() const override { return myTitle; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return "Select"; }
+    std::string Icon() const override { return myIcon; }
+    std::string Description() const override
+    {
+        return "Allow " + myTitle + " to be picked in the viewport";
+    }
+
+    bool IsCheckable() const override { return true; }
+    bool IsChecked(const CommandContext& theContext) const override
+    {
+        (void)theContext;
+        return GeometrySelection::Instance().IsFilterOn(myType);
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        GeometrySelection& selection = GeometrySelection::Instance();
+        const bool wanted = !selection.IsFilterOn(myType);
+        selection.SetFilter(myType, wanted);
+
+        if (selection.IsFilterOn(myType) != wanted) {
+            // The last filter cannot be turned off -- say so rather than
+            // letting the button silently spring back.
+            ShowStatus(theContext, "At least one selection filter has to stay on.");
+            return;
+        }
+        // Anything picked under the old filter may no longer be pickable.
+        selection.Clear();
+        const Handle(AIS_InteractiveContext) aisContext = theContext.AisContext();
+        if (!aisContext.IsNull()) {
+            aisContext->ClearSelected(Standard_False);
+        }
+        theContext.Redraw();
+    }
+
+private:
+    EntityType  myType;
+    std::string myId;
+    std::string myTitle;
+    std::string myIcon;
+};
+
 void RegisterFeatureCommands(CommandRegistry& theRegistry)
 {
     theRegistry.Add(std::make_unique<BoxCommand>());
@@ -953,6 +1070,7 @@ void RegisterFeatureCommands(CommandRegistry& theRegistry)
     theRegistry.Add(std::make_unique<ExtrudeCommand>());
     theRegistry.Add(std::make_unique<RevolveCommand>());
 
+    theRegistry.Add(std::make_unique<PressPullCommand>());
     theRegistry.Add(std::make_unique<FilletCommand>());
     theRegistry.Add(std::make_unique<ChamferCommand>());
     theRegistry.Add(std::make_unique<ShellCommand>());
@@ -965,6 +1083,15 @@ void RegisterFeatureCommands(CommandRegistry& theRegistry)
     theRegistry.Add(std::make_unique<NormalAxisCommand>());
     theRegistry.Add(std::make_unique<CoordinatePointCommand>());
     theRegistry.Add(std::make_unique<AxisPlanePointCommand>());
+
+    theRegistry.Add(std::make_unique<SelectionFilterCommand>(
+        EntityType::BRepBody, "select.bodies", "Bodies", "🧊"));
+    theRegistry.Add(std::make_unique<SelectionFilterCommand>(
+        EntityType::BRepFace, "select.faces", "Faces", "◧"));
+    theRegistry.Add(std::make_unique<SelectionFilterCommand>(
+        EntityType::BRepEdge, "select.edges", "Edges", "╲"));
+    theRegistry.Add(std::make_unique<SelectionFilterCommand>(
+        EntityType::BRepVertex, "select.vertices", "Vertices", "◦"));
 }
 
 } // namespace lcad

@@ -76,6 +76,19 @@ build_entities() {
     "$OUT/entity_test"
 }
 
+# ---- press/pull: picking a face and moving it ----
+build_presspull() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/presspull_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
+        "$SRC/core/ProfileProvider.cpp" \
+        "$SRC/features/PressPullFeature.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
+        "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/presspull_test" || return 1
+    "$OUT/presspull_test"
+}
+
 # ---- sketch types: the Fusion curve taxonomy, conics and control point splines ----
 build_sketchtypes() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
@@ -132,6 +145,7 @@ run "Sketch: profile regions and references" build_profiles
 run "Entities: bodies, faces and the Fusion taxonomy" build_entities
 run "Construction: origin folder, planes, axes and points" build_construction
 run "Sketch types: the Fusion curve taxonomy" build_sketchtypes
+run "Press/Pull: face selection and face offset" build_presspull
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

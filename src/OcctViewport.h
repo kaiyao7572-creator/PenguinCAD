@@ -13,6 +13,7 @@
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
 
+#include <functional>
 #include <vector>
 
 // The actual native window OCCT renders into. QWindow (unlike a plain
@@ -48,6 +49,13 @@ public:
     void PopInteraction();
     lcad::ViewportInteraction* CurrentInteraction() const;
 
+    // Called after OCCT's own selection changes, so the shell can read
+    // what was picked without polling for it every frame.
+    void SetSelectionCallback(std::function<void()> theCallback)
+    {
+        m_onSelectionChanged = std::move(theCallback);
+    }
+
 protected:
     void exposeEvent(QExposeEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
@@ -64,6 +72,13 @@ protected:
     // on drag direction before the rectangle select actually runs.
     void SelectInViewer(const NCollection_Sequence<Graphic3d_Vec2i>& thePnts,
                          const AIS_SelectionScheme theScheme) override;
+
+    // OCCT's own hook, fired once the selection has actually settled --
+    // which is after FlushViewEvents, not inside the mouse handler, so
+    // reading the selection from mousePressEvent would read the previous
+    // one.
+    void OnSelectionChanged(const Handle(AIS_InteractiveContext)& theCtx,
+                            const Handle(V3d_View)& theView) override;
 
 private:
     void initializeOcctViewer();
@@ -90,6 +105,8 @@ private:
 
     // Active tool input handlers, innermost last.
     std::vector<lcad::ViewportInteraction*> m_interactions;
+
+    std::function<void()> m_onSelectionChanged;
 };
 
 // Thin QWidget wrapper so this drops into a normal Qt layout (menus,
@@ -111,6 +128,10 @@ public:
         m_window->PushInteraction(theInteraction);
     }
     void PopInteraction() { m_window->PopInteraction(); }
+    void SetSelectionCallback(std::function<void()> theCallback)
+    {
+        m_window->SetSelectionCallback(std::move(theCallback));
+    }
     lcad::ViewportInteraction* CurrentInteraction() const
     {
         return m_window->CurrentInteraction();

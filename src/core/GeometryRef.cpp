@@ -3,6 +3,8 @@
 #include "core/Body.h"
 
 #include <BRepGProp.hxx>
+#include <TopExp.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <BRep_Tool.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
@@ -73,11 +75,11 @@ bool MeasureAndCentre(const TopoDS_Shape& theShape,
     }
 }
 
-double DiagonalOf(const Body& theBody)
+double DiagonalOf(const TopoDS_Shape& theShape)
 {
     try {
         Bnd_Box box;
-        BRepBndLib::Add(theBody.Shape(), box);
+        BRepBndLib::Add(theShape, box);
         if (box.IsVoid()) {
             return 1.0;
         }
@@ -90,27 +92,26 @@ double DiagonalOf(const Body& theBody)
     }
 }
 
-std::vector<TopoDS_Shape> SubShapesOf(const Body& theBody, EntityType theType)
+// Deduplicated sub-shapes of a shape, the same way Body enumerates its
+// own: once per shape, not once per use.
+std::vector<TopoDS_Shape> SubShapesOf(const TopoDS_Shape& theShape, EntityType theType)
 {
     std::vector<TopoDS_Shape> shapes;
+    if (theShape.IsNull()) {
+        return shapes;
+    }
+    TopAbs_ShapeEnum wanted = TopAbs_SHAPE;
     switch (theType) {
-        case EntityType::BRepFace:
-            for (const TopoDS_Face& face : theBody.Faces()) {
-                shapes.push_back(face);
-            }
-            break;
-        case EntityType::BRepEdge:
-            for (const TopoDS_Edge& edge : theBody.Edges()) {
-                shapes.push_back(edge);
-            }
-            break;
-        case EntityType::BRepVertex:
-            for (const TopoDS_Vertex& vertex : theBody.Vertices()) {
-                shapes.push_back(vertex);
-            }
-            break;
-        default:
-            break;
+        case EntityType::BRepFace:   wanted = TopAbs_FACE;   break;
+        case EntityType::BRepEdge:   wanted = TopAbs_EDGE;   break;
+        case EntityType::BRepVertex: wanted = TopAbs_VERTEX; break;
+        default:                     return shapes;
+    }
+
+    TopTools_IndexedMapOfShape map;
+    TopExp::MapShapes(theShape, wanted, map);
+    for (Standard_Integer i = 1; i <= map.Extent(); ++i) {
+        shapes.push_back(map(i));
     }
     return shapes;
 }
@@ -219,7 +220,7 @@ GeometryRef MakeGeometryRef(const Body& theBody, const TopoDS_Shape& theSubShape
 std::vector<GeometryRef> CollectGeometryRefs(const Body& theBody, EntityType theType)
 {
     std::vector<GeometryRef> refs;
-    for (const TopoDS_Shape& shape : SubShapesOf(theBody, theType)) {
+    for (const TopoDS_Shape& shape : SubShapesOf(theBody.Shape(), theType)) {
         GeometryRef ref = MakeGeometryRef(theBody, shape);
         if (!ref.IsNull()) {
             refs.push_back(ref);
@@ -233,15 +234,25 @@ bool ResolveGeometryRef(const Body& theBody, const GeometryRef& theRef, TopoDS_S
     if (theRef.IsNull() || theRef.body != theBody.Name()) {
         return false;
     }
+    return ResolveGeometryRefInShape(theBody.Shape(), theRef, theResult);
+}
 
-    const double diagonal = DiagonalOf(theBody);
+bool ResolveGeometryRefInShape(const TopoDS_Shape& theShape,
+                               const GeometryRef&  theRef,
+                               TopoDS_Shape&       theResult)
+{
+    if (theRef.IsNull() || theShape.IsNull()) {
+        return false;
+    }
+
+    const double diagonal = DiagonalOf(theShape);
     const double maxDistance = diagonal * kPositionTolerance;
 
     double best = std::numeric_limits<double>::max();
     double runnerUp = std::numeric_limits<double>::max();
     TopoDS_Shape winner;
 
-    for (const TopoDS_Shape& shape : SubShapesOf(theBody, theRef.type)) {
+    for (const TopoDS_Shape& shape : SubShapesOf(theShape, theRef.type)) {
         double measure = 0.0;
         gp_Pnt centre;
         if (!MeasureAndCentre(shape, theRef.type, measure, centre)) {

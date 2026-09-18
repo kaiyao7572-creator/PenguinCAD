@@ -201,8 +201,14 @@ void OcctNativeWindow::initializeOcctViewer()
 
     // Origin axis lines, Fusion-style: red = X, green = Y, blue = Z,
     // running the length of the grid in both directions. Decorative only
-    // -- never activated for selection, so they don't get in the way of
+    // -- displayed with selection mode -1 so they never get in the way of
     // picking real geometry.
+    //
+    // That -1 is load-bearing, and was missing: the two-argument Display
+    // overload activates the DEFAULT selection mode, so the axes were
+    // pickable and, running through the world origin, sat between the
+    // cursor and any body built there. Clicking a small part near the
+    // origin selected an axis instead of the face under the pointer.
     // Just past the grid's edge: long enough to read as "these are the
     // world axes", short enough not to trail off to the horizon.
     const Standard_Real kAxisLength = 180.0;
@@ -216,7 +222,7 @@ void OcctNativeWindow::initializeOcctViewer()
         Handle(AIS_Line) axis = new AIS_Line(start, end);
         axis->SetColor(theColor);
         axis->SetWidth(1.5);
-        m_context->Display(axis, Standard_False);
+        m_context->Display(axis, AIS_WireFrame, -1, Standard_False);
     };
 
     displayAxis(gp_Pnt(1, 0, 0), Quantity_Color(0.85, 0.20, 0.20, Quantity_TOC_RGB)); // X, red
@@ -329,6 +335,18 @@ void OcctNativeWindow::mousePressEvent(QMouseEvent* event)
         m_lastMoveX = m_selectionStartX;
     }
 
+    // Detect what is under the press BEFORE handing the click on.
+    //
+    // OCCT selects whatever the last MoveTo detected, and a press is not a
+    // move: a click that arrives without the cursor having travelled there
+    // first -- which is every click from the input-script harness, and any
+    // click that lands in the same frame as the move -- had nothing
+    // detected and so selected nothing. For a real cursor this is
+    // redundant work at the position it already sits on.
+    if (!m_context.IsNull() && !m_view.IsNull() && event->button() == Qt::LeftButton) {
+        m_context->MoveTo(pos.x(), pos.y(), m_view, Standard_False);
+    }
+
     PressMouseButton(pos,
                       ToAspectMouseButton(event->button()),
                       ToAspectFlags(event->modifiers()),
@@ -358,6 +376,15 @@ void OcctNativeWindow::mouseReleaseEvent(QMouseEvent* event)
                         ToAspectFlags(event->modifiers()),
                         false);
     updateView();
+}
+
+void OcctNativeWindow::OnSelectionChanged(const Handle(AIS_InteractiveContext)& theCtx,
+                                          const Handle(V3d_View)& theView)
+{
+    AIS_ViewController::OnSelectionChanged(theCtx, theView);
+    if (m_onSelectionChanged) {
+        m_onSelectionChanged();
+    }
 }
 
 void OcctNativeWindow::mouseMoveEvent(QMouseEvent* event)
@@ -456,6 +483,22 @@ void OcctNativeWindow::SelectInViewer(const NCollection_Sequence<Graphic3d_Vec2i
         pMin.y() = std::min(pMin.y(), p.y());
         pMax.x() = std::max(pMax.x(), p.x());
         pMax.y() = std::max(pMax.y(), p.y());
+    }
+
+    // A plain CLICK arrives here as a one-point "rectangle", and
+    // SelectRectangle on a zero-area box matches nothing -- with window
+    // semantics, which require full enclosure, it can never match
+    // anything. Left-click selection was silently dead because of it.
+    // A point pick goes through OCCT's own detect-then-select path.
+    //
+    // The slop is there because a click with a pixel or two of jitter is
+    // still a click, not a drag of a two-pixel box.
+    constexpr Standard_Integer kClickSlopPixels = 2;
+    if (pMax.x() - pMin.x() <= kClickSlopPixels && pMax.y() - pMin.y() <= kClickSlopPixels) {
+        m_context->MoveTo(pMax.x(), pMax.y(), m_view, Standard_False);
+        m_context->SelectDetected(theScheme);
+        m_view->Redraw();
+        return;
     }
 
     // Fusion-style direction-sensitive box select: dragging left-to-right
