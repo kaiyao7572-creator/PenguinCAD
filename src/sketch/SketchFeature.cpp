@@ -1,5 +1,6 @@
 #include "sketch/SketchFeature.h"
 
+#include "core/Origin.h"
 #include "sketch/SketchGeometry.h"
 #include "sketch/SketchProfiles.h"
 
@@ -240,21 +241,37 @@ gp_Pnt2d SketchFeature::To2d(const gp_Pnt& thePoint) const
                     delta.Dot(gp_Vec(position.YDirection())));
 }
 
+// The origin planes are defined once, in core/Origin.cpp, and read back
+// here. They were duplicated for a while and the two copies agreed --
+// which is luck, not a guarantee. A sketch drawn on "XZ" and a
+// construction plane offset from "XZ" have to mean the same plane, and
+// the only way to be sure is for there to be one of it.
+//
+// XZ's normal is -Y so that sketch (u, v) reads as world (X, Z), which is
+// how a front view is normally set up.
+namespace {
+
+gp_Ax3 OriginPlane(const char* theName)
+{
+    const OriginEntity* entity = FindOriginEntity(theName);
+    return entity != nullptr ? entity->plane : gp_Ax3();
+}
+
+} // namespace
+
 gp_Ax3 SketchFeature::PlaneXY()
 {
-    return gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0));
+    return OriginPlane("XY");
 }
 
 gp_Ax3 SketchFeature::PlaneXZ()
 {
-    // Normal -Y so that sketch (u, v) reads as world (X, Z), matching the
-    // way a front view is normally set up.
-    return gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, -1.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
+    return OriginPlane("XZ");
 }
 
 gp_Ax3 SketchFeature::PlaneYZ()
 {
-    return gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0), gp_Dir(0.0, 1.0, 0.0));
+    return OriginPlane("YZ");
 }
 
 int SketchFeature::AddEntity(const SketchEntity& theEntity)

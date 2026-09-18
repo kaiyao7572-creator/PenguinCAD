@@ -58,7 +58,7 @@ build_pipeline() {
         "$SRC/core/Body.cpp" "$SRC/core/Entity.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
-        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" "$SRC/core/Origin.cpp" \
         "$SRC/features/ProfileFeatures.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
         "$SRC/features/ModifyFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/pipeline_test" || return 1
@@ -76,6 +76,18 @@ build_entities() {
     "$OUT/entity_test"
 }
 
+# ---- construction: the origin folder, planes, axes and points ----
+build_construction() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/construction_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/Origin.cpp" "$SRC/core/ConstructionGeometry.cpp" \
+        "$SRC/features/ConstructionFeatures.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
+        "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/construction_test" || return 1
+    "$OUT/construction_test"
+}
+
 # ---- profiles: a sketch split into the regions a user can point at ----
 build_profiles() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
@@ -83,7 +95,7 @@ build_profiles() {
         "$SRC/core/ProfileProvider.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
-        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" "$SRC/core/Origin.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/profile_test" || return 1
     "$OUT/profile_test"
 }
@@ -95,7 +107,7 @@ build_inference() {
         "$SRC/core/ProfileProvider.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
-        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" "$SRC/core/Origin.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/inference_test" || return 1
     "$OUT/inference_test"
 }
@@ -106,6 +118,7 @@ run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
 run "Sketch: axis inference and snapping" build_inference
 run "Sketch: profile regions and references" build_profiles
 run "Entities: bodies, faces and the Fusion taxonomy" build_entities
+run "Construction: origin folder, planes, axes and points" build_construction
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."
