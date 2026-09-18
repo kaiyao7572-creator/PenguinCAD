@@ -55,6 +55,7 @@ build_pipeline() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/pipeline_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/ShapeFeature.cpp" \
+        "$SRC/core/Body.cpp" "$SRC/core/Entity.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
         "$SRC/sketch/SketchProfiles.cpp" \
@@ -62,6 +63,17 @@ build_pipeline() {
         "$SRC/features/ModifyFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/pipeline_test" || return 1
     "$OUT/pipeline_test"
+}
+
+# ---- entities: the Fusion object model -- taxonomy, bodies, sub-shape refs ----
+build_entities() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/entity_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/GeometryRef.cpp" "$SRC/core/ProfileProvider.cpp" \
+        "$SRC/features/PrimitiveFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/entity_test" || return 1
+    "$OUT/entity_test"
 }
 
 # ---- profiles: a sketch split into the regions a user can point at ----
@@ -93,6 +105,7 @@ run "Widget: unit-aware input field" build_widget
 run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
 run "Sketch: axis inference and snapping" build_inference
 run "Sketch: profile regions and references" build_profiles
+run "Entities: bodies, faces and the Fusion taxonomy" build_entities
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/Body.h"
 #include "core/Feature.h"
 
 #include <TopoDS_Shape.hxx>
@@ -76,6 +77,14 @@ public:
     // Errors collected during the last rebuild, one per failed feature.
     const std::vector<std::string>& Errors() const { return myErrors; }
 
+    // ---- bodies ----
+
+    // The shape above is the right model for a timeline and the wrong one
+    // for a user: "the model" is not a thing you can name, hide or act on
+    // one of. These are, and they keep their names across a rebuild.
+    const std::vector<BodyPtr>& Bodies() const { return myBodies.Bodies(); }
+    Body* FindBody(const std::string& theName) const { return myBodies.Find(theName); }
+
     // ---- active feature (what the properties panel edits) ----
 
     void SetActiveFeature(const FeaturePtr& theFeature);
@@ -121,6 +130,7 @@ private:
     std::vector<FeaturePtr>        myFeatures;
     std::vector<std::string>       myErrors;
     TopoDS_Shape                   myShape;
+    BodyTable                      myBodies;
     FeaturePtr                     myActiveFeature;
     std::size_t                    myRollbackIndex = npos;
     std::string                    myName = "Untitled";

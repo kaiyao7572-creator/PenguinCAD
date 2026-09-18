@@ -180,6 +180,9 @@ void Document::Rebuild()
     }
 
     myShape = current;
+    // Before the observers run, not after: the browser and the viewport
+    // both read Bodies() the moment they are told the document changed.
+    myBodies.Update(myShape);
     NotifyChanged();
 }
 
@@ -263,6 +266,9 @@ void Document::Clear()
     myErrors.clear();
     myRollbackIndex = npos;
     myShape = TopoDS_Shape();
+    // Reset the body numbering too: a new document starts at Body1, and
+    // Rebuild alone would only empty the table, not rewind the counter.
+    myBodies.Clear();
     myIsModified = false;
     Rebuild();
 }
