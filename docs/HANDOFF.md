@@ -248,10 +248,29 @@ dimension is after-the-fact. Mostly headless-testable.
 
 ### 3.5 Sketch feedback gaps
 
-- No glyph showing *why* a point snapped (endpoint vs midpoint vs origin).
+The numbers are now Fusion-like: the live length/angle floats beside the
+cursor in filled boxes, the one taking keystrokes highlighted in blue, and
+a committed dimension reads as the value alone ("25.4 mm") rather than
+"d1 = 25.4 mm" -- the parameter name belongs to the properties panel.
+Anything drawing text through AIS must scale the height by the device
+pixel ratio; `SetHeight` is in FRAMEBUFFER pixels, and handing it a
+logical number silently halves every number on a 2x display.
+
+Still missing:
+
+- **No fully-constrained indication**, and it is the biggest remaining
+  one. Fusion turns the geometry a different colour the moment a sketch
+  has zero degrees of freedom. Doing it honestly means DOF = unknowns −
+  rank(Jacobian), and the trap is that `SketchSolver`'s system only
+  includes entities a constraint MENTIONS (SketchConstraints.cpp ~line
+  572). A completely free line contributes no unknowns, so a naive rank
+  count calls it fully constrained -- the exact opposite of the truth.
+  A correct version needs a parameter vector over EVERY entity and the
+  rank taken against that. Do not ship a signal that can lie; a wrong
+  "fully constrained" is worse than none.
+- No glyph showing WHY a point snapped (endpoint vs midpoint vs origin).
 - Constraints are not clickable/deletable in the viewport.
 - Sketch geometry cannot be dragged to reshape (the solver exists).
-- A fully-constrained sketch does not change colour, so you cannot tell.
 - Trim does not preview which segment will vanish.
 - No Project/Include of existing edges into a sketch.
 

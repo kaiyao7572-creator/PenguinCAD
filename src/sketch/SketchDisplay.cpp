@@ -53,7 +53,11 @@ const Quantity_Color kProfileFillColor(0.45, 0.66, 0.86, Quantity_TOC_sRGB);
 // as a different kind of thing rather than as the same thing, lit.
 const Quantity_Color kProfileHoverColor(0.66, 0.85, 1.00, Quantity_TOC_sRGB);
 const Quantity_Color kProfileChosenColor(0.24, 0.68, 1.00, Quantity_TOC_sRGB);
-const Quantity_Color kConstraintColor(0.60, 0.64, 0.72, Quantity_TOC_sRGB);
+// Bright enough to read at a glance without competing with the curves.
+// Fusion's constraint symbols are near-white on the dark canvas; at the
+// old grey-blue they were the faintest thing on screen and the one part
+// of a sketch that tells you why it behaves as it does.
+const Quantity_Color kConstraintColor(0.80, 0.84, 0.90, Quantity_TOC_sRGB);
 const Quantity_Color kDimensionColor(0.95, 0.85, 0.55, Quantity_TOC_sRGB);
 
 // Fusion's on-canvas value boxes: a pale plate with near-black text, and
@@ -86,7 +90,7 @@ constexpr double kInactiveWidth     = 1.3;
 constexpr double kConstructionWidth = 1.3;
 constexpr double kPreviewWidth      = 2.0;
 constexpr double kSelectionWidth    = 3.0;
-constexpr double kAnnotationWidth   = 1.2;
+constexpr double kAnnotationWidth   = 1.4;
 constexpr double kMarkerScale       = 4.5;
 constexpr double kPointScale        = 1.6;
 
@@ -103,7 +107,7 @@ constexpr Standard_Integer kNoSelectionMode = -1;
 
 // Glyphs and arrowheads are sized in pixels so they stay readable at any
 // zoom; this is how many.
-constexpr Standard_Integer kAnnotationPixels = 11;
+constexpr Standard_Integer kAnnotationPixels = 13;
 
 // LOGICAL pixels, scaled to the framebuffer by DeviceWidth() like every
 // other size here. It used to be passed to AIS raw, which on a 2x display
