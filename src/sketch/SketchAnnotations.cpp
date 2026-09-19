@@ -413,10 +413,12 @@ std::string FormatDimension(const SketchConstraint& theConstraint)
         text = "D" + text;
     }
 
-    if (theConstraint.label.empty()) {
-        return text;
-    }
-    return theConstraint.label + " = " + text;
+    // Just the value on the canvas. Fusion shows the NUMBER on a sketch
+    // and keeps the parameter name ("d1") for the properties panel and
+    // the parameters dialog -- putting the name on the drawing doubles
+    // the width of every dimension and buries the one part of it anybody
+    // reads at a glance.
+    return text;
 }
 
 std::vector<SketchEntity> ConstraintGlyphs(const SketchFeature& theSketch, double theScale)

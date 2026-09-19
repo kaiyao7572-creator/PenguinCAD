@@ -39,9 +39,9 @@ SketchTool* theRunningTool = nullptr;
 // Where the value boxes hang relative to the cursor, in logical pixels.
 // Down and to the right, out of the way of the curve being drawn, which
 // is where Fusion puts them.
-constexpr double kReadoutOffsetX = 16.0;
-constexpr double kReadoutOffsetY = 14.0;
-constexpr double kReadoutLine    = 19.0;
+constexpr double kReadoutOffsetX = 18.0;
+constexpr double kReadoutOffsetY = 10.0;
+constexpr double kReadoutLine    = 30.0;
 
 // The printable character a key code stands for, or 0 for a key that is
 // not one. Qt's key codes for the printable ASCII range ARE the uppercase
@@ -716,7 +716,8 @@ void SketchTool::ShowReadout(const gp_Pnt2d& thePoint)
     for (std::size_t i = 0; i < lines.size(); ++i) {
         const gp_Pnt2d at(thePoint.X() + pixel * kReadoutOffsetX,
                           thePoint.Y() - pixel * (kReadoutOffsetY + kReadoutLine * i));
-        labels.push_back(SketchLabel{sketch->To3d(at), lines[i]});
+        labels.push_back(SketchLabel{sketch->To3d(at), lines[i],
+                                     static_cast<int>(i) == myInput.ActiveField()});
     }
     SketchDisplay::Instance().ShowPreviewLabels(labels);
 }

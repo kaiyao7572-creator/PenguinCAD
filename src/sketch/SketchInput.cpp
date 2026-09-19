@@ -227,12 +227,15 @@ std::vector<std::string> SketchInput::ReadoutLines() const
         // "=" is how this app already writes a driven dimension, so a
         // locked box reads as one; "> " marks where the next keystroke
         // lands.
-        std::string line = field.name + (field.locked ? " = " : "  ")
-                         + FieldText(static_cast<int>(i));
-        if (static_cast<int>(i) == myActive) {
-            line = "> " + line;
-        }
-        lines.push_back(line);
+        // No "> " marker for the active box: the box itself is
+        // highlighted, which is how Fusion says it and costs no width.
+        // "=" still marks a value the user has pinned, so a driven box is
+        // distinguishable from one still following the mouse.
+        // Padded with a space either side: the filled plate behind the
+        // text is sized to the glyphs exactly, and text touching the edge
+        // of its own box reads as cramped rather than as a field.
+        lines.push_back(" " + field.name + (field.locked ? " = " : "  ")
+                        + FieldText(static_cast<int>(i)) + " ");
     }
     return lines;
 }

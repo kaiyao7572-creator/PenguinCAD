@@ -330,13 +330,21 @@ int main()
         input.MeasureFromAnchor(gp_Pnt2d(0.0, 0.0), gp_Pnt2d(25.4, 0.0));
         const std::vector<std::string> lines = input.ReadoutLines();
         check(lines.size() == 2, "one line per box");
-        checkText(lines[0], "> Length  25.4 mm", "the active box is marked");
-        checkText(lines[1], "Angle  0 deg", "and the angle reads in degrees");
+        // Padded either side: the plate drawn behind a box is sized to the
+        // glyphs exactly, so unpadded text touches its own border.
+        checkText(lines[0], " Length  25.4 mm ", "a box reads as name then value");
+        checkText(lines[1], " Angle  0 deg ", "and the angle reads in degrees");
+
+        // Which box is active is carried as state, not as a character in
+        // the text: the box itself is highlighted, the way Fusion says it.
+        check(input.ActiveField() == 0, "the first box is the active one");
+        check(input.SetActiveField(1) && input.ActiveField() == 1, "and it can move");
+        check(input.SetActiveField(0), "back again");
 
         typeText(input, "3");
-        checkText(input.ReadoutLines()[0], "> Length  3", "what is being typed shows as typed");
+        checkText(input.ReadoutLines()[0], " Length  3 ", "what is being typed shows as typed");
         input.Commit();
-        checkText(input.ReadoutLines()[0], "> Length = 3 mm", "a locked box reads as driven");
+        checkText(input.ReadoutLines()[0], " Length = 3 mm ", "a locked box reads as driven");
 
         // Precision: a quarter of an inch in mm is 6.35, not 6.350000.
         input.Begin(LineFields());
@@ -382,11 +390,11 @@ int main()
         checkText(added[1].label, "d2", "and count up");
         checkText(added[2].label, "d3", "in the order they were added");
 
-        checkText(SketchAnnotations::FormatDimension(added[0]), "d1 = 25.4 mm",
+        checkText(SketchAnnotations::FormatDimension(added[0]), "25.4 mm",
                   "a length reads in the document's unit, zeros trimmed");
-        checkText(SketchAnnotations::FormatDimension(added[1]), "d2 = D12 mm",
+        checkText(SketchAnnotations::FormatDimension(added[1]), "D12 mm",
                   "a diameter says so");
-        checkText(SketchAnnotations::FormatDimension(added[2]), "d3 = 45 deg",
+        checkText(SketchAnnotations::FormatDimension(added[2]), "45 deg",
                   "an angle reads in degrees, not radians");
 
         // The number is lifted clear of the dimension line drawn through

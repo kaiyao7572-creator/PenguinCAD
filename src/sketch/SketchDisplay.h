@@ -7,6 +7,7 @@
 #include <AIS_InteractiveObject.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
+#include <AIS_TextLabel.hxx>
 #include <Graphic3d_ZLayerId.hxx>
 #include <Quantity_Color.hxx>
 #include <TopoDS_Shape.hxx>
@@ -22,10 +23,18 @@ struct CommandContext;
 class SketchFeature;
 
 // A line of text floating in the viewport, in model coordinates.
+// One of Fusion's on-canvas value boxes: a number floating beside the
+// cursor while a tool collects, drawn on a filled plate so it reads
+// against whatever is behind it.
 struct SketchLabel
 {
     gp_Pnt      position;
     std::string text;
+
+    // The box the next keystroke lands in. Fusion highlights it rather
+    // than marking it with a character, so the eye finds it without
+    // reading anything.
+    bool isActive = false;
 };
 
 // Owns every AIS object the sketch subsystem puts in the viewport.
@@ -61,6 +70,10 @@ public:
     // The objects are reused between calls: a text label rebuilt on every
     // mouse move flickers.
     void ShowPreviewLabels(const std::vector<SketchLabel>& theLabels);
+
+    // Paint one value box: plate, text colour and size, highlighted when
+    // it is the one taking keystrokes.
+    void StyleValueBox(const Handle(AIS_TextLabel)& theLabel, bool theIsActive) const;
     void ClearPreviewLabels();
 
     bool AreSketchesVisible() const { return myAreSketchesVisible; }

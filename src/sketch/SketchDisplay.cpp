@@ -11,6 +11,7 @@
 
 #include <AIS_DisplayMode.hxx>
 #include <AIS_TextLabel.hxx>
+#include <Aspect_TypeOfDisplayText.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <Aspect_TypeOfMarker.hxx>
 #include <BRep_Builder.hxx>
@@ -55,6 +56,16 @@ const Quantity_Color kProfileChosenColor(0.24, 0.68, 1.00, Quantity_TOC_sRGB);
 const Quantity_Color kConstraintColor(0.60, 0.64, 0.72, Quantity_TOC_sRGB);
 const Quantity_Color kDimensionColor(0.95, 0.85, 0.55, Quantity_TOC_sRGB);
 
+// Fusion's on-canvas value boxes: a pale plate with near-black text, and
+// the box awaiting the next keystroke filled in the same blue everything
+// grabbable in this app uses. Dark text on a light plate rather than the
+// other way round, because it has to stay readable over a shaded body as
+// well as over the empty grid.
+const Quantity_Color kValueBoxColor(0.91, 0.93, 0.95, Quantity_TOC_sRGB);
+const Quantity_Color kValueTextColor(0.08, 0.10, 0.13, Quantity_TOC_sRGB);
+const Quantity_Color kValueBoxActiveColor(0.20, 0.72, 1.00, Quantity_TOC_sRGB);
+const Quantity_Color kValueTextActiveColor(1.00, 1.00, 1.00, Quantity_TOC_sRGB);
+
 // Faint enough that the grid still reads through a filled profile, strong
 // enough to be unmistakable at a glance -- which is the whole job of the
 // fill, since it is the only thing on screen that says "this region is
@@ -94,7 +105,13 @@ constexpr Standard_Integer kNoSelectionMode = -1;
 // zoom; this is how many.
 constexpr Standard_Integer kAnnotationPixels = 11;
 
-constexpr double kTextHeight = 14.0;
+// LOGICAL pixels, scaled to the framebuffer by DeviceWidth() like every
+// other size here. It used to be passed to AIS raw, which on a 2x display
+// drew every number at half the size it was meant to be -- the numbers on
+// a sketch are the thing the user is reading, and they were the smallest
+// text on screen.
+constexpr double kTextHeight    = 13.0;
+constexpr double kValueBoxHeight = 14.0;
 
 // Curves and markers go one layer above the profile fill rather than
 // sharing a layer with it: within a layer OCCT draws translucent surfaces
@@ -504,7 +521,7 @@ void SketchDisplay::AddAnnotations(SketchFeature& theSketch)
         text->SetText(TCollection_ExtendedString(label.text.c_str()));
         text->SetPosition(theSketch.To3d(label.position));
         text->SetColor(kDimensionColor);
-        text->SetHeight(kTextHeight);
+        text->SetHeight(DeviceWidth(kTextHeight));
         // Centred on the lifted anchor and sitting above it, so the number
         // straddles its dimension line the way a drawing has it rather
         // than trailing off to one side.
@@ -585,6 +602,9 @@ void SketchDisplay::ShowPreviewLabels(const std::vector<SketchLabel>& theLabels)
         if (i < myPreviewLabels.size()) {
             myPreviewLabels[i]->SetText(text);
             myPreviewLabels[i]->SetPosition(theLabels[i].position);
+            // Restyled on every update, not just on creation: Tab moves
+            // the highlight between boxes that already exist.
+            StyleValueBox(myPreviewLabels[i], theLabels[i].isActive);
             myContext->Redisplay(myPreviewLabels[i], Standard_False);
             continue;
         }
@@ -592,12 +612,27 @@ void SketchDisplay::ShowPreviewLabels(const std::vector<SketchLabel>& theLabels)
         Handle(AIS_TextLabel) label = new AIS_TextLabel();
         label->SetText(text);
         label->SetPosition(theLabels[i].position);
-        label->SetColor(kPreviewColor);
-        label->SetHeight(kTextHeight);
+        StyleValueBox(label, theLabels[i].isActive);
         myContext->Display(label, 0, kNoSelectionMode, Standard_False);
         myContext->SetZLayer(label, kCurveLayer);
         myPreviewLabels.push_back(label);
     }
+}
+
+void SketchDisplay::StyleValueBox(const Handle(AIS_TextLabel)& theLabel, bool theIsActive) const
+{
+    if (theLabel.IsNull()) {
+        return;
+    }
+    // Aspect_TODT_SUBTITLE fills a plate behind the glyphs, which is what
+    // makes these read as input boxes rather than as text lying loose on
+    // the model.
+    theLabel->SetDisplayType(Aspect_TODT_SUBTITLE);
+    theLabel->SetColorSubTitle(theIsActive ? kValueBoxActiveColor : kValueBoxColor);
+    theLabel->SetColor(theIsActive ? kValueTextActiveColor : kValueTextColor);
+    theLabel->SetHeight(DeviceWidth(kValueBoxHeight));
+    theLabel->SetHJustification(Graphic3d_HTA_LEFT);
+    theLabel->SetVJustification(Graphic3d_VTA_CENTER);
 }
 
 void SketchDisplay::ClearPreviewLabels()
