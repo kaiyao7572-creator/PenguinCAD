@@ -27,12 +27,34 @@ namespace {
 // double click) rather than a curve the user meant to draw.
 constexpr double kMinimumLength = 1.0e-6;
 
+constexpr double kPi = 3.14159265358979323846;
+
 // Pixels, converted to model units through the view, within which a new
 // point snaps onto an existing sketch endpoint.
 constexpr Standard_Integer kSnapPixels = 8;
 
 // Only one drawing tool can own the viewport at a time.
 SketchTool* theRunningTool = nullptr;
+
+// Where the value boxes hang relative to the cursor, in logical pixels.
+// Down and to the right, out of the way of the curve being drawn, which
+// is where Fusion puts them.
+constexpr double kReadoutOffsetX = 16.0;
+constexpr double kReadoutOffsetY = 14.0;
+constexpr double kReadoutLine    = 19.0;
+
+// The printable character a key code stands for, or 0 for a key that is
+// not one. Qt's key codes for the printable ASCII range ARE the uppercase
+// characters, which is what makes this a cast rather than a table.
+char TypedCharacter(int theKey)
+{
+    if (theKey < 0x20 || theKey > 0x7e) {
+        return '\0';
+    }
+    const char character = static_cast<char>(theKey);
+    return (character >= 'A' && character <= 'Z') ? static_cast<char>(character - 'A' + 'a')
+                                                  : character;
+}
 
 void ShowStatus(const CommandContext& theContext, const QString& theText)
 {
@@ -89,6 +111,96 @@ void AddSimpleConstraint(SketchFeature&       theSketch,
         constraint.b = SketchPointRef{theSecond, SketchPointRole::Whole};
     }
     theSketch.AddConstraint(constraint);
+}
+
+SketchInputField MakeField(const char* theName, UnitKind theKind)
+{
+    SketchInputField field;
+    field.name = theName;
+    field.kind = theKind;
+    return field;
+}
+
+// How far off the curve a freshly typed dimension's number sits, in
+// logical pixels: clear of the geometry it measures, close enough to
+// still read as belonging to it.
+constexpr double kDimensionOffsetPixels = 22.0;
+
+double DimensionOffset(double thePixelSize, double theSpan)
+{
+    if (thePixelSize > 0.0) {
+        return thePixelSize * kDimensionOffsetPixels;
+    }
+    // No view up yet (a script, a test): a share of what is being
+    // measured still clears it.
+    return std::max(theSpan * 0.15, 1.0);
+}
+
+// A spot beside the middle of a span, perpendicular to it.
+gp_Pnt2d LabelSpotBeside(const gp_Pnt2d& theFrom, const gp_Pnt2d& theTo, double theOffset)
+{
+    const gp_Pnt2d middle((theFrom.X() + theTo.X()) * 0.5, (theFrom.Y() + theTo.Y()) * 0.5);
+    gp_Vec2d along(theTo.X() - theFrom.X(), theTo.Y() - theFrom.Y());
+    if (along.SquareMagnitude() <= kMinimumLength * kMinimumLength) {
+        return middle;
+    }
+    along.Normalize();
+    return middle.Translated(gp_Vec2d(-along.Y(), along.X()) * theOffset);
+}
+
+// A typed value becomes a DRIVING dimension, not merely a size the curve
+// happened to be drawn at. That is the whole difference between Fusion's
+// typed input and letting go of a rubber band in the right place: edit d1
+// in the properties panel afterwards and the geometry moves.
+//
+// The value comes from what the user typed rather than from measuring
+// what was drawn, so "exactly 25" stays exactly 25.
+void AddLengthDimension(SketchFeature& theSketch,
+                        int            theLineId,
+                        double         theMillimeters,
+                        double         thePixelSize)
+{
+    const SketchEntity* line = theSketch.FindEntity(theLineId);
+    if (line == nullptr || line->kind != SketchEntity::Kind::Line) {
+        return;
+    }
+
+    SketchConstraint dimension;
+    dimension.type = SketchConstraintType::Distance;
+    dimension.a = SketchPointRef{theLineId, SketchPointRole::Start};
+    dimension.b = SketchPointRef{theLineId, SketchPointRole::End};
+    dimension.value = theMillimeters;
+    dimension.labelPosition =
+        LabelSpotBeside(line->StartPoint(), line->EndPoint(),
+                        DimensionOffset(thePixelSize, theMillimeters));
+    theSketch.AddConstraint(dimension);
+}
+
+void AddRadialDimension(SketchFeature&       theSketch,
+                        int                  theEntityId,
+                        SketchConstraintType theType,
+                        double               theMillimeters,
+                        double               thePixelSize)
+{
+    const SketchEntity* entity = theSketch.FindEntity(theEntityId);
+    if (entity == nullptr) {
+        return;
+    }
+
+    SketchConstraint dimension;
+    dimension.type = theType;
+    dimension.a = SketchPointRef{theEntityId, SketchPointRole::Whole};
+    dimension.value = theMillimeters;
+
+    // Out past the rim at 45 degrees, where a radial dimension is least
+    // likely to land on the curve or on whatever the circle was drawn
+    // around.
+    const double reach =
+        entity->radius + DimensionOffset(thePixelSize, entity->radius) * 2.0;
+    const double diagonal = reach * 0.70710678118654752;
+    dimension.labelPosition =
+        gp_Pnt2d(entity->first.X() + diagonal, entity->first.Y() + diagonal);
+    theSketch.AddConstraint(dimension);
 }
 
 // Direction a new curve should leave thePoint in so it continues the
@@ -217,6 +329,7 @@ void SketchTool::Start(const CommandContext& theContext)
     if (myIsRunning && theRunningTool == this) {
         // Re-running the active tool just restarts the curve in progress.
         Reset();
+        RearmInput();
         ClearPreview();
         ShowHint();
         return;
@@ -225,6 +338,7 @@ void SketchTool::Start(const CommandContext& theContext)
     StopActiveSketchTool();
 
     Reset();
+    myInput.End();
     myIsRunning = true;
     myHasAnchor = false;   // a new tool infers from nothing until its first point
     myHasHover = false;
@@ -233,6 +347,7 @@ void SketchTool::Start(const CommandContext& theContext)
     if (myContext.viewport != nullptr) {
         myContext.viewport->PushInteraction(this);
     }
+    RearmInput();
     ShowHint();
 }
 
@@ -265,6 +380,7 @@ void SketchTool::OnDeactivated()
         theRunningTool = nullptr;
     }
     Reset();
+    myInput.End();
     ClearPreview();
     ShowStatus(myContext, QString());
     SketchDisplay::Instance().Redraw();
@@ -345,6 +461,8 @@ std::vector<int> SketchTool::Commit(const std::vector<SketchEntity>& theEntities
     // time instead of discarding the whole thing.
     myContext.document->PushUndoSnapshot();
     ids = sketch->AddEntities(theEntities);
+
+    const std::size_t before = sketch->Constraints().size();
     OnCommitted(*sketch, ids);
     ConstrainAxisAlignedLines(*sketch, ids);
 
@@ -352,6 +470,26 @@ std::vector<int> SketchTool::Commit(const std::vector<SketchEntity>& theEntities
     // Rebuild, not NotifyChanged: anything extruded from this sketch has
     // to re-evaluate against the new profile.
     myContext.document->Rebuild();
+
+    // A dimension the solver cannot reach leaves the whole sketch stuck,
+    // so it comes back out rather than staying broken -- the rule the
+    // dimension tool already follows, now that typed input creates
+    // dimensions too.
+    if (!sketch->LastError().empty()) {
+        std::vector<int> doomed;
+        const std::vector<SketchConstraint>& constraints = sketch->Constraints();
+        for (std::size_t i = before; i < constraints.size(); ++i) {
+            if (constraints[i].IsDimension()) {
+                doomed.push_back(constraints[i].id);
+            }
+        }
+        if (!doomed.empty()) {
+            for (int id : doomed) {
+                sketch->RemoveConstraint(id);
+            }
+            myContext.document->Rebuild();
+        }
+    }
     return ids;
 }
 
@@ -394,7 +532,13 @@ void SketchTool::ShowHint()
 void SketchTool::RefreshPreview()
 {
     if (myHasHover) {
-        OnHover(myLastHover);
+        DispatchHover(myLastHover);
+        return;
+    }
+    // Typing before the mouse has moved still has to put the numbers on
+    // screen, and the anchor is the only point known at that stage.
+    if (myHasAnchor) {
+        ShowReadout(ApplyInput(myAnchor));
     }
 }
 
@@ -482,10 +626,15 @@ bool SketchTool::OnMousePress(const Graphic3d_Vec2i& thePos,
 
     gp_Pnt2d point;
     if (PlanePointAt(thePos, point)) {
+        // A typed value outranks the cursor for a click exactly as it
+        // does for the rubber band: clicking with a length typed places
+        // the point at that length, not wherever the mouse happened to be.
+        point = ApplyInput(point);
         OnPoint(point);
         // Whatever was just placed is what the next segment grows from.
         myAnchor = point;
         myHasAnchor = true;
+        RearmInput();
         ShowHint();
     }
     return ConsumedLastPress();
@@ -508,10 +657,138 @@ bool SketchTool::OnMouseMove(const Graphic3d_Vec2i& thePos,
 
     gp_Pnt2d point;
     if (PlanePointAt(thePos, point)) {
+        // The RAW cursor is remembered, never the bent one: re-running the
+        // preview after a keystroke has to start from where the mouse
+        // actually is, or releasing a lock would leave the curve stuck at
+        // the value that was just abandoned.
         myLastHover = point;
         myHasHover = true;
-        OnHover(point);
+        DispatchHover(point);
     }
+    return true;
+}
+
+void SketchTool::DispatchHover(const gp_Pnt2d& theCursor)
+{
+    const gp_Pnt2d point = ApplyInput(theCursor);
+    MeasureInput(point);
+    OnHover(point);
+    ShowReadout(point);
+}
+
+void SketchTool::MeasureInput(const gp_Pnt2d& theCursor)
+{
+    if (myHasAnchor) {
+        myInput.MeasureFromAnchor(myAnchor, theCursor);
+    }
+}
+
+gp_Pnt2d SketchTool::ApplyInput(const gp_Pnt2d& theCursor) const
+{
+    if (!myHasAnchor || !myInput.AnyLocked()) {
+        return theCursor;
+    }
+    return myInput.ResolvePoint(myAnchor, theCursor);
+}
+
+void SketchTool::RearmInput()
+{
+    myInput.End();
+    ArmInput(myInput);
+}
+
+void SketchTool::ShowReadout(const gp_Pnt2d& thePoint)
+{
+    SketchFeature* sketch = Sketch();
+    if (sketch == nullptr || !myInput.IsActive() || !IsCollecting()) {
+        SketchDisplay::Instance().ClearPreviewLabels();
+        return;
+    }
+
+    double pixel = PixelSize();
+    if (pixel <= 0.0) {
+        pixel = 1.0;  // no view yet: any sane size beats drawing nothing
+    }
+
+    const std::vector<std::string> lines = myInput.ReadoutLines();
+    std::vector<SketchLabel> labels;
+    labels.reserve(lines.size());
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        const gp_Pnt2d at(thePoint.X() + pixel * kReadoutOffsetX,
+                          thePoint.Y() - pixel * (kReadoutOffsetY + kReadoutLine * i));
+        labels.push_back(SketchLabel{sketch->To3d(at), lines[i]});
+    }
+    SketchDisplay::Instance().ShowPreviewLabels(labels);
+}
+
+void SketchTool::PlaceTypedPoint()
+{
+    if (!myHasAnchor) {
+        return;  // nothing to measure from, so nothing to place
+    }
+
+    const gp_Pnt2d point = ApplyInput(myHasHover ? myLastHover : myAnchor);
+    OnPoint(point);
+    myAnchor = point;
+    RearmInput();
+    ShowHint();
+}
+
+bool SketchTool::HandleTypedKey(int theKey, Qt::KeyboardModifiers theModifiers)
+{
+    if (!myInput.IsActive()) {
+        return false;
+    }
+    // Ctrl and Alt combinations belong to the application, not to a
+    // number being typed into the canvas.
+    if (theModifiers.testFlag(Qt::ControlModifier) || theModifiers.testFlag(Qt::AltModifier)) {
+        return false;
+    }
+
+    switch (theKey) {
+        case Qt::Key_Escape:
+            if (!myInput.ClearTyping()) {
+                return false;  // nothing typed: Escape is the tool's to handle
+            }
+            RefreshPreview();
+            return true;
+
+        case Qt::Key_Backspace:
+            if (!myInput.Backspace()) {
+                return false;
+            }
+            RefreshPreview();
+            return true;
+
+        case Qt::Key_Tab:
+        case Qt::Key_Backtab:
+            myInput.NextField();
+            RefreshPreview();
+            return true;
+
+        case Qt::Key_Return:
+        case Qt::Key_Enter: {
+            const SketchInputResult result = myInput.Commit();
+            if (result == SketchInputResult::Rejected) {
+                RefreshPreview();   // the bad text stays up to be corrected
+                return true;
+            }
+            if (result == SketchInputResult::Ignored && !myInput.AnyLocked()) {
+                return false;  // Enter with nothing typed is not ours
+            }
+            PlaceTypedPoint();
+            return true;
+        }
+
+        default:
+            break;
+    }
+
+    const char character = TypedCharacter(theKey);
+    if (character == '\0' || !myInput.TypeCharacter(character)) {
+        return false;
+    }
+    RefreshPreview();
     return true;
 }
 
@@ -558,6 +835,13 @@ bool SketchTool::OnKeyPress(int theKey, Qt::KeyboardModifiers theModifiers)
         }
         return true;
     }
+
+    // Before the tool's own Escape: a half-typed value is what Escape
+    // clears first, and only once there is none does it reach the curve.
+    if (HandleTypedKey(theKey, theModifiers)) {
+        return true;
+    }
+
     if (theKey != Qt::Key_Escape) {
         return false;
     }
@@ -566,6 +850,7 @@ bool SketchTool::OnKeyPress(int theKey, Qt::KeyboardModifiers theModifiers)
     // tool -- the behaviour every CAD package has.
     if (IsCollecting()) {
         Reset();
+        RearmInput();
         ClearPreview();
         ShowHint();
         return true;
@@ -645,18 +930,42 @@ protected:
         ShowPreview({SketchEntity::MakeLine(myStart, thePoint)});
     }
 
+    void ArmInput(SketchInput& theInput) override
+    {
+        if (!myHasStart) {
+            return;  // nothing to measure until the line has a start
+        }
+        theInput.Begin({MakeField(SketchInputFields::Length, UnitKind::Length),
+                        MakeField(SketchInputFields::Angle, UnitKind::Angle)});
+    }
+
     void OnCommitted(SketchFeature& theSketch, const std::vector<int>& theIds) override
     {
-        // Each segment is pinned to the one before it, so the chain stays
-        // a chain when anything downstream moves.
-        if (myPreviousId == 0 || theIds.empty()) {
+        if (theIds.empty()) {
             return;
         }
-        SketchConstraint constraint;
-        constraint.type = SketchConstraintType::Coincident;
-        constraint.a = SketchPointRef{myPreviousId, SketchPointRole::End};
-        constraint.b = SketchPointRef{theIds.front(), SketchPointRole::Start};
-        theSketch.AddConstraint(constraint);
+
+        // Each segment is pinned to the one before it, so the chain stays
+        // a chain when anything downstream moves.
+        if (myPreviousId != 0) {
+            SketchConstraint constraint;
+            constraint.type = SketchConstraintType::Coincident;
+            constraint.a = SketchPointRef{myPreviousId, SketchPointRole::End};
+            constraint.b = SketchPointRef{theIds.front(), SketchPointRole::Start};
+            theSketch.AddConstraint(constraint);
+        }
+
+        if (Input().IsLocked(SketchInputFields::Length)) {
+            AddLengthDimension(theSketch, theIds.front(),
+                               Input().Value(SketchInputFields::Length), PixelSize());
+        }
+
+        // A typed ANGLE gets no dimension of its own. It is measured from
+        // the sketch's X axis, and this constraint vocabulary has no
+        // entity standing for that axis to measure against -- only an
+        // Angle between two lines. An on-axis line does get its
+        // Horizontal or Vertical from ConstrainAxisAlignedLines, which is
+        // what Fusion stamps there too.
     }
 
 private:
@@ -677,6 +986,18 @@ protected:
         }
         ChainCoincident(theSketch, theIds, true);
         ApplyShapeConstraints(theSketch, theIds);
+
+        // Sides 0 and 1 are adjacent, so one dimension each is what drives
+        // the whole rectangle once the horizontals, verticals and corner
+        // coincidences above are in force.
+        if (Input().IsLocked(SketchInputFields::Width)) {
+            AddLengthDimension(theSketch, theIds[0], Input().Value(SketchInputFields::Width),
+                               PixelSize());
+        }
+        if (Input().IsLocked(SketchInputFields::Height)) {
+            AddLengthDimension(theSketch, theIds[1], Input().Value(SketchInputFields::Height),
+                               PixelSize());
+        }
     }
 
     // Axis-aligned rectangles are held square by horizontals and
@@ -727,6 +1048,30 @@ protected:
         ShowPreview(SketchGeometry::RectangleTwoPoint(myCorner, thePoint));
     }
 
+    void ArmInput(SketchInput& theInput) override
+    {
+        if (!myHasCorner) {
+            return;
+        }
+        theInput.Begin({MakeField(SketchInputFields::Width, UnitKind::Length),
+                        MakeField(SketchInputFields::Height, UnitKind::Length)});
+    }
+
+    void MeasureInput(const gp_Pnt2d& theCursor) override
+    {
+        if (myHasCorner) {
+            Input().MeasureBox(myCorner, theCursor);
+        }
+    }
+
+    gp_Pnt2d ApplyInput(const gp_Pnt2d& theCursor) const override
+    {
+        if (!myHasCorner || !Input().AnyLocked()) {
+            return theCursor;
+        }
+        return Input().ResolveCorner(myCorner, theCursor);
+    }
+
 private:
     bool IsValid(const gp_Pnt2d& theOpposite) const
     {
@@ -771,6 +1116,37 @@ protected:
             return;
         }
         ShowPreview(SketchGeometry::RectangleCentre(myCentre, thePoint));
+    }
+
+    void ArmInput(SketchInput& theInput) override
+    {
+        if (!myHasCentre) {
+            return;
+        }
+        theInput.Begin({MakeField(SketchInputFields::Width, UnitKind::Length),
+                        MakeField(SketchInputFields::Height, UnitKind::Length)});
+    }
+
+    void MeasureInput(const gp_Pnt2d& theCursor) override
+    {
+        if (myHasCentre) {
+            // The cursor only reaches a corner, so it covers half the
+            // rectangle: the box still reads the full width, as Fusion's
+            // does.
+            Input().MeasureBox(myCentre, theCursor, true);
+        }
+    }
+
+    gp_Pnt2d ApplyInput(const gp_Pnt2d& theCursor) const override
+    {
+        if (!myHasCentre || !Input().AnyLocked()) {
+            return theCursor;
+        }
+        return SketchInputCorner(myCentre, theCursor,
+                                 Input().IsLocked(SketchInputFields::Width),
+                                 Input().Value(SketchInputFields::Width) * 0.5,
+                                 Input().IsLocked(SketchInputFields::Height),
+                                 Input().Value(SketchInputFields::Height) * 0.5);
     }
 
 private:
@@ -908,6 +1284,42 @@ protected:
             return;
         }
         ShowPreview({SketchEntity::MakeCircle(myCentre, radius)});
+    }
+
+    // Fusion's circle tool asks for a DIAMETER, which is also the
+    // dimension it leaves behind.
+    void ArmInput(SketchInput& theInput) override
+    {
+        if (!myHasCentre) {
+            return;
+        }
+        theInput.Begin({MakeField(SketchInputFields::Diameter, UnitKind::Length)});
+    }
+
+    void MeasureInput(const gp_Pnt2d& theCursor) override
+    {
+        if (myHasCentre) {
+            Input().SetMeasured(SketchInputFields::Diameter,
+                                myCentre.Distance(theCursor) * 2.0);
+        }
+    }
+
+    gp_Pnt2d ApplyInput(const gp_Pnt2d& theCursor) const override
+    {
+        if (!myHasCentre || !Input().IsLocked(SketchInputFields::Diameter)) {
+            return theCursor;
+        }
+        return SketchInputPoint(myCentre, theCursor, true,
+                                Input().Value(SketchInputFields::Diameter) * 0.5, false, 0.0);
+    }
+
+    void OnCommitted(SketchFeature& theSketch, const std::vector<int>& theIds) override
+    {
+        if (theIds.empty() || !Input().IsLocked(SketchInputFields::Diameter)) {
+            return;
+        }
+        AddRadialDimension(theSketch, theIds.front(), SketchConstraintType::Diameter,
+                           Input().Value(SketchInputFields::Diameter), PixelSize());
     }
 
 private:
@@ -1048,7 +1460,8 @@ protected:
                 if (std::fabs(endAngle - myStartAngle) <= 1.0e-9) {
                     return;
                 }
-                Commit({SketchEntity::MakeArc(myCentre, myRadius, myStartAngle, endAngle)});
+                Commit({SketchEntity::MakeArc(myCentre, CurrentRadius(), myStartAngle,
+                                              endAngle)});
                 myStage = Stage::Centre;
                 return;
             }
@@ -1078,14 +1491,102 @@ protected:
                 if (std::fabs(endAngle - myStartAngle) <= 1.0e-9) {
                     return;
                 }
-                ShowPreview({SketchEntity::MakeArc(myCentre, myRadius, myStartAngle, endAngle)});
+                ShowPreview({SketchEntity::MakeArc(myCentre, CurrentRadius(), myStartAngle,
+                                                   endAngle)});
                 return;
             }
         }
     }
 
+    // Radius while the size is being chosen, radius and sweep once the
+    // arc has a start: the two numbers Fusion shows for an arc.
+    void ArmInput(SketchInput& theInput) override
+    {
+        switch (myStage) {
+            case Stage::Centre:
+                return;
+            case Stage::Start:
+                theInput.Begin({MakeField(SketchInputFields::Radius, UnitKind::Length)});
+                return;
+            case Stage::End:
+                theInput.Begin({MakeField(SketchInputFields::Sweep, UnitKind::Angle),
+                                MakeField(SketchInputFields::Radius, UnitKind::Length)});
+                return;
+        }
+    }
+
+    void MeasureInput(const gp_Pnt2d& theCursor) override
+    {
+        if (myStage == Stage::Centre) {
+            return;
+        }
+        Input().SetMeasured(SketchInputFields::Radius, myCentre.Distance(theCursor));
+        if (myStage == Stage::End) {
+            Input().SetMeasured(SketchInputFields::Sweep, SweepTo(theCursor));
+        }
+    }
+
+    // Everything about an arc is measured from its CENTRE, which is not
+    // the point the last click left behind -- so the inherited
+    // anchor-based version would measure the sweep from the wrong place.
+    gp_Pnt2d ApplyInput(const gp_Pnt2d& theCursor) const override
+    {
+        if (myStage == Stage::Centre || !Input().AnyLocked()) {
+            return theCursor;
+        }
+
+        const bool hasRadius = Input().IsLocked(SketchInputFields::Radius);
+        if (myStage == Stage::Start) {
+            return SketchInputPoint(myCentre, theCursor, hasRadius,
+                                    Input().Value(SketchInputFields::Radius), false, 0.0);
+        }
+
+        const double radius = CurrentRadius();
+        const double sweep = Input().IsLocked(SketchInputFields::Sweep)
+                                 ? Input().Value(SketchInputFields::Sweep)
+                                 : SweepTo(theCursor);
+        return SketchInputPoint(myCentre, theCursor, true, radius, true,
+                                myStartAngle * 180.0 / kPi + sweep);
+    }
+
+    void OnCommitted(SketchFeature& theSketch, const std::vector<int>& theIds) override
+    {
+        if (theIds.empty() || !Input().IsLocked(SketchInputFields::Radius)) {
+            return;
+        }
+        AddRadialDimension(theSketch, theIds.front(), SketchConstraintType::Radius,
+                           Input().Value(SketchInputFields::Radius), PixelSize());
+
+        // A typed SWEEP gets no dimension: this constraint set's Angle
+        // measures between two LINES, and an arc's own included angle is
+        // not one of the relations it can express. Refusing beats adding
+        // something that would drive the wrong thing.
+    }
+
 private:
     enum class Stage { Centre, Start, End };
+
+    // The radius the arc is actually being drawn at: what was typed if
+    // anything was, otherwise what the second click set.
+    double CurrentRadius() const
+    {
+        return Input().IsLocked(SketchInputFields::Radius)
+                   ? Input().Value(SketchInputFields::Radius)
+                   : myRadius;
+    }
+
+    // Counter-clockwise sweep from the start to the cursor, in degrees.
+    double SweepTo(const gp_Pnt2d& theCursor) const
+    {
+        double sweep = (AngleOf(myCentre, theCursor) - myStartAngle) * 180.0 / kPi;
+        while (sweep < 0.0) {
+            sweep += 360.0;
+        }
+        while (sweep >= 360.0) {
+            sweep -= 360.0;
+        }
+        return sweep;
+    }
 
     Stage    myStage = Stage::Centre;
     gp_Pnt2d myCentre;

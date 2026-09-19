@@ -3,6 +3,7 @@
 #include "core/Command.h"
 #include "core/ViewportInteraction.h"
 #include "sketch/SketchFeature.h"
+#include "sketch/SketchInput.h"
 
 #include <gp_Pnt2d.hxx>
 
@@ -99,6 +100,33 @@ protected:
     // still be selected for the next sketch.
     virtual bool ConsumedLastPress() const { return true; }
 
+    // ---- typed input: Fusion's on-canvas value boxes ----
+
+    // The boxes this tool offers at the stage it has reached. Leave
+    // theInput empty -- the default -- and the tool keeps exactly the
+    // behaviour it had before typed input existed.
+    virtual void ArmInput(SketchInput& theInput) { (void)theInput; }
+
+    // Fill the boxes from the cursor. Locked boxes refuse the update
+    // themselves, so an override never has to remember the rule.
+    virtual void MeasureInput(const gp_Pnt2d& theCursor);
+
+    // Bend a cursor point to whatever the user has typed. The default is
+    // a length and an angle measured from the last placed point, which is
+    // what a line wants; the box and radial tools override it.
+    virtual gp_Pnt2d ApplyInput(const gp_Pnt2d& theCursor) const;
+
+    SketchInput&       Input() { return myInput; }
+    const SketchInput& Input() const { return myInput; }
+
+    bool            HasAnchor() const { return myHasAnchor; }
+    const gp_Pnt2d& Anchor() const { return myAnchor; }
+
+    // Re-arm the boxes for the stage the tool has just moved to. Called
+    // for you after every click and every reset; a tool only needs it
+    // when it changes stage some other way.
+    void RearmInput();
+
     // Called after Commit() has put entities into the sketch, with the ids
     // they were given. Tools override it to add the constraints Fusion
     // infers automatically -- the horizontals and coincidences that make a
@@ -140,6 +168,23 @@ private:
     // Screen pixel -> point on the sketch plane, snapped to a nearby
     // entity endpoint when there is one.
     bool PlanePointAt(const Graphic3d_Vec2i& thePos, gp_Pnt2d& theResult) const;
+
+    // Measure, bend and hand on one cursor position. Every path that
+    // moves the rubber band goes through here, which is what keeps a
+    // typed value in force whether the cursor moved or a digit was typed.
+    void DispatchHover(const gp_Pnt2d& theCursor);
+
+    // Float the value boxes beside the cursor.
+    void ShowReadout(const gp_Pnt2d& thePoint);
+
+    // Keys belonging to the value boxes. True when consumed.
+    bool HandleTypedKey(int theKey, Qt::KeyboardModifiers theModifiers);
+
+    // Enter: place the point the typed values describe, exactly as a
+    // click at that spot would have.
+    void PlaceTypedPoint();
+
+    SketchInput myInput;
 
     bool     myIsRunning = false;
     bool     myHasHover  = false;

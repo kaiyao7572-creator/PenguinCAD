@@ -169,6 +169,11 @@ bool SketchDisplay::OwnsObject(const Handle(AIS_InteractiveObject)& theObject) c
     if (!myPreview.IsNull() && myPreview == theObject) {
         return true;
     }
+    for (const Handle(AIS_TextLabel)& label : myPreviewLabels) {
+        if (label == theObject) {
+            return true;
+        }
+    }
     for (const Handle(AIS_InteractiveObject)& object : mySketchObjects) {
         if (object == theObject) {
             return true;
@@ -556,8 +561,57 @@ void SketchDisplay::ShowPreview(const TopoDS_Shape& theShape)
     myContext->Redisplay(myPreview, Standard_False);
 }
 
+void SketchDisplay::ShowPreviewLabels(const std::vector<SketchLabel>& theLabels)
+{
+    if (myContext.IsNull()) {
+        return;
+    }
+
+    while (myPreviewLabels.size() > theLabels.size()) {
+        if (!myPreviewLabels.back().IsNull()) {
+            myContext->Remove(myPreviewLabels.back(), Standard_False);
+        }
+        myPreviewLabels.pop_back();
+    }
+
+    for (std::size_t i = 0; i < theLabels.size(); ++i) {
+        const TCollection_ExtendedString text(theLabels[i].text.c_str());
+        if (i < myPreviewLabels.size()) {
+            myPreviewLabels[i]->SetText(text);
+            myPreviewLabels[i]->SetPosition(theLabels[i].position);
+            myContext->Redisplay(myPreviewLabels[i], Standard_False);
+            continue;
+        }
+
+        Handle(AIS_TextLabel) label = new AIS_TextLabel();
+        label->SetText(text);
+        label->SetPosition(theLabels[i].position);
+        label->SetColor(kPreviewColor);
+        label->SetHeight(kTextHeight);
+        myContext->Display(label, 0, kNoSelectionMode, Standard_False);
+        myContext->SetZLayer(label, kCurveLayer);
+        myPreviewLabels.push_back(label);
+    }
+}
+
+void SketchDisplay::ClearPreviewLabels()
+{
+    if (!myContext.IsNull()) {
+        for (const Handle(AIS_TextLabel)& label : myPreviewLabels) {
+            if (!label.IsNull()) {
+                myContext->Remove(label, Standard_False);
+            }
+        }
+    }
+    myPreviewLabels.clear();
+}
+
 void SketchDisplay::ClearPreview()
 {
+    // The readout belongs to the rubber band: every existing call site
+    // that ends a curve takes the numbers down with it.
+    ClearPreviewLabels();
+
     if (myPreview.IsNull()) {
         return;
     }

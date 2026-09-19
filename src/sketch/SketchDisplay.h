@@ -6,10 +6,12 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
 #include <AIS_Shape.hxx>
+#include <AIS_TextLabel.hxx>
 #include <Graphic3d_ZLayerId.hxx>
 #include <Quantity_Color.hxx>
 #include <TopoDS_Shape.hxx>
 #include <V3d_View.hxx>
+#include <gp_Pnt.hxx>
 
 #include <string>
 #include <vector>
@@ -18,6 +20,13 @@ namespace lcad {
 
 struct CommandContext;
 class SketchFeature;
+
+// A line of text floating in the viewport, in model coordinates.
+struct SketchLabel
+{
+    gp_Pnt      position;
+    std::string text;
+};
 
 // Owns every AIS object the sketch subsystem puts in the viewport.
 //
@@ -45,6 +54,14 @@ public:
     // it, as does ClearPreview().
     void ShowPreview(const TopoDS_Shape& theShape);
     void ClearPreview();
+
+    // The live length/angle readout a create tool floats beside the
+    // cursor. It belongs to the rubber band, so ClearPreview takes it
+    // down too -- one call still ends an in-progress curve completely.
+    // The objects are reused between calls: a text label rebuilt on every
+    // mouse move flickers.
+    void ShowPreviewLabels(const std::vector<SketchLabel>& theLabels);
+    void ClearPreviewLabels();
 
     bool AreSketchesVisible() const { return myAreSketchesVisible; }
     void SetSketchesVisible(bool theValue);
@@ -129,6 +146,7 @@ private:
 
     std::vector<Handle(AIS_InteractiveObject)> mySketchObjects;
     Handle(AIS_Shape)                          myPreview;
+    std::vector<Handle(AIS_TextLabel)>         myPreviewLabels;
 
     // Parallel to each other: the regions of the active sketch and the
     // object drawn for each, so a hover can recolour exactly one.
