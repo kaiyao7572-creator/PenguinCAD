@@ -498,12 +498,18 @@ void SketchDisplay::AddAnnotations(SketchFeature& theSketch)
     if (myContext.IsNull()) {
         return;
     }
-    for (const SketchAnnotations::Label& label : SketchAnnotations::DimensionLabels(theSketch)) {
+    for (const SketchAnnotations::Label& label :
+         SketchAnnotations::DimensionLabels(theSketch, scale)) {
         Handle(AIS_TextLabel) text = new AIS_TextLabel();
         text->SetText(TCollection_ExtendedString(label.text.c_str()));
         text->SetPosition(theSketch.To3d(label.position));
         text->SetColor(kDimensionColor);
         text->SetHeight(kTextHeight);
+        // Centred on the lifted anchor and sitting above it, so the number
+        // straddles its dimension line the way a drawing has it rather
+        // than trailing off to one side.
+        text->SetHJustification(Graphic3d_HTA_CENTER);
+        text->SetVJustification(Graphic3d_VTA_BOTTOM);
         Show(text, 0, kCurveLayer);
     }
 }

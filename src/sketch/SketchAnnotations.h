@@ -36,10 +36,13 @@ std::vector<SketchEntity> ConstraintGlyphs(const SketchFeature& theSketch, doubl
 // dimension.
 std::vector<SketchEntity> DimensionGeometry(const SketchFeature& theSketch, double theScale);
 
-// The numbers that go with that geometry.
-std::vector<Label> DimensionLabels(const SketchFeature& theSketch);
+// The numbers that go with that geometry. theScale is the same glyph
+// size DimensionGeometry took, and is what lifts each number clear of the
+// dimension line drawn through the spot the user dropped it on.
+std::vector<Label> DimensionLabels(const SketchFeature& theSketch, double theScale);
 
-// Formatted value of one dimension, e.g. "25.40" or "45.0 deg".
+// Formatted value of one dimension in the document's unit, e.g.
+// "d1 = 25.4 mm", "d2 = 45 deg", "d3 = D12 mm".
 std::string FormatDimension(const SketchConstraint& theConstraint);
 
 } // namespace SketchAnnotations

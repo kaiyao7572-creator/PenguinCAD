@@ -1,5 +1,6 @@
 #include "sketch/SketchAnnotations.h"
 
+#include "core/Units.h"
 #include "sketch/SketchGeometry.h"
 
 #include <gp_Vec2d.hxx>
@@ -325,22 +326,94 @@ bool DimensionPoints(const SketchFeature&    theSketch,
     return true;
 }
 
+// The dimension LINE is drawn through labelPosition, so text anchored
+// there lands on top of it. Drafting convention floats the number just
+// clear of the line, which is what this lift does; the display centres
+// the text on the point, so lifting is all that is needed.
+gp_Pnt2d LiftedLabel(const SketchFeature&    theSketch,
+                     const SketchConstraint& theConstraint,
+                     double                  theScale)
+{
+    const gp_Pnt2d label = theConstraint.labelPosition;
+    if (theScale <= 0.0) {
+        return label;
+    }
+    const double lift = theScale * 0.5;
+
+    switch (theConstraint.type) {
+        case SketchConstraintType::Distance:
+        case SketchConstraintType::DistanceX:
+        case SketchConstraintType::DistanceY: {
+            gp_Pnt2d from, to;
+            if (!DimensionPoints(theSketch, theConstraint, from, to)) {
+                break;
+            }
+            if (theConstraint.type == SketchConstraintType::DistanceX) {
+                to = gp_Pnt2d(to.X(), from.Y());
+            } else if (theConstraint.type == SketchConstraintType::DistanceY) {
+                to = gp_Pnt2d(from.X(), to.Y());
+            }
+
+            gp_Vec2d along;
+            if (!UnitBetween(from, to, along)) {
+                break;
+            }
+            // Lifted AWAY from what is being measured, never back across
+            // it: the far side is where the user dropped the number.
+            const gp_Vec2d normal = Perpendicular(along);
+            const double side =
+                normal.X() * (label.X() - from.X()) + normal.Y() * (label.Y() - from.Y());
+            return label.Translated(normal * (side >= 0.0 ? lift : -lift));
+        }
+
+        case SketchConstraintType::Radius:
+        case SketchConstraintType::Diameter: {
+            const SketchEntity* entity = theSketch.FindEntity(theConstraint.a.entity);
+            gp_Vec2d leader;
+            if (entity == nullptr || !UnitBetween(entity->first, label, leader)) {
+                break;
+            }
+            return label.Translated(Perpendicular(leader) * lift);
+        }
+
+        default:
+            break;
+    }
+
+    // Nothing better known: straight up, which is where a number goes
+    // when it has no line to clear.
+    return Offset(label, 0.0, lift);
+}
+
 } // namespace
 
 std::string FormatDimension(const SketchConstraint& theConstraint)
 {
-    char buffer[64] = {0};
+    // Through FormatValue, so a dimension reads in the document's unit and
+    // trims its own trailing zeros: 25.4 mm, not 25.400000, and 1 in when
+    // the document is in inches.
+    std::string text;
     if (theConstraint.IsAngular()) {
-        std::snprintf(buffer, sizeof(buffer), "%.1f deg",
-                      theConstraint.value * 180.0 / kPi);
+        text = FormatValue(theConstraint.value * 180.0 / kPi, UnitKind::Angle,
+                           LengthUnit::Millimeter, AngleUnit::Degree, 2);
     } else {
-        std::snprintf(buffer, sizeof(buffer), "%.2f", theConstraint.value);
+        text = FormatValue(theConstraint.value, UnitKind::Length, DefaultLengthUnit(),
+                           AngleUnit::Degree, 3);
+    }
+
+    // Drafting's own shorthand, and the only thing that tells a radius
+    // apart from a diameter on the same circle. ASCII on purpose: the
+    // diameter sign Fusion uses is not in the viewport's font.
+    if (theConstraint.type == SketchConstraintType::Radius) {
+        text = "R" + text;
+    } else if (theConstraint.type == SketchConstraintType::Diameter) {
+        text = "D" + text;
     }
 
     if (theConstraint.label.empty()) {
-        return std::string(buffer);
+        return text;
     }
-    return theConstraint.label + " = " + buffer;
+    return theConstraint.label + " = " + text;
 }
 
 std::vector<SketchEntity> ConstraintGlyphs(const SketchFeature& theSketch, double theScale)
@@ -442,7 +515,7 @@ std::vector<SketchEntity> DimensionGeometry(const SketchFeature& theSketch, doub
     return geometry;
 }
 
-std::vector<Label> DimensionLabels(const SketchFeature& theSketch)
+std::vector<Label> DimensionLabels(const SketchFeature& theSketch, double theScale)
 {
     std::vector<Label> labels;
     for (const SketchConstraint& constraint : theSketch.Constraints()) {
@@ -452,7 +525,8 @@ std::vector<Label> DimensionLabels(const SketchFeature& theSketch)
         if (theSketch.FindEntity(constraint.a.entity) == nullptr) {
             continue;
         }
-        labels.push_back(Label{constraint.labelPosition, FormatDimension(constraint)});
+        labels.push_back(
+            Label{LiftedLabel(theSketch, constraint, theScale), FormatDimension(constraint)});
     }
     return labels;
 }

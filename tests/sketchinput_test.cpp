@@ -5,6 +5,8 @@
 // Nothing is read back out of the implementation.
 
 #include "core/Units.h"
+#include "sketch/SketchAnnotations.h"
+#include "sketch/SketchFeature.h"
 #include "sketch/SketchInput.h"
 
 #include <cmath>
@@ -340,6 +342,62 @@ int main()
         input.Begin(LineFields());
         input.MeasureFromAnchor(gp_Pnt2d(0.0, 0.0), gp_Pnt2d(6.35, 0.0));
         checkText(input.FieldText(0), "6.35 mm", "trailing zeros are trimmed");
+    }
+
+    std::cout << "-- how a dimension reads once it is on the sketch --" << std::endl;
+    {
+        SketchFeature sketch;
+        const int line = sketch.AddEntity(
+            SketchEntity::MakeLine(gp_Pnt2d(0.0, 0.0), gp_Pnt2d(25.4, 0.0)));
+        const int circle = sketch.AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(0.0, 40.0), 6.0));
+        const int second =
+            sketch.AddEntity(SketchEntity::MakeLine(gp_Pnt2d(0.0, 0.0), gp_Pnt2d(0.0, 10.0)));
+
+        SketchConstraint length;
+        length.type = SketchConstraintType::Distance;
+        length.a = SketchPointRef{line, SketchPointRole::Start};
+        length.b = SketchPointRef{line, SketchPointRole::End};
+        length.value = 25.4;
+        length.labelPosition = gp_Pnt2d(12.7, 5.0);
+        sketch.AddConstraint(length);
+
+        SketchConstraint diameter;
+        diameter.type = SketchConstraintType::Diameter;
+        diameter.a = SketchPointRef{circle, SketchPointRole::Whole};
+        diameter.value = 12.0;
+        diameter.labelPosition = gp_Pnt2d(10.0, 50.0);
+        sketch.AddConstraint(diameter);
+
+        SketchConstraint angle;
+        angle.type = SketchConstraintType::Angle;
+        angle.a = SketchPointRef{line, SketchPointRole::Whole};
+        angle.b = SketchPointRef{second, SketchPointRole::Whole};
+        angle.value = 3.14159265358979323846 / 4.0;  // 45 degrees, stored in radians
+        angle.labelPosition = gp_Pnt2d(6.0, 6.0);
+        sketch.AddConstraint(angle);
+
+        const std::vector<SketchConstraint>& added = sketch.Constraints();
+        check(added.size() == 3, "three dimensions on the sketch");
+        checkText(added[0].label, "d1", "dimensions number from d1");
+        checkText(added[1].label, "d2", "and count up");
+        checkText(added[2].label, "d3", "in the order they were added");
+
+        checkText(SketchAnnotations::FormatDimension(added[0]), "d1 = 25.4 mm",
+                  "a length reads in the document's unit, zeros trimmed");
+        checkText(SketchAnnotations::FormatDimension(added[1]), "d2 = D12 mm",
+                  "a diameter says so");
+        checkText(SketchAnnotations::FormatDimension(added[2]), "d3 = 45 deg",
+                  "an angle reads in degrees, not radians");
+
+        // The number is lifted clear of the dimension line drawn through
+        // the spot it was dropped on. The span runs along +X, so the
+        // perpendicular is +Y and the label sits half a glyph above where
+        // it was placed: 5.0 + 0.5 * 2.0 = 6.0.
+        const std::vector<SketchAnnotations::Label> labels =
+            SketchAnnotations::DimensionLabels(sketch, 2.0);
+        check(labels.size() == 3, "one number per dimension");
+        checkNear(labels[0].position.X(), 12.7, "lifted straight up, not sideways");
+        checkNear(labels[0].position.Y(), 6.0, "and clear of its own dimension line");
     }
 
     std::cout << std::endl;
