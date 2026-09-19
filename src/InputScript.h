@@ -22,7 +22,9 @@ class QString;
 //                           event loop, so only a timer can reach in.
 //   tab <Name>              bring a ribbon tab forward
 //   move <x> <y>            move the cursor in the viewport
-//   click <x> <y>           press+release left button
+//   click <x> <y> [ctrl]    press+release left button; trailing "ctrl",
+//                           "shift" or "alt" are held for the click, which
+//                           is how multi-select is driven
 //   rclick <x> <y>          press+release right button
 //   press <x> <y>           left button down
 //   release <x> <y>         left button up

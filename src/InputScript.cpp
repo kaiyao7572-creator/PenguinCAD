@@ -222,6 +222,23 @@ void SendWheel(MainWindow* theWindow, const QPointF& thePos, int theNotches)
     QCoreApplication::sendEvent(target, &event);
 }
 
+// Modifier words trailing a click: "ctrl", "shift", "alt", in any order.
+Qt::KeyboardModifiers ParseModifiers(const QStringList& theParts, int theFrom)
+{
+    Qt::KeyboardModifiers modifiers = Qt::NoModifier;
+    for (int i = theFrom; i < theParts.size(); ++i) {
+        const QString word = theParts.at(i).toLower();
+        if (word == "ctrl") {
+            modifiers |= Qt::ControlModifier;
+        } else if (word == "shift") {
+            modifiers |= Qt::ShiftModifier;
+        } else if (word == "alt") {
+            modifiers |= Qt::AltModifier;
+        }
+    }
+    return modifiers;
+}
+
 void TakeShot(MainWindow* theWindow, const QString& thePath)
 {
     theWindow->grab().save(thePath);
@@ -285,13 +302,16 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         } else if ((verb == "click" || verb == "rclick") && parts.size() >= 3) {
             const Qt::MouseButton button = (verb == "rclick") ? Qt::RightButton : Qt::LeftButton;
             const QPointF pos(number(1), number(2));
+            // Ctrl and Shift matter: adding to a selection is how every
+            // multi-pick interaction in this app works, and without them
+            // none of it could be driven from a script at all.
+            const Qt::KeyboardModifiers modifiers = ParseModifiers(parts, 3);
             // A real click is always preceded by the cursor arriving, and
             // tools rely on that move for their preview state.
-            SendMouse(theWindow, QEvent::MouseMove, pos, Qt::NoButton, Qt::NoButton,
-                      Qt::NoModifier);
-            SendMouse(theWindow, QEvent::MouseButtonPress, pos, button, button, Qt::NoModifier);
+            SendMouse(theWindow, QEvent::MouseMove, pos, Qt::NoButton, Qt::NoButton, modifiers);
+            SendMouse(theWindow, QEvent::MouseButtonPress, pos, button, button, modifiers);
             SendMouse(theWindow, QEvent::MouseButtonRelease, pos, button, Qt::NoButton,
-                      Qt::NoModifier);
+                      modifiers);
         } else if (verb == "press" && parts.size() >= 3) {
             const QPointF pos(number(1), number(2));
             SendMouse(theWindow, QEvent::MouseButtonPress, pos, Qt::LeftButton, Qt::LeftButton,
