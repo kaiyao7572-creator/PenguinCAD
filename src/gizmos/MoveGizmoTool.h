@@ -51,11 +51,11 @@ public:
     void OnDeactivated() override;
 
     // ---- DocumentObserver ----
-    // MainWindow displays the whole document as a single AIS_Shape that
-    // gets removed and a fresh one created on every rebuild -- including
-    // the one our own committed drag triggers -- so the object we were
-    // attached to is gone the instant that happens. Re-find and re-attach
-    // to the new one here; if there's no body left, detach gracefully.
+    // MainWindow displays one AIS_Shape per body, and removes every one of
+    // them and creates fresh ones on every rebuild -- including the one our
+    // own committed drag triggers -- so the object we were attached to is
+    // gone the instant that happens. Re-find and re-attach to the new one
+    // here; if there's no body left, detach gracefully.
     void OnDocumentChanged(Document& theDocument) override;
 
 private:

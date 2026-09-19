@@ -125,6 +125,32 @@ build_profiles() {
     "$OUT/profile_test"
 }
 
+# ---- press/pull gizmo: where the drag arrow sits and how far a drag went ----
+build_gizmo() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/gizmo_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
+        "$SRC/core/ProfileProvider.cpp" \
+        "$SRC/features/PressPullFeature.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
+        "$SRC/features/FeatureUtils.cpp" "$SRC/gizmos/PressPullGizmo.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/gizmo_test" || return 1
+    "$OUT/gizmo_test"
+}
+
+# ---- typed sketch input: the value-box state machine and its maths ----
+build_sketchinput() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/sketchinput_test.cpp" \
+        "$SRC/core/Units.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Origin.cpp" \
+        "$SRC/sketch/SketchInput.cpp" "$SRC/sketch/SketchAnnotations.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/sketchinput_test" || return 1
+    "$OUT/sketchinput_test"
+}
+
 # ---- sketch inference: axis lock + snap candidates, no display needed ----
 build_inference() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
@@ -146,6 +172,8 @@ run "Entities: bodies, faces and the Fusion taxonomy" build_entities
 run "Construction: origin folder, planes, axes and points" build_construction
 run "Sketch types: the Fusion curve taxonomy" build_sketchtypes
 run "Press/Pull: face selection and face offset" build_presspull
+run "Press/Pull: the drag gizmo" build_gizmo
+run "Sketch: typed input and live dimensions" build_sketchinput
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

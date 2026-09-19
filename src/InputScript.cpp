@@ -10,6 +10,12 @@
 #include <QDialog>
 #include <QEventLoop>
 #include <QWheelEvent>
+
+#include <Aspect_Window.hxx>
+#include <Graphic3d_BufferType.hxx>
+#include <Image_PixMap.hxx>
+
+#include <cstring>
 #include <QFile>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -45,32 +51,59 @@ bool DumpViewportImage(OcctViewport* theViewport, const QString& thePath)
     }
 
     view->Redraw();
-    if (!view->Dump(viewPath.toLocal8Bit().constData())) {
+
+    // Ask OCCT for the pixels and let it SAY what layout they are in,
+    // rather than writing a file and rotating the channels back by hand.
+    //
+    // The hand-rotation this replaces was correct when it was written and
+    // silently stopped being correct: with OCCT writing the file itself,
+    // the channel order depended on the build and the driver, so the
+    // "fix" eventually became the bug and every screenshot came out one
+    // rotation off. Two colours are needed to notice that at all -- the
+    // origin axes cannot show it, because {red, green, blue} maps onto
+    // itself under a rotation, so they look perfect either way. A gold
+    // body turning green is what gives it away.
+    Handle(Aspect_Window) window = view->Window();
+    if (window.IsNull()) {
+        return false;
+    }
+    Standard_Integer width = 0, height = 0;
+    window->Size(width, height);
+    if (width <= 0 || height <= 0) {
         return false;
     }
 
-    // Undo the channel rotation described in the header. Note this is a
-    // rotation, not an R/B swap: a pure-red probe looks identical under
-    // both, so it alone is not enough to pin the transform down. Solving
-    // it against two independent colours gives out = (in.B, in.R, in.G).
-    QImage dumped(viewPath);
-    if (dumped.isNull()) {
+    Image_PixMap pixmap;
+    if (!view->ToPixMap(pixmap, width, height, Graphic3d_BT_RGB)) {
         return false;
     }
-    dumped = dumped.convertToFormat(QImage::Format_RGB888);
-    for (int y = 0; y < dumped.height(); ++y) {
-        uchar* row = dumped.scanLine(y);
-        for (int x = 0; x < dumped.width(); ++x) {
-            uchar* pixel = row + x * 3;
-            const uchar r = pixel[0];
-            const uchar g = pixel[1];
-            const uchar b = pixel[2];
-            pixel[0] = b;
-            pixel[1] = r;
-            pixel[2] = g;
-        }
+
+    QImage::Format qtFormat = QImage::Format_Invalid;
+    switch (pixmap.Format()) {
+        case Image_Format_RGB:  qtFormat = QImage::Format_RGB888;   break;
+        case Image_Format_BGR:  qtFormat = QImage::Format_BGR888;   break;
+        case Image_Format_RGBA: qtFormat = QImage::Format_RGBA8888; break;
+        case Image_Format_BGRA: qtFormat = QImage::Format_ARGB32;   break;
+        default:
+            // An unexpected layout is worth failing on: saving it anyway
+            // would produce exactly the quietly-wrong colours this whole
+            // function exists to avoid.
+            std::cerr << "screenshot: unsupported pixel format "
+                      << static_cast<int>(pixmap.Format()) << std::endl;
+            return false;
     }
-    return dumped.save(viewPath);
+
+    QImage image(static_cast<int>(pixmap.SizeX()), static_cast<int>(pixmap.SizeY()), qtFormat);
+    for (int y = 0; y < image.height(); ++y) {
+        // Row(y) is always the yth row from the TOP, whichever way the
+        // buffer is stored: Image_PixMapData keeps a pointer to the top
+        // row and flips the sign of the stride. Compensating for
+        // IsTopDown() here as well saves the image upside down.
+        std::memcpy(image.scanLine(y), pixmap.Row(static_cast<Standard_Size>(y)),
+                    static_cast<std::size_t>(image.bytesPerLine()));
+    }
+
+    return image.save(viewPath);
 }
 
 namespace {

@@ -2,6 +2,7 @@
 #include "core/Document.h"
 #include "core/Registration.h"
 #include "gizmos/MoveGizmoTool.h"
+#include "gizmos/PressPullGizmoTool.h"
 #include "gizmos/TransformFeature.h"
 
 #include <memory>
@@ -115,6 +116,15 @@ public:
 
     bool IsEnabled(const CommandContext& theContext) const override
     {
+        // Fusion's press/pull arrow answers to the SELECTION, not to a
+        // button, so it needs a hook that fires when the selection
+        // changes. src/gizmos/ has none of its own: the viewport's single
+        // selection callback belongs to MainWindow. Command states are
+        // refreshed on every selection change (and on a 300ms timer), so
+        // that poll is the hook -- the same bargain the view cube makes to
+        // materialise itself, for the same reason.
+        PressPullGizmoTool::Instance().Sync(theContext);
+
         return theContext.document != nullptr && !theContext.document->Shape().IsNull();
     }
 
@@ -136,9 +146,10 @@ public:
     }
 };
 
-// Numeric fallback / precise-entry alternative to the gizmo: always moves
-// the whole current model (there's only ever one selectable body -- see
-// MainWindow's single swapped AIS_Shape), so it doesn't need a selection.
+// Numeric fallback / precise-entry alternative to the gizmo. TransformFeature
+// transforms the whole evaluated shape, so this moves every body at once
+// regardless of what is selected -- which is why it needs no selection, and
+// why it is NOT a per-body move now that the document holds several.
 class MoveRotateDialogCommand : public Command
 {
 public:

@@ -338,7 +338,10 @@ gp_Pnt2d LiftedLabel(const SketchFeature&    theSketch,
     if (theScale <= 0.0) {
         return label;
     }
-    const double lift = theScale * 0.5;
+    // A whole glyph, not half of one: the text runs horizontally while
+    // the dimension line usually does not, so half a glyph still leaves
+    // the far end of the number sitting on the line.
+    const double lift = theScale * 1.2;
 
     switch (theConstraint.type) {
         case SketchConstraintType::Distance:

@@ -143,6 +143,23 @@ bool DocumentHasBody(const CommandContext& theContext)
     return theContext.document != nullptr && HasSolid(theContext.document->Shape());
 }
 
+// Every face the user has picked, in pick order.
+//
+// Not SoleItem: Fusion's Press/Pull takes as many coplanar faces as you
+// care to select and moves them together, so refusing two would be
+// refusing the normal case. Anything picked that is not a face is simply
+// not a press/pull target and is left alone.
+std::vector<GeometryRef> PickedFaces()
+{
+    std::vector<GeometryRef> faces;
+    for (const GeometryRef& ref : GeometrySelection::Instance().Items()) {
+        if (!ref.IsNull() && ref.type == EntityType::BRepFace) {
+            faces.push_back(ref);
+        }
+    }
+    return faces;
+}
+
 // Fusion's default: add to the existing body if there is one, otherwise
 // start a new one.
 int DefaultOperationChoice(const CommandContext& theContext)
@@ -585,8 +602,8 @@ public:
     }
 };
 
-// Fusion's most-used tool: pick a face, press Q, move it. Everything else
-// in Modify sits downstream of it in muscle memory.
+// Fusion's most-used tool: pick faces, press Q, move them. Everything
+// else in Modify sits downstream of it in muscle memory.
 class PressPullCommand : public ModifyCommand
 {
 public:
@@ -596,38 +613,41 @@ public:
     std::string Shortcut() const override { return "Q"; }
     std::string Description() const override
     {
-        return "Move a selected face along its normal; out adds material, in removes it";
+        return "Move the selected faces along their normals; out adds material, in removes it";
     }
 
     bool IsEnabled(const CommandContext& theContext) const override
     {
         (void)theContext;
-        // Exactly one face. SoleItem returns nothing when two are picked,
-        // so this greys out rather than silently acting on one of them.
-        return !GeometrySelection::Instance().SoleItem(EntityType::BRepFace).IsNull();
+        return !PickedFaces().empty();
     }
 
     void Execute(CommandContext& theContext) override
     {
-        const GeometryRef face = GeometrySelection::Instance().SoleItem(EntityType::BRepFace);
-        if (face.IsNull()) {
-            ShowStatus(theContext, "Select exactly one face first.");
+        const std::vector<GeometryRef> faces = PickedFaces();
+        if (faces.empty()) {
+            ShowStatus(theContext, "Select a face first.");
             return;
         }
 
         std::vector<DialogField> fields;
         fields.push_back(DialogField::Number("Distance", 10.0, kAnyNumber));
-        if (!ShowFeatureDialog(theContext.parent, "Press Pull", fields,
-                               "A negative distance pushes the face into the body.")) {
+        const QString hint =
+            faces.size() == 1
+                ? QStringLiteral("A negative distance pushes the face into the body.")
+                : QStringLiteral("Moving %1 faces by the same distance. A negative distance "
+                                 "pushes them into the body.")
+                      .arg(faces.size());
+        if (!ShowFeatureDialog(theContext.parent, "Press Pull", fields, hint)) {
             return;
         }
 
-        auto pressPull = std::make_shared<PressPullFeature>(face, fields[0].value);
+        auto pressPull = std::make_shared<PressPullFeature>(faces, fields[0].value);
         AddAndReport(theContext, pressPull);
 
-        // The face the user picked no longer exists once it has moved, so
-        // leaving it selected would leave a highlight on geometry that is
-        // gone and let a second Q act on a stale reference.
+        // The faces the user picked no longer exist once they have moved,
+        // so leaving them selected would leave a highlight on geometry
+        // that is gone and let a second Q act on stale references.
         GeometrySelection::Instance().Clear();
         const Handle(AIS_InteractiveContext) aisContext = theContext.AisContext();
         if (!aisContext.IsNull()) {

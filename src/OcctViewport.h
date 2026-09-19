@@ -49,6 +49,13 @@ public:
     void PopInteraction();
     lcad::ViewportInteraction* CurrentInteraction() const;
 
+    // The topmost handler that is a TOOL, or null when the only things
+    // pushed are permanent background handlers. This is what to ask when
+    // the question is "is the user in the middle of something?" --
+    // CurrentInteraction() answers "is anything pushed?", which is always
+    // yes once the view cube has materialised.
+    lcad::ViewportInteraction* ExclusiveInteraction() const;
+
     // Called after OCCT's own selection changes, so the shell can read
     // what was picked without polling for it every frame.
     void SetSelectionCallback(std::function<void()> theCallback)
@@ -84,6 +91,11 @@ private:
     void initializeOcctViewer();
     void updateView();
     void updateRubberBandStyle();
+
+    // Offer an event to the interaction stack, innermost first, stopping
+    // at the first handler that consumes it. True when one did.
+    bool dispatchToInteractions(
+        const std::function<bool(lcad::ViewportInteraction*)>& theDeliver);
 
     // Qt reports mouse positions in logical pixels, but OCCT's Xw_Window
     // renders straight into the native X11 surface, which is sized in
@@ -135,6 +147,10 @@ public:
     lcad::ViewportInteraction* CurrentInteraction() const
     {
         return m_window->CurrentInteraction();
+    }
+    lcad::ViewportInteraction* ExclusiveInteraction() const
+    {
+        return m_window->ExclusiveInteraction();
     }
 
     // The native render window, for code that needs it directly.

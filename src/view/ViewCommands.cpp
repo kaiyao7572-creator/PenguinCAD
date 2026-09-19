@@ -124,15 +124,20 @@ private:
 // context's normal "selected" list -- see its header comment), so the app
 // is expected to notice the click itself and hand the detected owner back
 // to HandleClick(). This is that noticing: a ViewportInteraction that sits
-// at the BOTTOM of the interaction stack for the app's lifetime. Other
-// tools push their own handler above it and pop back to it when they
-// finish (OcctNativeWindow::CurrentInteraction only ever asks the top of
-// the stack -- see core/ViewportInteraction.h), so the cube simply goes
-// quiet while some other tool owns the viewport instead of fighting it for
-// input.
+// at the BOTTOM of the interaction stack for the app's lifetime. Tools
+// push above it, get first refusal on every event, and anything they do
+// not consume falls through to here -- so the cube keeps working while a
+// tool is up rather than going quiet.
+//
+// It reports IsExclusive() == false because it is not a tool the user
+// started: it is always pushed. Tools asking "is the user in the middle of
+// something?" must not be answered "yes, the view cube".
 class ViewCubeInteraction : public ViewportInteraction
 {
 public:
+    // Permanently pushed background handler, not a tool -- see above.
+    bool IsExclusive() const override { return false; }
+
     static ViewCubeInteraction& Instance()
     {
         static ViewCubeInteraction theInstance;

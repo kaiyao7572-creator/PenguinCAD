@@ -1,13 +1,14 @@
 #include "gizmos/MoveGizmoTool.h"
 #include "gizmos/TransformFeature.h"
 
+#include "core/Body.h"
+
 #include "OcctViewport.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ListOfInteractive.hxx>
 #include <AIS_Shape.hxx>
 #include <Standard_Failure.hxx>
-#include <TColStd_ListOfInteger.hxx>
 #include <V3d_View.hxx>
 #include <gp.hxx>
 #include <gp_Ax2.hxx>
@@ -34,16 +35,23 @@ void ShowStatus(const CommandContext& theContext, const QString& theText)
     }
 }
 
-// MainWindow's whole-document shape is the only AIS_Shape ever displayed
-// with selection mode 0 active (see MainWindow::redisplayDocument);
-// sketch and preview geometry (see SketchDisplay) is always shown
-// non-selectable. That's the one observable difference available to us
-// for re-finding "the body" after a rebuild swaps its AIS_Shape out from
-// under the gizmo.
-Handle(AIS_Shape) FindDisplayedBody(const Handle(AIS_InteractiveContext)& theContext)
+// Re-find a body's AIS object after a rebuild swapped it out from under
+// the gizmo.
+//
+// Matched by SHAPE IDENTITY against the document's own bodies, which is
+// the only signal that means what it says. This used to look for the one
+// AIS_Shape with selection mode 0 active, back when MainWindow displayed
+// the whole document as a single object; that test now answers wrongly in
+// both directions. Mode 0 is AIS_Shape::SelectionMode(TopAbs_SHAPE), so
+// with the default filters (faces and edges, whole bodies OFF) NO object
+// has it and the gizmo detached itself the instant its own drag
+// committed -- and with the body filter on, EVERY body has it and the
+// first one iterated wins regardless of which was being moved.
+Handle(AIS_Shape) FindDisplayedBody(const Handle(AIS_InteractiveContext)& theContext,
+                                    const Document*                       theDocument)
 {
     Handle(AIS_Shape) result;
-    if (theContext.IsNull()) {
+    if (theContext.IsNull() || theDocument == nullptr) {
         return result;
     }
 
@@ -54,11 +62,8 @@ Handle(AIS_Shape) FindDisplayedBody(const Handle(AIS_InteractiveContext)& theCon
         if (shape.IsNull()) {
             continue;
         }
-
-        TColStd_ListOfInteger modes;
-        theContext->ActivatedModes(shape, modes);
-        for (TColStd_ListOfInteger::Iterator modeIt(modes); modeIt.More(); modeIt.Next()) {
-            if (modeIt.Value() == 0) {
+        for (const BodyPtr& body : theDocument->Bodies()) {
+            if (body && !body->Shape().IsNull() && shape->Shape().IsSame(body->Shape())) {
                 return shape;
             }
         }
@@ -147,7 +152,7 @@ void MoveGizmoTool::OnDocumentChanged(Document& theDocument)
     }
 
     const Handle(AIS_InteractiveContext) aisContext = myContext.AisContext();
-    const Handle(AIS_Shape) body = FindDisplayedBody(aisContext);
+    const Handle(AIS_Shape) body = FindDisplayedBody(aisContext, myContext.document);
     if (body.IsNull()) {
         // The body vanished from under us (undone away, deleted...): stop
         // rather than sit attached to nothing.

@@ -22,6 +22,14 @@ struct Label
 {
     gp_Pnt2d    position;
     std::string text;
+
+    // Which way the text runs, radians CCW from the sketch's X axis. A
+    // linear dimension's number lies along its own dimension line, as a
+    // drawing has it -- and because the number is centred on that line,
+    // running along it is the only way a slanted dimension's text does
+    // not sit across it. Never upside down: a direction pointing left is
+    // turned round.
+    double rotation = 0.0;
 };
 
 // Little marks showing which relations are in force -- the horizontals,

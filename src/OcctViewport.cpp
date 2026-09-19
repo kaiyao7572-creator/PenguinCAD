@@ -317,17 +317,43 @@ lcad::ViewportInteraction* OcctNativeWindow::CurrentInteraction() const
     return m_interactions.empty() ? nullptr : m_interactions.back();
 }
 
+lcad::ViewportInteraction* OcctNativeWindow::ExclusiveInteraction() const
+{
+    for (auto it = m_interactions.rbegin(); it != m_interactions.rend(); ++it) {
+        if (*it != nullptr && (*it)->IsExclusive()) {
+            return *it;
+        }
+    }
+    return nullptr;
+}
+
+bool OcctNativeWindow::dispatchToInteractions(
+    const std::function<bool(lcad::ViewportInteraction*)>& theDeliver)
+{
+    // Snapshotted because a handler may pop itself while being called --
+    // Escape in a sketch tool does exactly that -- which would leave the
+    // loop walking a vector that moved under it.
+    const std::vector<lcad::ViewportInteraction*> stack = m_interactions;
+    for (auto it = stack.rbegin(); it != stack.rend(); ++it) {
+        if (*it == nullptr || !theDeliver(*it)) {
+            continue;
+        }
+        if (!m_view.IsNull()) {
+            m_view->Redraw();
+        }
+        return true;
+    }
+    return false;
+}
+
 void OcctNativeWindow::mousePressEvent(QMouseEvent* event)
 {
     const Graphic3d_Vec2i pos = toDevicePixels(event->position());
 
-    if (lcad::ViewportInteraction* interaction = CurrentInteraction()) {
-        if (interaction->OnMousePress(pos, event->button(), event->modifiers())) {
-            if (!m_view.IsNull()) {
-                m_view->Redraw();
-            }
-            return;
-        }
+    if (dispatchToInteractions([&](lcad::ViewportInteraction* theHandler) {
+            return theHandler->OnMousePress(pos, event->button(), event->modifiers());
+        })) {
+        return;
     }
 
     if (event->button() == Qt::LeftButton) {
@@ -358,13 +384,10 @@ void OcctNativeWindow::mouseReleaseEvent(QMouseEvent* event)
 {
     const Graphic3d_Vec2i pos = toDevicePixels(event->position());
 
-    if (lcad::ViewportInteraction* interaction = CurrentInteraction()) {
-        if (interaction->OnMouseRelease(pos, event->button(), event->modifiers())) {
-            if (!m_view.IsNull()) {
-                m_view->Redraw();
-            }
-            return;
-        }
+    if (dispatchToInteractions([&](lcad::ViewportInteraction* theHandler) {
+            return theHandler->OnMouseRelease(pos, event->button(), event->modifiers());
+        })) {
+        return;
     }
 
     if (event->button() == Qt::LeftButton) {
@@ -391,13 +414,10 @@ void OcctNativeWindow::mouseMoveEvent(QMouseEvent* event)
 {
     const Graphic3d_Vec2i pos = toDevicePixels(event->position());
 
-    if (lcad::ViewportInteraction* interaction = CurrentInteraction()) {
-        if (interaction->OnMouseMove(pos, event->buttons(), event->modifiers())) {
-            if (!m_view.IsNull()) {
-                m_view->Redraw();
-            }
-            return;
-        }
+    if (dispatchToInteractions([&](lcad::ViewportInteraction* theHandler) {
+            return theHandler->OnMouseMove(pos, event->buttons(), event->modifiers());
+        })) {
+        return;
     }
 
     m_lastMoveX = pos.x();
@@ -417,13 +437,10 @@ void OcctNativeWindow::mouseDoubleClickEvent(QMouseEvent* event)
 {
     const Graphic3d_Vec2i pos = toDevicePixels(event->position());
 
-    if (lcad::ViewportInteraction* interaction = CurrentInteraction()) {
-        if (interaction->OnMouseDoubleClick(pos, event->button(), event->modifiers())) {
-            if (!m_view.IsNull()) {
-                m_view->Redraw();
-            }
-            return;
-        }
+    if (dispatchToInteractions([&](lcad::ViewportInteraction* theHandler) {
+            return theHandler->OnMouseDoubleClick(pos, event->button(), event->modifiers());
+        })) {
+        return;
     }
 
     QWindow::mouseDoubleClickEvent(event);
@@ -431,13 +448,10 @@ void OcctNativeWindow::mouseDoubleClickEvent(QMouseEvent* event)
 
 void OcctNativeWindow::keyPressEvent(QKeyEvent* event)
 {
-    if (lcad::ViewportInteraction* interaction = CurrentInteraction()) {
-        if (interaction->OnKeyPress(event->key(), event->modifiers())) {
-            if (!m_view.IsNull()) {
-                m_view->Redraw();
-            }
-            return;
-        }
+    if (dispatchToInteractions([&](lcad::ViewportInteraction* theHandler) {
+            return theHandler->OnKeyPress(event->key(), event->modifiers());
+        })) {
+        return;
     }
 
     QWindow::keyPressEvent(event);

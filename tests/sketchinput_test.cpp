@@ -391,13 +391,13 @@ int main()
 
         // The number is lifted clear of the dimension line drawn through
         // the spot it was dropped on. The span runs along +X, so the
-        // perpendicular is +Y and the label sits half a glyph above where
-        // it was placed: 5.0 + 0.5 * 2.0 = 6.0.
+        // perpendicular is +Y and the label sits one glyph above where it
+        // was placed: 5.0 + 1.2 * 2.0 = 7.4.
         const std::vector<SketchAnnotations::Label> labels =
             SketchAnnotations::DimensionLabels(sketch, 2.0);
         check(labels.size() == 3, "one number per dimension");
         checkNear(labels[0].position.X(), 12.7, "lifted straight up, not sideways");
-        checkNear(labels[0].position.Y(), 6.0, "and clear of its own dimension line");
+        checkNear(labels[0].position.Y(), 7.4, "and clear of its own dimension line");
     }
 
     std::cout << std::endl;
