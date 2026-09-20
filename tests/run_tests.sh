@@ -82,6 +82,7 @@ build_presspull() {
         "$ROOT/tests/presspull_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
         "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
+        "$SRC/core/Units.cpp" \
         "$SRC/core/ProfileProvider.cpp" \
         "$SRC/features/PressPullFeature.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
         "$SRC/features/FeatureUtils.cpp" \
@@ -131,6 +132,7 @@ build_gizmo() {
         "$ROOT/tests/gizmo_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
         "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
+        "$SRC/core/Units.cpp" \
         "$SRC/core/ProfileProvider.cpp" \
         "$SRC/features/PressPullFeature.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
         "$SRC/features/FeatureUtils.cpp" "$SRC/gizmos/PressPullGizmo.cpp" \

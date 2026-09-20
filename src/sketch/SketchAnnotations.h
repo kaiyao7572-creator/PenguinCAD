@@ -49,8 +49,21 @@ std::vector<SketchEntity> DimensionGeometry(const SketchFeature& theSketch, doub
 // dimension line drawn through the spot the user dropped it on.
 std::vector<Label> DimensionLabels(const SketchFeature& theSketch, double theScale);
 
+// The measure of every curve in a sketch, placed beside the curve itself.
+//
+// Shown for every sketch while one is open, the edited one and the
+// finished ones alike, so the size of what is already drawn can be read
+// without dimensioning it first. A line reads as its length, an arc as
+// its radius and a circle as its diameter -- the same R/D shorthand a
+// placed dimension uses, so the two never disagree about what a number
+// means.
+//
+// theScale is the model size of a few screen pixels, and is how far the
+// number is lifted off its own curve.
+std::vector<Label> CurveMeasureLabels(const SketchFeature& theSketch, double theScale);
+
 // Formatted value of one dimension in the document's unit, e.g.
-// "d1 = 25.4 mm", "d2 = 45 deg", "d3 = D12 mm".
+// "25.4 mm", "45 deg", "D12 mm".
 std::string FormatDimension(const SketchConstraint& theConstraint);
 
 } // namespace SketchAnnotations

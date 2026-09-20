@@ -256,6 +256,21 @@ Anything drawing text through AIS must scale the height by the device
 pixel ratio; `SetHeight` is in FRAMEBUFFER pixels, and handing it a
 logical number silently halves every number on a 2x display.
 
+While a sketch is open, EVERY curve in EVERY sketch carries its own size
+beside it -- a line its length, an arc its radius, a circle its diameter,
+in the same R/D shorthand a placed dimension uses so the two never
+disagree. They are quieter than placed dimensions on purpose: they are
+there to be read, not to drive the geometry. Outside sketch mode they go
+away, because over a model they would be clutter.
+
+Outside a sketch, picking geometry reports it in the status bar the way
+Fusion does: a face's area, an edge's length, a vertex's position, and
+totals for several of one kind. `DescribeSelection` in
+`core/GeometrySelection.h` does the wording and is tested without a
+window. Note that anything else writing to the status bar on a selection
+change will overwrite it -- the press/pull arrow used to, and was quieted
+for exactly that reason.
+
 Still missing:
 
 - **No fully-constrained indication**, and it is the biggest remaining

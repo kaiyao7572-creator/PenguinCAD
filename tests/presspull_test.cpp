@@ -42,6 +42,17 @@ static void checkNear(double theValue, double theExpected, double theTolerance,
     }
 }
 
+static void checkText(const std::string& theValue, const std::string& theExpected,
+                      const std::string& theWhat)
+{
+    const bool ok = theValue == theExpected;
+    std::cout << (ok ? "  PASS  " : "  FAIL  ") << theWhat << "  (got \"" << theValue
+              << "\", expect \"" << theExpected << "\")" << std::endl;
+    if (!ok) {
+        ++failures;
+    }
+}
+
 static double VolumeOf(const TopoDS_Shape& theShape)
 {
     if (theShape.IsNull()) {
@@ -680,6 +691,60 @@ int main()
         // The same 300mm^2 footprint, 5mm taller: 300 * 15 = 4500
         checkNear(VolumeOf(doc.Shape()), 4500.0, 1.0e-6, "300 x 15 = 4500");
         check(doc.Bodies().size() == 1, "and one body, not a stack of prisms");
+    }
+
+    // ---- 10. what a click tells you about what it picked ----
+    //
+    // Fusion answers a click on a face or an edge with the measurement
+    // anyone would want off it. Same box: 10 x 20 x 30.
+    {
+        Document doc;
+        MakeBox(doc);
+        const std::vector<GeometryRef> faces =
+            CollectGeometryRefs(*doc.Bodies().front(), EntityType::BRepFace);
+        const std::vector<GeometryRef> edges =
+            CollectGeometryRefs(*doc.Bodies().front(), EntityType::BRepEdge);
+
+        check(DescribeSelection({}).empty(), "nothing picked says nothing");
+
+        // The top face is 10 x 20 = 200.
+        GeometryRef top;
+        for (const GeometryRef& ref : faces) {
+            if (top.IsNull() || ref.point.Z() > top.point.Z()) {
+                top = ref;
+            }
+        }
+        checkText(DescribeSelection({top}), "Face   Area 200 mm\u00B2",
+                  "one face reports its area");
+
+        // Every edge of this box is 10, 20 or 30 long.
+        const std::string edgeText = DescribeSelection({edges.front()});
+        check(edgeText.rfind("Edge   Length ", 0) == 0, "one edge reports its length");
+        check(edgeText == "Edge   Length 10 mm" || edgeText == "Edge   Length 20 mm"
+                  || edgeText == "Edge   Length 30 mm",
+              "and the length is one of the box's three");
+
+        // Two opposite 10 x 20 faces: 400 in total.
+        GeometryRef bottom;
+        for (const GeometryRef& ref : faces) {
+            if (bottom.IsNull() || ref.point.Z() < bottom.point.Z()) {
+                bottom = ref;
+            }
+        }
+        checkText(DescribeSelection({top, bottom}), "2 faces   Total area 400 mm\u00B2",
+                  "several faces total up");
+
+        // A mixed pick has no one number that would mean anything, so it
+        // counts and stops there.
+        checkText(DescribeSelection({top, edges.front()}), "1 face, 1 edge",
+                  "a mixed pick just counts");
+
+        // Plurals, because "2 vertexs" would be the sort of thing nobody
+        // fixes until it has been on screen for a year.
+        const std::vector<GeometryRef> corners =
+            CollectGeometryRefs(*doc.Bodies().front(), EntityType::BRepVertex);
+        checkText(DescribeSelection({corners[0], corners[1], corners[2]}), "3 vertices",
+                  "vertices, not vertexs");
     }
 
     std::cout << std::endl;

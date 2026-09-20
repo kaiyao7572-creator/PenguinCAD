@@ -65,6 +65,12 @@ const Quantity_Color kDimensionColor(0.95, 0.85, 0.55, Quantity_TOC_sRGB);
 // grabbable in this app uses. Dark text on a light plate rather than the
 // other way round, because it has to stay readable over a shaded body as
 // well as over the empty grid.
+// Every curve's own size, shown while a sketch is open. Deliberately
+// quieter than a placed dimension: these are there to be read, not to
+// drive the geometry, and they must not be mistaken for the dimensions
+// that do.
+const Quantity_Color kMeasureColor(0.72, 0.76, 0.82, Quantity_TOC_sRGB);
+
 const Quantity_Color kValueBoxColor(0.91, 0.93, 0.95, Quantity_TOC_sRGB);
 const Quantity_Color kValueTextColor(0.08, 0.10, 0.13, Quantity_TOC_sRGB);
 const Quantity_Color kValueBoxActiveColor(0.20, 0.72, 1.00, Quantity_TOC_sRGB);
@@ -115,6 +121,7 @@ constexpr Standard_Integer kAnnotationPixels = 13;
 // a sketch are the thing the user is reading, and they were the smallest
 // text on screen.
 constexpr double kTextHeight    = 13.0;
+constexpr double kMeasureHeight = 11.0;
 constexpr double kValueBoxHeight = 14.0;
 
 // Curves and markers go one layer above the profile fill rather than
@@ -471,6 +478,30 @@ void SketchDisplay::AddSketch(SketchFeature& theSketch, bool theIsActive)
     }
 }
 
+void SketchDisplay::AddMeasures(SketchFeature& theSketch)
+{
+    if (myContext.IsNull()) {
+        return;
+    }
+
+    double scale = PixelSize() * kAnnotationPixels;
+    if (scale <= 0.0) {
+        scale = 1.0;  // no view yet: any sane size beats drawing nothing
+    }
+
+    for (const SketchAnnotations::Label& label :
+         SketchAnnotations::CurveMeasureLabels(theSketch, scale)) {
+        Handle(AIS_TextLabel) text = new AIS_TextLabel();
+        text->SetText(TCollection_ExtendedString(label.text.c_str()));
+        text->SetPosition(theSketch.To3d(label.position));
+        text->SetColor(kMeasureColor);
+        text->SetHeight(DeviceWidth(kMeasureHeight));
+        text->SetHJustification(Graphic3d_HTA_CENTER);
+        text->SetVJustification(Graphic3d_VTA_CENTER);
+        Show(text, 0, kCurveLayer);
+    }
+}
+
 void SketchDisplay::AddSelection(SketchFeature& theSketch)
 {
     SketchSelection& selection = SketchSelection::Instance();
@@ -551,6 +582,15 @@ void SketchDisplay::Refresh()
 
         const bool isActive = sketch->Name() == myActiveSketchName;
         AddSketch(*sketch, isActive);
+
+        // Every curve's size, for EVERY sketch, whenever one is open --
+        // what is already drawn elsewhere is exactly what a new sketch
+        // has to line up with, so its numbers are worth as much as the
+        // ones being drawn now. Outside sketch mode they would be clutter
+        // over the model, so they go with it.
+        if (!myActiveSketchName.empty()) {
+            AddMeasures(*sketch);
+        }
 
         // Constraints, dimensions and the selection belong to the sketch
         // being edited; showing them for every finished sketch would bury

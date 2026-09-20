@@ -180,7 +180,11 @@ void PressPullGizmoTool::Arm(const GeometryRef& theFace, const PressPullArrow& t
     if (myContext.viewport != nullptr && myContext.viewport->CurrentInteraction() != this) {
         myContext.viewport->PushInteraction(this);
     }
-    ShowStatus(myContext, "Drag the arrow to press or pull the face. Esc cancels.");
+    // Deliberately says nothing here. Arming happens on the same
+    // selection change that puts the face's area in the status bar, and
+    // it would overwrite it -- the measurement is the more useful of the
+    // two, and an arrow standing on the face already says it can be
+    // dragged.
     myContext.Redraw();
 }
 

@@ -639,6 +639,16 @@ void MainWindow::readViewportSelection()
         }
     }
 
+    // Say what was picked and how big it is, the way Fusion answers a
+    // click on a face or an edge. Cleared when nothing is selected rather
+    // than left claiming the last thing.
+    const std::string description = lcad::DescribeSelection(picked);
+    if (description.empty()) {
+        statusBar()->clearMessage();
+    } else {
+        statusBar()->showMessage(QString::fromStdString(description));
+    }
+
     lcad::GeometrySelection::Instance().Set(std::move(picked));
     refreshCommandStates();
 }

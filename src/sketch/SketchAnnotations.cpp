@@ -520,6 +520,116 @@ std::vector<SketchEntity> DimensionGeometry(const SketchFeature& theSketch, doub
     return geometry;
 }
 
+namespace {
+
+// Length of a curve. Exact for the kinds with a closed form, sampled for
+// the ones without -- a number the user reads off the screen should not
+// be approximate when it does not have to be.
+double CurveLength(const SketchEntity& theEntity)
+{
+    if (theEntity.kind == SketchEntity::Kind::Line) {
+        return theEntity.first.Distance(theEntity.second);
+    }
+    if (theEntity.kind == SketchEntity::Kind::Arc) {
+        double sweep = theEntity.endAngle - theEntity.startAngle;
+        while (sweep < 0.0) {
+            sweep += 2.0 * kPi;
+        }
+        return theEntity.radius * sweep;
+    }
+    if (theEntity.kind == SketchEntity::Kind::Circle) {
+        return 2.0 * kPi * theEntity.radius;
+    }
+
+    double first = 0.0, last = 0.0;
+    if (!SketchGeometry::ParamRange(theEntity, first, last)) {
+        return 0.0;
+    }
+    constexpr int kSamples = 96;
+    double   total = 0.0;
+    gp_Pnt2d previous = SketchGeometry::PointAt(theEntity, first);
+    for (int i = 1; i <= kSamples; ++i) {
+        const gp_Pnt2d current =
+            SketchGeometry::PointAt(theEntity, first + (last - first) * i / kSamples);
+        total += previous.Distance(current);
+        previous = current;
+    }
+    return total;
+}
+
+// What to call a curve's size. A line has a length; a circle and an arc
+// are named by diameter and radius, because that is what anyone building
+// the part measures and what a dimension on them would say.
+std::string MeasureText(const SketchEntity& theEntity)
+{
+    const LengthUnit unit = DefaultLengthUnit();
+    switch (theEntity.kind) {
+        case SketchEntity::Kind::Circle:
+            return "D" + FormatValue(2.0 * theEntity.radius, UnitKind::Length, unit,
+                                     AngleUnit::Degree, 2);
+        case SketchEntity::Kind::Arc:
+            return "R" + FormatValue(theEntity.radius, UnitKind::Length, unit,
+                                     AngleUnit::Degree, 2);
+        case SketchEntity::Kind::Ellipse:
+            return "R" + FormatValue(theEntity.radius, UnitKind::Length, unit,
+                                     AngleUnit::Degree, 2);
+        case SketchEntity::Kind::Point:
+            return std::string();
+        default:
+            break;
+    }
+    // Two decimals, not three: this is a number to glance at, and a
+    // third digit only makes every label wider.
+    return FormatValue(CurveLength(theEntity), UnitKind::Length, unit, AngleUnit::Degree, 2);
+}
+
+} // namespace
+
+std::vector<Label> CurveMeasureLabels(const SketchFeature& theSketch, double theScale)
+{
+    std::vector<Label> labels;
+    const double lift = theScale > 0.0 ? theScale : 1.0;
+
+    for (const SketchEntity& entity : theSketch.Entities()) {
+        if (!entity.IsCurve() || entity.IsDegenerate()) {
+            continue;
+        }
+        const std::string text = MeasureText(entity);
+        if (text.empty()) {
+            continue;
+        }
+
+        double first = 0.0, last = 0.0;
+        if (!SketchGeometry::ParamRange(entity, first, last)) {
+            continue;
+        }
+        gp_Pnt2d at;
+        if (entity.IsSelfClosed()) {
+            // A closed curve has no meaningful "middle" to hang a number
+            // off -- the parameter midpoint is just wherever it happens to
+            // start -- and a diameter belongs at the centre anyway.
+            at = entity.CentrePoint();
+        } else {
+            const double   middle  = 0.5 * (first + last);
+            const gp_Vec2d tangent = SketchGeometry::TangentAt(entity, middle);
+            at = SketchGeometry::PointAt(entity, middle);
+
+            // Lifted off the curve along its own normal, so the number
+            // never sits on the line it is measuring.
+            if (tangent.Magnitude() > 1.0e-12) {
+                const gp_Vec2d normal(-tangent.Y() / tangent.Magnitude(),
+                                      tangent.X() / tangent.Magnitude());
+                at = gp_Pnt2d(at.X() + normal.X() * lift, at.Y() + normal.Y() * lift);
+            }
+        }
+
+        // Horizontal on purpose: these are read, not drafted, and text
+        // rotated with the curve is slower to scan.
+        labels.push_back(Label{at, text, 0.0});
+    }
+    return labels;
+}
+
 std::vector<Label> DimensionLabels(const SketchFeature& theSketch, double theScale)
 {
     std::vector<Label> labels;

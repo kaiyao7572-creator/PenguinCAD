@@ -7,6 +7,7 @@
 #include <TopoDS_Shape.hxx>
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace lcad {
@@ -68,6 +69,16 @@ private:
     std::size_t              myFilterGeneration = 1;
     std::vector<GeometryRef> myItems;
 };
+
+// One line describing what is picked, for the status bar: the kind of
+// thing, and the measurement anyone would want off it -- a face's area, an
+// edge's length, a vertex's position. Fusion answers the same question the
+// same way, and it is the quickest way to check a model without reaching
+// for the measure tool.
+//
+// Lives here rather than in the shell so the wording can be tested without
+// a window.
+std::string DescribeSelection(const std::vector<GeometryRef>& theItems);
 
 // The OCCT shape type a filter stands for. TopAbs_SHAPE means the whole
 // object, which is how a body is picked.

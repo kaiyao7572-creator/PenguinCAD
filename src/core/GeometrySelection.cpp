@@ -2,13 +2,116 @@
 
 #include "core/Body.h"
 #include "core/Document.h"
+#include "core/Units.h"
 
 #include <TopExp.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 
 #include <algorithm>
+#include <cstdio>
+#include <string>
 
 namespace lcad {
+
+namespace {
+
+// Trailing zeros trimmed, like every other number the app shows.
+std::string Trimmed(double theValue)
+{
+    char text[64];
+    std::snprintf(text, sizeof(text), "%.2f", theValue);
+    std::string out(text);
+    if (out.find('.') != std::string::npos) {
+        out.erase(out.find_last_not_of('0') + 1);
+        if (!out.empty() && out.back() == '.') {
+            out.pop_back();
+        }
+    }
+    return out;
+}
+
+// Areas are held in square millimetres, so converting them means the
+// SQUARE of the length conversion -- an area in inches is not its
+// millimetre value divided by 25.4.
+std::string FormatArea(double theSquareMillimetres)
+{
+    const LengthUnit unit = DefaultLengthUnit();
+    const double     per  = MillimetersPer(unit);
+    const double     value = per > 0.0 ? theSquareMillimetres / (per * per) : theSquareMillimetres;
+    return Trimmed(value) + " " + SymbolOf(unit) + "\u00B2";
+}
+
+std::string FormatLength(double theMillimetres)
+{
+    return FormatValue(theMillimetres, UnitKind::Length, DefaultLengthUnit(),
+                       AngleUnit::Degree, 2);
+}
+
+std::string Counted(std::size_t theCount, const char* theSingular, const char* thePlural)
+{
+    return std::to_string(theCount) + " " + (theCount == 1 ? theSingular : thePlural);
+}
+
+} // namespace
+
+std::string DescribeSelection(const std::vector<GeometryRef>& theItems)
+{
+    if (theItems.empty()) {
+        return std::string();
+    }
+
+    std::size_t faces = 0, edges = 0, vertices = 0;
+    double      area = 0.0, length = 0.0;
+    for (const GeometryRef& item : theItems) {
+        switch (item.type) {
+            case EntityType::BRepFace:   ++faces;    area   += item.measure; break;
+            case EntityType::BRepEdge:   ++edges;    length += item.measure; break;
+            case EntityType::BRepVertex: ++vertices;                         break;
+            default: break;
+        }
+    }
+
+    // One thing picked: name it and give its own measurement, which is
+    // what the user is asking for by clicking it.
+    if (theItems.size() == 1) {
+        const GeometryRef& only = theItems.front();
+        if (only.type == EntityType::BRepFace) {
+            return "Face   Area " + FormatArea(only.measure);
+        }
+        if (only.type == EntityType::BRepEdge) {
+            return "Edge   Length " + FormatLength(only.measure);
+        }
+        if (only.type == EntityType::BRepVertex) {
+            return "Vertex   " + FormatLength(only.point.X()) + ", "
+                 + FormatLength(only.point.Y()) + ", " + FormatLength(only.point.Z());
+        }
+        return "1 selected";
+    }
+
+    // Several of one kind total up; a mixed bag only counts, because
+    // there is no one number that would mean anything across kinds.
+    std::vector<std::string> parts;
+    if (faces != 0) {
+        parts.push_back(Counted(faces, "face", "faces"));
+    }
+    if (edges != 0) {
+        parts.push_back(Counted(edges, "edge", "edges"));
+    }
+    if (vertices != 0) {
+        parts.push_back(Counted(vertices, "vertex", "vertices"));
+    }
+
+    std::string text;
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+        text += (i == 0 ? "" : ", ") + parts[i];
+    }
+    if (faces != 0 && edges == 0 && vertices == 0) {
+        text += "   Total area " + FormatArea(area);
+    } else if (edges != 0 && faces == 0 && vertices == 0) {
+        text += "   Total length " + FormatLength(length);
+    }
+    return text;
+}
 
 TopAbs_ShapeEnum TopAbsTypeOf(EntityType theType)
 {

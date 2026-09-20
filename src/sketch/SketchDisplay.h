@@ -142,6 +142,9 @@ private:
 
     void AddSketch(SketchFeature& theSketch, bool theIsActive);
     void AddAnnotations(SketchFeature& theSketch);
+
+    // Every curve's own length/radius/diameter, drawn beside it.
+    void AddMeasures(SketchFeature& theSketch);
     void AddSelection(SketchFeature& theSketch);
 
     // Model size of one screen pixel, used to keep glyphs and arrowheads
