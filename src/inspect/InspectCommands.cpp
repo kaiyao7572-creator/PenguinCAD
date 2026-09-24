@@ -87,7 +87,7 @@ public:
     std::string Group() const override { return kInspectGroup; }
     std::string Section() const override { return "Analyze"; }
     std::string Icon() const override { return "📊"; }
-    std::string Shortcut() const override { return "I"; }
+    // No shortcut: Fusion gives Model Properties none, and I is Measure.
     std::string Description() const override
     {
         return "Report volume, surface area, center of mass and bounding box of the model";
@@ -455,7 +455,8 @@ public:
     std::string Group() const override { return kInspectGroup; }
     std::string Section() const override { return "Measure"; }
     std::string Icon() const override { return "↔️"; }
-    std::string Shortcut() const override { return "M"; }
+    // I, as in Fusion. M belongs to Move, and a key bound twice fires neither.
+    std::string Shortcut() const override { return "I"; }
     std::string Description() const override
     {
         return "Click two points (snaps to vertices) to measure the distance between them";

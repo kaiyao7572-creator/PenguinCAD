@@ -245,6 +245,7 @@ run "Parameters: named values and expressions" build_parameters
 run "Sweep: profile along a path" build_sweep
 run "Selection: what can be picked, and what survives a rebuild" build_selection
 run "Transform: a gizmo drag moves the picked body" build_transform
+run "Shortcuts: no key bound to two commands" python3 "$ROOT/tests/shortcut_check.py"
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

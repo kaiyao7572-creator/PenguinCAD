@@ -329,7 +329,8 @@ public:
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Orientation"; }
     std::string Icon() const override { return "🔍"; }
-    std::string Shortcut() const override { return "F"; }
+    // F6, as in Fusion. F belongs to Fillet, and a key bound twice fires neither.
+    std::string Shortcut() const override { return "F6"; }
     std::string Description() const override { return "Frame the entire model in the viewport"; }
 
     bool IsEnabled(const CommandContext& theContext) const override

@@ -29,7 +29,10 @@ class QString;
 //   press <x> <y>           left button down
 //   release <x> <y>         left button up
 //   drag <x1> <y1> <x2> <y2>   press, several moves, release
-//   key <Name>              Escape, Return, Delete, or a single character
+//   key <Name>              Escape, Return, Delete, or a single character,
+//                           sent to the viewport as a tool would see it
+//   hotkey <Seq>            a key as the SHORTCUT map sees it ("F6",
+//                           "Shift+W", "Ctrl+R"): proves a binding fires
 //   wheel <x> <y> <notches> wheel notches at a point. NEGATIVE zooms in,
 //                           which is what this app's wheel handler does
 //                           with a positive angleDelta -- the verb stays

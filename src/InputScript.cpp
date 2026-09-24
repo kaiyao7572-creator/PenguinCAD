@@ -18,6 +18,7 @@
 #include <cstring>
 #include <QFile>
 #include <QKeyEvent>
+#include <QKeySequence>
 #include <QMouseEvent>
 #include <QImage>
 #include <QPixmap>
@@ -171,6 +172,48 @@ void SendKey(MainWindow* theWindow, const QString& theName)
     QCoreApplication::sendEvent(target, &down);
     QKeyEvent up(QEvent::KeyRelease, key, Qt::NoModifier, text);
     QCoreApplication::sendEvent(target, &up);
+}
+
+// Deliver a key the way a keyboard reaches a SHORTCUT, so a script can
+// prove a binding fires. `key` cannot: it goes straight to the GL window,
+// and Qt only consults its shortcut map for a synthetic press sent to a
+// widget. That gap is how F and M stayed dead for a whole session -- each
+// was bound to two commands, and Qt fires neither on an ambiguous binding.
+//
+// Qt also ignores every shortcut while no window of the app is ACTIVE, and
+// with nobody at the machine the window manager often never focuses a
+// freshly started app. A hotkey sent then does nothing, which looks
+// exactly like a dead binding -- so ask for focus, and say loudly when it
+// was refused rather than let a broken instrument pass for evidence.
+void SendHotkey(MainWindow* theWindow, const QString& theSequence)
+{
+    const QKeySequence sequence(theSequence.trimmed(), QKeySequence::PortableText);
+    if (sequence.isEmpty()) {
+        std::cerr << "  script: not a key sequence: " << theSequence.toStdString() << std::endl;
+        return;
+    }
+    if (QApplication::activeWindow() != theWindow) {
+        theWindow->raise();
+        theWindow->activateWindow();
+        for (int i = 0; i < 20 && QApplication::activeWindow() != theWindow; ++i) {
+            Settle(50);
+        }
+        if (QApplication::activeWindow() != theWindow) {
+            std::cerr << "  script: WARNING the window never became active, so Qt will ignore "
+                      << theSequence.toStdString()
+                      << " -- a missing result here says nothing about the binding" << std::endl;
+        }
+    }
+    const QKeyCombination combo = sequence[0];
+    const int key = static_cast<int>(combo.key());
+    QString text;
+    if (combo.keyboardModifiers() == Qt::NoModifier && key >= 0x20 && key < 0x7f) {
+        text = QString(QChar(key)).toLower();
+    }
+    QKeyEvent down(QEvent::KeyPress, key, combo.keyboardModifiers(), text);
+    QCoreApplication::sendEvent(theWindow, &down);
+    QKeyEvent up(QEvent::KeyRelease, key, combo.keyboardModifiers(), text);
+    QCoreApplication::sendEvent(theWindow, &up);
 }
 
 // Schedule an action against whatever modal dialog is up in theDelay ms.
@@ -342,6 +385,8 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
                       Qt::NoModifier);
         } else if (verb == "key" && parts.size() >= 2) {
             SendKey(theWindow, parts.at(1));
+        } else if (verb == "hotkey" && parts.size() >= 2) {
+            SendHotkey(theWindow, parts.at(1));
         } else if (verb == "wait" && parts.size() >= 2) {
             Settle(static_cast<int>(number(1)));
             continue;
