@@ -89,6 +89,46 @@ Feature* sketch = theContext.FindFeature(mySketchName);   // upstream only
 `core/ShapeFeature.h` is a ready-made feature wrapping a fixed shape
 (used by STEP import); a good reference implementation.
 
+### Parameters and expressions — you get them for free
+
+The document owns a `ParameterTable` of **user parameters** (Fusion's
+MODIFY > Change Parameters), and any `Double` parameter of any feature can
+be **driven by an expression** over them (`plate_t * 2`). A feature does
+nothing to support this:
+
+- Expressions live on the `Feature` **base**, keyed by parameter name, and
+  `CopyBaseTo` carries them — which every `Clone` already calls.
+- `Document::Rebuild` evaluates each one and pushes the number through
+  your `SetParameter` **before** your `Compute`, and only when the value
+  really changed (a sketch re-solves whenever a dimension is set, so a
+  no-op push every rebuild would make it drift).
+- An expression that no longer evaluates, or gives a value outside your
+  `minimum`/`maximum`, or that your `SetParameter` refuses, fails your
+  feature on rebuild with a message naming the parameter — it never builds
+  on the last number it gave.
+
+What you must do: implement `Parameters()`/`SetParameter()` for numbers,
+and give each `Double` the right `unit` — `"mm"` (the default) for a
+length, `"deg"` for an angle, `""` for a count or ratio. `Parameter::Kind()`
+reads it, and the unit is what makes `90 deg` and `1/2 in` mean the right
+thing. **Do not store expressions yourself.**
+
+Edits go through the document, never straight into a feature:
+`Document::SetFeatureParameter(feature, parameter, error)` checks an
+expression evaluates **now** (refusing it otherwise), keeps it only if it
+names a parameter (`3 * 4` is just 12), makes the edit undoable and
+rebuilds. The user-parameter mutators (`AddUserParameter`,
+`RenameUserParameter`, …) are undoable too, and undo restores the table
+together with the timeline. Rename rewrites every feature expression that
+used the old name.
+
+Any `UnitLineEdit` takes arithmetic; give it the document's table with
+`SetParameterTable` and it takes expressions too. A feature dialog does
+that when its command passes `ParametersOf(theContext)` to
+`ShowFeatureDialog` and calls `ApplyFieldExpressions` on the new feature —
+which matches each Number field to the parameter **with the same name as
+its label**, so only opt in a dialog whose labels are its parameter names.
+
 ### `core/Document.h` — the model
 
 ```cpp
@@ -254,7 +294,13 @@ Register in your `Register*Commands(CommandRegistry&)` function:
 ```cpp
 theRegistry.Add(std::make_unique<ExtrudeCommand>());
 ```
-Group names become ribbon tabs automatically, in registration order.
+Group names become ribbon tabs automatically, in registration order. Every
+`Register*Commands` is called from **one** list, `RegisterAllCommands` in
+`src/Registration.cpp` — the window registers from it, and so does
+`linuxcad --check-shortcuts`, which fails the test suite if any key is
+bound to two commands (Qt fires neither on an ambiguous shortcut). Ids
+sharing their first two dotted parts (`select.priority.face`,
+`select.priority.edge`) become one ribbon button with a flyout.
 
 `IsEnabled()` should return false when the command can't run (e.g. needs a
 selection or an existing body) — it's re-queried on every document change,
@@ -319,6 +365,13 @@ having travelled there first selects nothing.
 `SelectInViewer` treats a degenerate rectangle as a point pick. A click is
 a zero-area rectangle, and `SelectRectangle` on one can never match with
 window semantics.
+
+`applySelectionFilters()` activates `GeometrySelection::PickableTypes()`,
+not the filters directly. The filters are independent checkboxes — in
+Fusion too — so switching Faces off leaves edges pickable. "Only faces" is
+a different Fusion tool, **Selection Priority** (Body / Face / Edge): one
+type becomes the only thing a click can pick until it is turned off.
+`PickableTypes()` is the priority alone when one is set, else the filters.
 
 Anything decorative must be displayed with selection mode -1 explicitly.
 The two-argument `Display` overload activates the default mode, which is
@@ -395,6 +448,26 @@ key   Escape
 shot  done.png
 ```
 
+Beyond that list, verified this session:
+
+```
+hotkey F6                      # a real shortcut, through Qt's shortcut map
+menu File > Export...          # a menu-bar item by its text
+arm 900 type Distance = plate_t * 2   # type into a modal dialog's field
+arm 900 click OK               # press a dialog button by its text
+arm 900 cell plate_t / Expression = 10 mm   # edit a tree cell
+arm 900 dump                   # print fields, tree rows, labels, buttons
+arm 900 shot dialog.png        # photograph the open dialog
+```
+
+`key` goes straight to the GL window and **bypasses the shortcut map**;
+use `hotkey` to prove a binding. Qt also ignores every shortcut while no
+window of the app is active, and with nobody at the machine the window
+manager often never focuses a new app — `hotkey` asks for focus and warns
+when it was refused. Reading geometry back without eyes: `arm 800 dump`,
+`arm 1000 accept`, `run inspect.model_properties` prints volume, area,
+centre and bounding box.
+
 Coordinates are relative to the viewport's top-left, not the window's.
 The origin planes are small: clicking far from centre misses them and
 silently creates nothing — check the Browser panel or the presence of the
@@ -412,6 +485,10 @@ Then crop/zoom the result to inspect it:
 ```
 magick out-viewport.png -crop 1100x700+420+150 +repage -resize 760x zoom.png
 ```
+
+Give crops in **pixels**. `-crop 45%x3` is 45% wide and three PIXELS
+tall, which reads as an empty status bar; the status bar of a 3000x1826
+window grab is about `-crop 1400x56+0+1770`.
 
 ### Tests
 
