@@ -21,6 +21,8 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
+#include <QMenuBar>
 #include <QPushButton>
 #include <QMouseEvent>
 #include <QImage>
@@ -299,6 +301,27 @@ void ArmDialog(int theDelay, const QString& theAction)
     });
 }
 
+// Trigger a menu-bar item by what it says, "File > Export...", so the
+// actions that are not commands -- Export, Undo, Open -- can be driven
+// too. Mnemonic ampersands are ignored.
+bool TriggerMenu(MainWindow* theWindow, const QString& thePath)
+{
+    const QString menuName = thePath.section('>', 0, 0).trimmed();
+    const QString itemName = thePath.section('>', 1).trimmed();
+    for (QAction* top : theWindow->menuBar()->actions()) {
+        if (top->text().remove('&').trimmed() != menuName || top->menu() == nullptr) {
+            continue;
+        }
+        for (QAction* item : top->menu()->actions()) {
+            if (item->text().remove('&').simplified() == itemName) {
+                item->trigger();
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // Zoom the viewport, so a script can frame what it is about to click.
 //
 // Without this every target is whatever size the default camera makes it
@@ -386,6 +409,16 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
             ArmDialog(static_cast<int>(number(1)), action);
             std::cout << "  arm " << action.toStdString() << " in "
                       << static_cast<int>(number(1)) << "ms" << std::endl;
+            continue;
+        }
+
+        if (verb == "menu" && parts.size() >= 2) {
+            const QString path = line.section(QRegularExpression("\\s+"), 1);
+            std::cout << "  menu " << path.toStdString() << std::endl;
+            if (!TriggerMenu(theWindow, path)) {
+                std::cout << "  menu: [NO SUCH ITEM]" << std::endl;
+            }
+            Settle(120);
             continue;
         }
 

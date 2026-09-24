@@ -4,7 +4,7 @@
 
 #include "OcctViewport.h"
 #include "StepImport.h"
-#include "StlExport.h"
+#include "io/ExportDialog.h"
 #include "core/Registration.h"
 #include "core/ShapeFeature.h"
 
@@ -120,7 +120,6 @@ MainWindow::MainWindow(QWidget* parent)
     lcad::RegisterLoftCommands(registry);
     lcad::RegisterCombineCommands(registry);
     lcad::RegisterPatternCommands(registry);
-    lcad::RegisterIoCommands(registry);
     lcad::RegisterGizmoCommands(registry);
     lcad::RegisterViewCommands(registry);
     lcad::RegisterInspectCommands(registry);
@@ -466,8 +465,10 @@ void MainWindow::buildMenus()
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainWindow::onOpenStep);
 
-    QAction* exportAction = fileMenu->addAction("&Export STL...");
-    connect(exportAction, &QAction::triggered, this, &MainWindow::onExportStl);
+    // One Export for every format, as in Fusion's File menu; the type is
+    // picked inside the dialog.
+    QAction* exportAction = fileMenu->addAction("&Export...");
+    connect(exportAction, &QAction::triggered, this, &MainWindow::onExport);
 
     fileMenu->addSeparator();
 
@@ -676,26 +677,12 @@ void MainWindow::onOpenStep()
     statusBar()->showMessage("Loaded " + path);
 }
 
-void MainWindow::onExportStl()
+void MainWindow::onExport()
 {
-    const TopoDS_Shape& shape = m_document.Shape();
-    if (shape.IsNull()) {
-        QMessageBox::information(this, "Nothing to Export", "Create or load a shape first.");
-        return;
+    const QString status = lcad::ExportDesign(this, m_document);
+    if (!status.isEmpty()) {
+        statusBar()->showMessage(status);
     }
-
-    const QString path = QFileDialog::getSaveFileName(
-        this, "Export STL File", QString(), "STL Files (*.stl)");
-    if (path.isEmpty()) {
-        return;
-    }
-
-    if (!ExportShapeToStl(shape, path.toStdString())) {
-        QMessageBox::warning(this, "Export Failed", "Could not write STL file:\n" + path);
-        return;
-    }
-
-    statusBar()->showMessage("Exported " + path);
 }
 
 void MainWindow::onUndo()

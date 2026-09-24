@@ -16,6 +16,8 @@ class QString;
 // Commands, one per line, '#' starts a comment:
 //
 //   run <command.id>        invoke a registered command (e.g. sketch.create)
+//   menu <Menu> > <Item>    trigger a menu-bar item by its text, e.g.
+//                           "menu File > Export..." or "menu Edit > Undo"
 //   arm <ms> accept|cancel  answer the next modal dialog after <ms>. Arm
 //                           this BEFORE the `run` that opens the dialog:
 //                           the script loop parks inside the dialog's own

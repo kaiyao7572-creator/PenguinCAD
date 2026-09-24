@@ -41,7 +41,7 @@ public:
 
 private slots:
     void onOpenStep();
-    void onExportStl();
+    void onExport();
     void onUndo();
     void onRedo();
 
