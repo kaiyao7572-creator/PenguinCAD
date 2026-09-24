@@ -116,6 +116,10 @@ MainWindow::MainWindow(QWidget* parent)
     CommandRegistry& registry = CommandRegistry::Instance();
     lcad::RegisterSketchCommands(registry);
     lcad::RegisterFeatureCommands(registry);
+    lcad::RegisterSweepCommands(registry);
+    lcad::RegisterLoftCommands(registry);
+    lcad::RegisterCombineCommands(registry);
+    lcad::RegisterPatternCommands(registry);
     lcad::RegisterGizmoCommands(registry);
     lcad::RegisterViewCommands(registry);
     lcad::RegisterInspectCommands(registry);

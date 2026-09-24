@@ -21,6 +21,10 @@ struct CommandContext;
 
 void RegisterSketchCommands(CommandRegistry& theRegistry);
 void RegisterFeatureCommands(CommandRegistry& theRegistry);
+void RegisterSweepCommands(CommandRegistry& theRegistry);    // src/features/SweepCommands.cpp
+void RegisterLoftCommands(CommandRegistry& theRegistry);     // src/features/LoftCommands.cpp
+void RegisterCombineCommands(CommandRegistry& theRegistry);  // src/features/CombineCommands.cpp
+void RegisterPatternCommands(CommandRegistry& theRegistry);  // src/features/PatternCommands.cpp
 void RegisterGizmoCommands(CommandRegistry& theRegistry);
 void RegisterViewCommands(CommandRegistry& theRegistry);
 void RegisterUnitsCommand(CommandRegistry& theRegistry);   // src/view/UnitsCommand.cpp
