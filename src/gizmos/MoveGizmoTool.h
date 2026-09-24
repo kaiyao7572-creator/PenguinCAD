@@ -3,6 +3,7 @@
 #include "core/Command.h"
 #include "core/Document.h"
 #include "core/ViewportInteraction.h"
+#include "features/CombineFeature.h"
 
 #include <AIS_Manipulator.hxx>
 #include <gp_Pnt.hxx>
@@ -81,6 +82,13 @@ private:
     AIS_ManipulatorMode myDragMode  = AIS_MM_None;
     Standard_Integer    myDragAxis  = -1;
     gp_Pnt               myDragPivot;
+
+    // Which body the manipulator is sitting on, resolved when we attach.
+    // Without it the committed TransformFeature has no target and moves
+    // the WHOLE upstream shape -- invisible while a document holds one
+    // body, and every body at once as soon as Combine or a pattern has
+    // made a second.
+    CombineBodyRef myTargetRef;
 };
 
 } // namespace lcad

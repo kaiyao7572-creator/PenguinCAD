@@ -71,6 +71,25 @@ Handle(AIS_Shape) FindDisplayedBody(const Handle(AIS_InteractiveContext)& theCon
     return result;
 }
 
+// The body a displayed object stands for, as a durable reference.
+// MainWindow displays one AIS_Shape per body, so the shape the
+// manipulator is attached to IS a body's shape -- matched by identity
+// rather than by name, because the name is what we are trying to learn.
+CombineBodyRef BodyRefFor(const Handle(AIS_InteractiveObject)& theObject,
+                          const Document*                     theDocument)
+{
+    Handle(AIS_Shape) shape = Handle(AIS_Shape)::DownCast(theObject);
+    if (shape.IsNull() || theDocument == nullptr || shape->Shape().IsNull()) {
+        return CombineBodyRef();
+    }
+    for (const BodyPtr& body : theDocument->Bodies()) {
+        if (body && !body->Shape().IsNull() && shape->Shape().IsSame(body->Shape())) {
+            return MakeCombineBodyRef(*body);
+        }
+    }
+    return CombineBodyRef();
+}
+
 } // namespace
 
 MoveGizmoTool& MoveGizmoTool::Instance()
@@ -172,10 +191,13 @@ void MoveGizmoTool::AttachTo(const Handle(AIS_InteractiveObject)& theObject)
 
     if (myManipulator.IsNull()) {
         myManipulator = new AIS_Manipulator();
-        // TransformFeature only models translate + rotate, so a scale
-        // handle would offer an edit we can't actually carry to the
-        // timeline -- hide it entirely rather than let it silently do
-        // nothing when dragged.
+        // Scaling lives in its own tool (RotateScaleGizmoTool), not here.
+        // TransformFeature does model a scale factor now, but a factor of
+        // zero or below has to be REFUSED, and AIS_Manipulator has
+        // already transformed the object it is attached to by the time
+        // its Transform() hands the number back -- there is nothing left
+        // to refuse. Hide the handle rather than offer an edit that can
+        // only be caught after the damage is on screen.
         myManipulator->SetPart(AIS_MM_Scaling, Standard_False);
         // Lets a single press-drag grab a handle immediately, Fusion
         // style, instead of needing a separate "select the arrow" click
@@ -188,6 +210,11 @@ void MoveGizmoTool::AttachTo(const Handle(AIS_InteractiveObject)& theObject)
     AIS_Manipulator::OptionsForAttach options;
     options.SetAdjustPosition(Standard_True).SetAdjustSize(Standard_True).SetEnableModes(Standard_True);
     myManipulator->Attach(theObject, options);
+
+    // Resolved here rather than at commit time: by then our own drag has
+    // already moved the body, so its centroid no longer describes the
+    // shape the feature will be computed against.
+    myTargetRef = BodyRefFor(theObject, myContext.document);
 
     // Force world-aligned handles regardless of how Attach() oriented
     // itself: CommitTransform() below reads back which axis index (0/1/2)
@@ -353,6 +380,7 @@ void MoveGizmoTool::CommitTransform(const gp_Trsf& theTrsf)
     }
 
     auto feature = std::make_shared<TransformFeature>(tx, ty, tz, rx, ry, rz, myDragPivot);
+    feature->SetTarget(myTargetRef);  // a null ref still means "everything"
     feature->SetName(myContext.document->MakeUniqueName("Move"));
     myContext.document->AddFeature(feature);  // rebuilds, snapshots undo, redisplays
     // OnDocumentChanged(), fired synchronously by AddFeature()'s rebuild,

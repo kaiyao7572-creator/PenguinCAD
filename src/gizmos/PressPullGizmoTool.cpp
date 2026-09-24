@@ -91,6 +91,13 @@ void PressPullGizmoTool::Sync(const CommandContext& theContext)
         return;  // mid-drag the arrow belongs to the drag, not to the poll
     }
 
+    // The gate. Without it every single-face selection grew an arrow,
+    // because this runs off a 300ms poll and on every selection change.
+    if (!myIsEnabled) {
+        Disarm();
+        return;
+    }
+
     myContext = theContext;
     if (myContext.document == nullptr || myContext.AisContext().IsNull()) {
         return;  // the viewer is created lazily; retried on the next poll
@@ -144,6 +151,21 @@ void PressPullGizmoTool::Sync(const CommandContext& theContext)
     }
 
     Arm(face, arrow);
+}
+
+void PressPullGizmoTool::Start(const CommandContext& theContext)
+{
+    myIsEnabled = true;
+    Sync(theContext);   // arm immediately if a face is already picked
+}
+
+void PressPullGizmoTool::Stop()
+{
+    myIsEnabled = false;
+    Disarm();
+    if (myContext.document != nullptr) {
+        myContext.Redraw();
+    }
 }
 
 void PressPullGizmoTool::Arm(const GeometryRef& theFace, const PressPullArrow& theArrow)

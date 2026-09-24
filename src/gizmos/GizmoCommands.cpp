@@ -3,6 +3,7 @@
 #include "core/Registration.h"
 #include "gizmos/MoveGizmoTool.h"
 #include "gizmos/PressPullGizmoTool.h"
+#include "gizmos/RotateScaleGizmoTool.h"
 #include "gizmos/TransformFeature.h"
 
 #include <memory>
@@ -94,6 +95,21 @@ bool AskForTransform(const CommandContext& theContext,
     return true;
 }
 
+// Only one gizmo owns the mouse at a time. Two sets of handles on one
+// body would overlap on screen and race for every click, and the one
+// underneath would keep answering hovers it can no longer act on.
+void StopOtherGizmos(bool theKeepMove)
+{
+    if (!theKeepMove) {
+        MoveGizmoTool::Instance().Stop();
+    } else {
+        RotateScaleGizmoTool::Instance().Stop();
+    }
+    // The press/pull arrow answers to the selection once switched on, so
+    // it would otherwise sit under whichever gizmo just took the mouse.
+    PressPullGizmoTool::Instance().Stop();
+}
+
 // ---- commands ----
 
 // The interactive gizmo: attaches AIS_Manipulator to the current
@@ -142,7 +158,102 @@ public:
             tool.Stop();  // second invocation detaches
             return;
         }
+        StopOtherGizmos(/*theKeepMove=*/true);
         tool.Start(theContext);  // no-op with a status hint if nothing is selected
+    }
+};
+
+// Fusion's rotate manipulator: three rings round the selected body, one
+// per world axis, turning it about its own CENTROID. Separate from
+// gizmo.move -- whose AIS_Manipulator also has rings -- because that one
+// turns about the centre of the bounding BOX, and because scale needs a
+// handle AIS_Manipulator cannot carry to the timeline at all. See
+// RotateScaleGizmoTool for the whole argument.
+class RotateGizmoCommand : public Command
+{
+public:
+    std::string Id() const override { return "gizmo.rotate"; }
+    std::string Title() const override { return "Rotate"; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return kModifyGroup; }
+    std::string Icon() const override { return "🔃"; }  // a turn
+    std::string Shortcut() const override { return "Ctrl+R"; }
+    std::string Description() const override
+    {
+        return "Drag a ring to turn the selected body about its own centre; "
+               "the angle shows in the status bar and lands on the timeline";
+    }
+
+    bool IsEnabled(const CommandContext& theContext) const override
+    {
+        return theContext.document != nullptr && !theContext.document->Shape().IsNull();
+    }
+
+    bool IsCheckable() const override { return true; }
+    bool IsChecked(const CommandContext& theContext) const override
+    {
+        (void)theContext;
+        const RotateScaleGizmoTool& tool = RotateScaleGizmoTool::Instance();
+        return tool.IsActive() && tool.ActiveMode() == RotateScaleGizmoTool::Mode::Rotate;
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        RotateScaleGizmoTool& tool = RotateScaleGizmoTool::Instance();
+        if (tool.IsActive() && tool.ActiveMode() == RotateScaleGizmoTool::Mode::Rotate) {
+            tool.Stop();  // second invocation detaches
+            return;
+        }
+        StopOtherGizmos(/*theKeepMove=*/false);
+        tool.Start(theContext, RotateScaleGizmoTool::Mode::Rotate);
+    }
+};
+
+// Fusion's MODIFY > SCALE, uniform. One handle standing off the body's
+// centroid: drag it out to grow, in to shrink.
+//
+// UNIFORM only. Fusion also offers a per-axis non-uniform scale, which
+// gp_Trsf cannot represent -- it would need gp_GTrsf and
+// BRepBuilderAPI_GTransform, and a different transform type all the way
+// through TransformFeature. Offering three boxes and quietly applying one
+// of them is the wrong solid nobody notices, so there is one factor.
+class ScaleGizmoCommand : public Command
+{
+public:
+    std::string Id() const override { return "gizmo.scale"; }
+    std::string Title() const override { return "Scale"; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return kModifyGroup; }
+    std::string Icon() const override { return "⤢"; }  // resize
+    std::string Shortcut() const override { return "S"; }
+    std::string Description() const override
+    {
+        return "Drag the handle to resize the selected body about its own centre, "
+               "uniformly in all three axes";
+    }
+
+    bool IsEnabled(const CommandContext& theContext) const override
+    {
+        return theContext.document != nullptr && !theContext.document->Shape().IsNull();
+    }
+
+    bool IsCheckable() const override { return true; }
+    bool IsChecked(const CommandContext& theContext) const override
+    {
+        (void)theContext;
+        const RotateScaleGizmoTool& tool = RotateScaleGizmoTool::Instance();
+        return tool.IsActive() && tool.ActiveMode() == RotateScaleGizmoTool::Mode::Scale;
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        RotateScaleGizmoTool& tool = RotateScaleGizmoTool::Instance();
+        if (tool.IsActive() && tool.ActiveMode() == RotateScaleGizmoTool::Mode::Scale) {
+            tool.Stop();
+            return;
+        }
+        StopOtherGizmos(/*theKeepMove=*/false);
+        tool.Start(theContext, RotateScaleGizmoTool::Mode::Scale);
     }
 };
 
@@ -190,9 +301,63 @@ public:
 
 } // namespace
 
+// The press/pull drag arrow, as a MODE the user switches on.
+//
+// It used to arm itself off the selection alone, through the Sync() call
+// in MoveGizmoCommand::IsEnabled() below. That made a plain click on a
+// surface sprout a manipulator: picking a face to read its area, or to
+// pass to Fillet, or just to see what it was, silently became a modelling
+// gesture. A click means "I am pointing at this" and nothing more, so the
+// arrow now waits to be asked for. Fusion's Press Pull behaves the same
+// way -- the handle appears when the command is invoked, not on a pick.
+class PressPullGizmoCommand : public Command
+{
+public:
+    std::string Id() const override { return "gizmo.press_pull"; }
+    std::string Title() const override { return "Press Pull Arrow"; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return kModifyGroup; }
+    std::string Icon() const override { return "🔼"; }
+    std::string Shortcut() const override { return "Shift+Q"; }
+    std::string Description() const override
+    {
+        return "Show a drag arrow on the selected face; Q instead types an exact distance";
+    }
+
+    bool IsEnabled(const CommandContext& theContext) const override
+    {
+        return theContext.document != nullptr && !theContext.document->Shape().IsNull();
+    }
+
+    bool IsCheckable() const override { return true; }
+    bool IsChecked(const CommandContext& theContext) const override
+    {
+        (void)theContext;
+        return PressPullGizmoTool::Instance().IsEnabled();
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        PressPullGizmoTool& tool = PressPullGizmoTool::Instance();
+        if (tool.IsEnabled()) {
+            tool.Stop();   // second invocation switches the mode off
+            return;
+        }
+        MoveGizmoTool::Instance().Stop();
+        RotateScaleGizmoTool::Instance().Stop();
+        tool.Start(theContext);
+        if (!tool.IsArmed()) {
+            ShowStatus(theContext, "Select a face to put the arrow on.");
+        }
+    }
+};
+
 void RegisterGizmoCommands(CommandRegistry& theRegistry)
 {
+    theRegistry.Add(std::make_unique<PressPullGizmoCommand>());
     theRegistry.Add(std::make_unique<MoveGizmoCommand>());
+    theRegistry.Add(std::make_unique<RotateGizmoCommand>());
+    theRegistry.Add(std::make_unique<ScaleGizmoCommand>());
     theRegistry.Add(std::make_unique<MoveRotateDialogCommand>());
 }
 

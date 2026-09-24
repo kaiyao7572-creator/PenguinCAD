@@ -45,6 +45,18 @@ public:
     // viewport's single selection callback already belongs to MainWindow.
     void Sync(const CommandContext& theContext);
 
+    // Turn the drag arrow on and off. Selecting a face must NOT summon it
+    // by itself: a click on a surface means "I am pointing at this", and
+    // answering that with a live manipulator takes a plain pick and turns
+    // it into a modelling tool the user never asked for. Fusion shows the
+    // arrow once Press Pull is invoked, not on selection, and so do we.
+    void Start(const CommandContext& theContext);
+    void Stop();
+
+    // Whether the user has asked for the arrow at all. Sync() refuses to
+    // arm until this is true, whatever is selected.
+    bool IsEnabled() const { return myIsEnabled; }
+
     bool IsArmed() const { return myIsArmed; }
 
     // ---- ViewportInteraction ----
@@ -97,6 +109,7 @@ private:
     Handle(AIS_Shape) myPreviewObject;
     std::vector<Handle(AIS_InteractiveObject)> myHiddenBodies;
 
+    bool   myIsEnabled   = false;   // the user asked for the arrow
     bool   myIsArmed     = false;
     bool   myIsDragging  = false;
     bool   myIsHovering  = false;
