@@ -165,6 +165,70 @@ build_inference() {
     "$OUT/inference_test"
 }
 
+# ---- identity: references that refuse to guess when they cannot be sure ----
+build_identity() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/identity_test.cpp" \
+        "$SRC/core/ProfileProvider.cpp" "$SRC/core/ProfileSelection.cpp" \
+        "$SRC/core/Origin.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/GeometryRef.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/features/PrimitiveFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/identity_test" || return 1
+    "$OUT/identity_test"
+}
+
+# ---- parameters: named values and the expressions between them ----
+build_parameters() {
+    g++ -std=c++17 -Wall -Wextra -I"$SRC" \
+        "$ROOT/tests/parameters_test.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
+        -o "$OUT/parameters_test" || return 1
+    "$OUT/parameters_test"
+}
+
+# ---- sweep: a profile driven along a path, against closed-form volumes ----
+build_sweep() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/sweep_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Origin.cpp" \
+        "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/features/SweepFeature.cpp" "$SRC/features/ProfileFeatures.cpp" \
+        "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/sweep_test" || return 1
+    "$OUT/sweep_test"
+}
+
+# ---- selection: what can be picked, and what a rebuild does to a pick ----
+build_selection() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/selection_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
+        "$SRC/core/ProfileProvider.cpp" "$SRC/core/ProfileSelection.cpp" \
+        "$SRC/core/Units.cpp" \
+        "$SRC/features/PrimitiveFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/selection_test" || return 1
+    "$OUT/selection_test"
+}
+
+# ---- transform: does a gizmo drag move the picked body, or all of them ----
+build_transform() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/transform_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/ShapeFeature.cpp" "$SRC/core/Entity.cpp" \
+        "$SRC/core/Body.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Units.cpp" \
+        "$SRC/gizmos/TransformFeature.cpp" \
+        "$SRC/features/CombineFeature.cpp" "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/transform_test" || return 1
+    "$OUT/transform_test"
+}
+
 run "Units: parsing and formatting" build_units
 run "Widget: unit-aware input field" build_widget
 run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
@@ -176,6 +240,11 @@ run "Sketch types: the Fusion curve taxonomy" build_sketchtypes
 run "Press/Pull: face selection and face offset" build_presspull
 run "Press/Pull: the drag gizmo" build_gizmo
 run "Sketch: typed input and live dimensions" build_sketchinput
+run "Identity: references that refuse to guess" build_identity
+run "Parameters: named values and expressions" build_parameters
+run "Sweep: profile along a path" build_sweep
+run "Selection: what can be picked, and what survives a rebuild" build_selection
+run "Transform: a gizmo drag moves the picked body" build_transform
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."
