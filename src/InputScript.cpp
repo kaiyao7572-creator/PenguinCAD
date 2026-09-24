@@ -20,7 +20,10 @@
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
+#include <QAbstractButton>
 #include <QLineEdit>
+#include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 #include <QMenu>
 #include <QMenuBar>
 #include <QPushButton>
@@ -234,7 +237,13 @@ void SendHotkey(MainWindow* theWindow, const QString& theSequence)
 //   shot <path>            photograph the dialog (a window grab cannot)
 //   type <Label> = <text>  type into the field beside that label, then
 //                          finish the edit as Tab would
-//   dump                   print every labelled field and whether OK is on
+//   dump                   print every labelled field, tree row and message,
+//                          and which buttons are enabled
+//   click <Text>           press the dialog's button with that text
+//   cell <Row> / <Column> = <text>
+//                          edit a tree cell: the row whose cells include
+//                          <Row>, the column headed <Column>, committed as
+//                          a finished cell editor would
 void ArmDialog(int theDelay, const QString& theAction)
 {
     const QString verb = theAction.trimmed().section(' ', 0, 0).toLower();
@@ -243,6 +252,46 @@ void ArmDialog(int theDelay, const QString& theAction)
         QWidget* dialog = QApplication::activeModalWidget();
         if (dialog == nullptr) {
             std::cout << "  arm: no dialog was open" << std::endl;
+            return;
+        }
+        if (verb == "click") {
+            for (QAbstractButton* button : dialog->findChildren<QAbstractButton*>()) {
+                if (button->text().remove('&').trimmed() == rest) {
+                    std::cout << "  arm: clicking \"" << rest.toStdString() << "\"" << std::endl;
+                    // May open a nested modal dialog; later timers still
+                    // fire inside its event loop, which is how they reach it.
+                    button->click();
+                    return;
+                }
+            }
+            std::cout << "  arm: no button \"" << rest.toStdString() << "\"" << std::endl;
+            return;
+        }
+        if (verb == "cell") {
+            const QString rowText = rest.section(" / ", 0, 0).trimmed();
+            const QString columnText = rest.section(" / ", 1).section(" = ", 0, 0).trimmed();
+            const QString text = rest.section(" = ", 1);
+            for (QTreeWidget* tree : dialog->findChildren<QTreeWidget*>()) {
+                int column = -1;
+                for (int c = 0; c < tree->columnCount(); ++c) {
+                    if (tree->headerItem()->text(c) == columnText) {
+                        column = c;
+                    }
+                }
+                for (QTreeWidgetItemIterator it(tree); *it != nullptr && column >= 0; ++it) {
+                    for (int c = 0; c < tree->columnCount(); ++c) {
+                        if ((*it)->text(c) == rowText) {
+                            (*it)->setText(column, text);
+                            std::cout << "  arm: set " << rowText.toStdString() << " / "
+                                      << columnText.toStdString() << " = " << text.toStdString()
+                                      << std::endl;
+                            return;
+                        }
+                    }
+                }
+            }
+            std::cout << "  arm: no cell " << rowText.toStdString() << " / "
+                      << columnText.toStdString() << std::endl;
             return;
         }
         if (verb == "shot") {
@@ -277,6 +326,22 @@ void ArmDialog(int theDelay, const QString& theAction)
                 }
             }
             if (verb == "dump") {
+                for (QLabel* caption : dialog->findChildren<QLabel*>()) {
+                    if (caption->buddy() == nullptr && caption->isVisible()
+                        && !caption->text().trimmed().isEmpty()) {
+                        std::cout << "  arm: text: " << caption->text().simplified().toStdString()
+                                  << std::endl;
+                    }
+                }
+                for (QTreeWidget* tree : dialog->findChildren<QTreeWidget*>()) {
+                    for (QTreeWidgetItemIterator it(tree); *it != nullptr; ++it) {
+                        QStringList cells;
+                        for (int c = 0; c < tree->columnCount(); ++c) {
+                            cells << (*it)->text(c);
+                        }
+                        std::cout << "  arm: row: " << cells.join(" | ").toStdString() << std::endl;
+                    }
+                }
                 for (QPushButton* button : dialog->findChildren<QPushButton*>()) {
                     std::cout << "  arm: button \"" << button->text().remove('&').toStdString()
                               << "\" " << (button->isEnabled() ? "enabled" : "DISABLED")

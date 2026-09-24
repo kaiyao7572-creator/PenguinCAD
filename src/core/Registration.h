@@ -26,6 +26,7 @@ void RegisterLoftCommands(CommandRegistry& theRegistry);     // src/features/Lof
 void RegisterCombineCommands(CommandRegistry& theRegistry);  // src/features/CombineCommands.cpp
 void RegisterPatternCommands(CommandRegistry& theRegistry);  // src/features/PatternCommands.cpp
 void RegisterGizmoCommands(CommandRegistry& theRegistry);
+void RegisterParameterCommands(CommandRegistry& theRegistry);  // src/ui/ParameterCommands.cpp
 void RegisterViewCommands(CommandRegistry& theRegistry);
 void RegisterUnitsCommand(CommandRegistry& theRegistry);   // src/view/UnitsCommand.cpp
 void RegisterInspectCommands(CommandRegistry& theRegistry);

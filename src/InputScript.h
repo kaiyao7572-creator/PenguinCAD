@@ -25,7 +25,11 @@ class QString;
 //   arm <ms> shot <path>    photograph the open dialog
 //   arm <ms> type <Label> = <text>
 //                           type into the dialog field with that label
-//   arm <ms> dump           print its fields and which buttons are enabled
+//   arm <ms> dump           print its fields, tree rows and messages, and
+//                           which buttons are enabled
+//   arm <ms> click <Text>   press the dialog button with that text
+//   arm <ms> cell <Row> / <Column> = <text>
+//                           edit the tree cell in that row and column
 //   tab <Name>              bring a ribbon tab forward
 //   move <x> <y>            move the cursor in the viewport
 //   click <x> <y> [ctrl]    press+release left button; trailing "ctrl",

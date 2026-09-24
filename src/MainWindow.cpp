@@ -121,6 +121,8 @@ MainWindow::MainWindow(QWidget* parent)
     lcad::RegisterCombineCommands(registry);
     lcad::RegisterPatternCommands(registry);
     lcad::RegisterGizmoCommands(registry);
+    // After Move, as Fusion orders its MODIFY panel.
+    lcad::RegisterParameterCommands(registry);
     lcad::RegisterViewCommands(registry);
     lcad::RegisterInspectCommands(registry);
 
