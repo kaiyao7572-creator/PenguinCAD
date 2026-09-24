@@ -65,72 +65,9 @@ double SolidVolumeOf(const TopoDS_Shape& theShape)
     return VolumeAndCentre(theShape, volume, centre) ? volume : 0.0;
 }
 
-enum class Resolution
-{
-    Found,
-    Missing,
-    Ambiguous
-};
-
-// Find the one body of theBodies that theRef names.
-//
-// Against the bodies of the INPUT shape, which is the model as it stands
-// at this point in the timeline. Refusing beats guessing, the same bargain
-// GeometryRef and ProfileRef make: one re-pick is cheap, a combine that
-// quietly moved to the body next door is not.
-Resolution ResolveBodyRef(const std::vector<TopoDS_Shape>& theBodies,
-                          const CombineBodyRef&            theRef,
-                          std::size_t&                     theIndex)
-{
-    if (theRef.IsNull()) {
-        return Resolution::Missing;
-    }
-
-    std::size_t winner   = theBodies.size();
-    double      best     = std::numeric_limits<double>::max();
-    double      runnerUp = std::numeric_limits<double>::max();
-
-    for (std::size_t i = 0; i < theBodies.size(); ++i) {
-        double volume = 0.0;
-        gp_Pnt centre;
-        if (!VolumeAndCentre(theBodies[i], volume, centre)) {
-            continue;
-        }
-
-        const double wanted = std::fabs(theRef.volume);
-        const double scale = std::max({volume, wanted, 1.0e-9});
-        if (std::fabs(volume - wanted) / scale > kSameSizeRatio) {
-            continue;
-        }
-
-        const double distance = centre.Distance(theRef.centre);
-        if (distance > kSameCentre) {
-            continue;
-        }
-
-        if (distance < best) {
-            runnerUp = best;
-            best = distance;
-            winner = i;
-        } else if (distance < runnerUp) {
-            runnerUp = distance;
-        }
-    }
-
-    if (winner == theBodies.size()) {
-        return Resolution::Missing;
-    }
-    // An exact match still wins outright -- best is then zero and nothing
-    // clears the bar -- which is what keeps an untouched body resolving
-    // even with a near-twin beside it.
-    if (runnerUp < std::numeric_limits<double>::max()
-        && runnerUp < best * kAmbiguityMargin + kSameCentre * 1.0e-3) {
-        return Resolution::Ambiguous;
-    }
-
-    theIndex = winner;
-    return Resolution::Found;
-}
+// Declared in the header as FindBodyForRef, defined below, outside this
+// namespace, because the patterns and the gizmos ask the same question.
+using Resolution = BodyMatch;
 
 std::string LostBodyMessage(const std::string&    theRole,
                             const CombineBodyRef& theRef,
@@ -261,6 +198,62 @@ std::size_t CountCombineBodyRefSegments(const std::string& theText)
     return count;
 }
 
+// Against the bodies of the INPUT shape, which is the model as it stands
+// at this point in the timeline -- there is no body table mid-timeline.
+BodyMatch FindBodyForRef(const std::vector<TopoDS_Shape>& theBodies,
+                         const CombineBodyRef&            theRef,
+                         std::size_t&                     theIndex)
+{
+    if (theRef.IsNull()) {
+        return BodyMatch::Missing;
+    }
+
+    std::size_t winner   = theBodies.size();
+    double      best     = std::numeric_limits<double>::max();
+    double      runnerUp = std::numeric_limits<double>::max();
+
+    for (std::size_t i = 0; i < theBodies.size(); ++i) {
+        double volume = 0.0;
+        gp_Pnt centre;
+        if (!VolumeAndCentre(theBodies[i], volume, centre)) {
+            continue;
+        }
+
+        const double wanted = std::fabs(theRef.volume);
+        const double scale = std::max({volume, wanted, 1.0e-9});
+        if (std::fabs(volume - wanted) / scale > kSameSizeRatio) {
+            continue;
+        }
+
+        const double distance = centre.Distance(theRef.centre);
+        if (distance > kSameCentre) {
+            continue;
+        }
+
+        if (distance < best) {
+            runnerUp = best;
+            best = distance;
+            winner = i;
+        } else if (distance < runnerUp) {
+            runnerUp = distance;
+        }
+    }
+
+    if (winner == theBodies.size()) {
+        return BodyMatch::Missing;
+    }
+    // An exact match still wins outright -- best is then zero and nothing
+    // clears the bar -- which is what keeps an untouched body resolving
+    // even with a near-twin beside it.
+    if (runnerUp < std::numeric_limits<double>::max()
+        && runnerUp < best * kAmbiguityMargin + kSameCentre * 1.0e-3) {
+        return BodyMatch::Ambiguous;
+    }
+
+    theIndex = winner;
+    return BodyMatch::Found;
+}
+
 CombineBodyRef MakeCombineBodyRef(const Body& theBody)
 {
     CombineBodyRef ref;
@@ -370,7 +363,7 @@ bool CombineFeature::Compute(const ComputeContext& theContext,
         const std::vector<TopoDS_Shape> bodies = SplitIntoBodies(theInput);
 
         std::size_t targetIndex = 0;
-        const Resolution found = ResolveBodyRef(bodies, myTarget, targetIndex);
+        const Resolution found = FindBodyForRef(bodies, myTarget, targetIndex);
         if (found != Resolution::Found) {
             theError = LostBodyMessage("target", myTarget, found);
             return false;
@@ -383,7 +376,7 @@ bool CombineFeature::Compute(const ComputeContext& theContext,
         toolIndices.reserve(myTools.size());
         for (const CombineBodyRef& tool : myTools) {
             std::size_t index = 0;
-            const Resolution outcome = ResolveBodyRef(bodies, tool, index);
+            const Resolution outcome = FindBodyForRef(bodies, tool, index);
             if (outcome != Resolution::Found) {
                 theError = LostBodyMessage("tool", tool, outcome);
                 return false;

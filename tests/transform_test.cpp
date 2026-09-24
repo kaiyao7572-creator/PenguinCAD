@@ -164,6 +164,55 @@ int main()
               "including the signature that resolves it");
     }
 
+    // ---- the one rule for which body a pick names ----
+    //
+    // Combine, the patterns, Mirror and these gizmos all resolve picks
+    // through FindBodyForRef. There used to be three copies of it; this
+    // pins the rule itself so the single copy cannot drift from BodyTable.
+    std::cout << "==============================================================" << std::endl;
+    std::cout << "  FindBodyForRef: the shared body-pick rule" << std::endl;
+    std::cout << "==============================================================" << std::endl;
+    {
+        auto box = [](double x, double size) {
+            return BRepPrimAPI_MakeBox(gp_Pnt(x, 0, 0), size, size, size).Shape();
+        };
+        CombineBodyRef cube;
+        cube.name = "Body1";
+        cube.volume = 1000.0;
+        cube.centre = gp_Pnt(5, 5, 5);
+
+        std::size_t index = 99;
+        check(FindBodyForRef({box(50, 10), box(0, 10)}, cube, index) == BodyMatch::Found
+                  && index == 1,
+              "finds the cube by where it is, not by list order");
+
+        check(FindBodyForRef({box(0, 10), box(0.5, 10)}, cube, index) == BodyMatch::Found
+                  && index == 0,
+              "an exact match wins outright even with a twin 0.5mm away");
+
+        CombineBodyRef between = cube;
+        between.centre = gp_Pnt(5.25, 5, 5);
+        check(FindBodyForRef({box(0, 10), box(0.5, 10)}, between, index)
+                  == BodyMatch::Ambiguous,
+              "a pick halfway between two twins is Ambiguous, not the first one");
+
+        check(FindBodyForRef({box(0, 10.2)}, cube, index) == BodyMatch::Missing,
+              "6% more volume is a different body (the size rule is 2%)");
+        check(FindBodyForRef({box(0, 10.03)}, cube, index) == BodyMatch::Found,
+              "0.9% more volume, centre 0.015mm off, is the same body");
+        check(FindBodyForRef({box(2, 10)}, cube, index) == BodyMatch::Missing,
+              "moved 2mm is a different body (the centre rule is 1mm)");
+
+        TopoDS_Shape reversed = box(0, 10);
+        reversed.Reverse();
+        check(VolumeOf(reversed) < 0.0, "Reverse() really does flip the signed volume");
+        check(FindBodyForRef({reversed}, cube, index) == BodyMatch::Found,
+              "a reversed solid (negative signed volume) is still the same body");
+
+        check(FindBodyForRef({box(0, 10)}, CombineBodyRef(), index) == BodyMatch::Missing,
+              "a null ref names nothing");
+    }
+
     std::cout << std::endl;
     if (failures == 0) {
         std::cout << "ALL TRANSFORM TESTS PASSED" << std::endl;

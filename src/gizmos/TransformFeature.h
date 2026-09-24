@@ -101,27 +101,4 @@ private:
     CombineBodyRef myTarget;  // null = the whole upstream shape
 };
 
-// How a body reference resolved against a list of body shapes.
-enum class BodyMatch
-{
-    Found,
-    Missing,
-    Ambiguous
-};
-
-// Find the one shape of theShapes that theRef names, by volume and
-// centre. Refusing beats guessing, the same bargain GeometryRef and
-// ProfileRef make: one re-pick is cheap, a rotate that quietly moved to
-// the body next door is not.
-//
-// Exposed rather than file-local because the gizmos need the same
-// question answered about the FINISHED document -- "which body is the one
-// I just turned?" -- and a second copy of the rule in the tool would be a
-// third place for it to drift. The two that already exist (CombineFeature
-// and PatternFeatures, both file-local there) have to stay in step with
-// BodyTable's numbers, and so does this.
-BodyMatch FindBodyForRef(const std::vector<TopoDS_Shape>& theShapes,
-                         const CombineBodyRef&            theRef,
-                         std::size_t&                     theIndex);
-
 } // namespace lcad

@@ -36,16 +36,9 @@ constexpr double kMinSpacing = 1.0e-7;
 // in it moves a point less than the kernel can tell apart.
 constexpr double kMinAngleStep = 1.0e-6;
 
-// What "the same body" means when a pick is resolved against the input
-// shape. These are BodyTable's numbers, by way of CombineFeature: a pick
-// has to keep resolving for exactly as long as the body's NAME would have
-// survived, so the rule belongs to the pick rather than to whichever
-// feature is holding it. The two copies of this rule -- here and in
-// CombineFeature.cpp, where it is file-local -- have to stay in step.
-constexpr double kSameSizeRatio   = 0.02;
-constexpr double kSameCentre      = 1.0;  // mm
-constexpr double kAmbiguityMargin = 4.0;
-constexpr double kMinVolume       = 1.0e-9;
+// Below this there is no volume to speak of. Which body a pick names is
+// FindBodyForRef's question (CombineFeature.h), answered in one place.
+constexpr double kMinVolume = 1.0e-9;
 
 std::string OcctMessage(const Standard_Failure& theFailure, const std::string& theFallback)
 {
@@ -112,76 +105,7 @@ bool MeasureSolid(const TopoDS_Shape& theShape, double& theVolume, gp_Pnt& theCe
     }
 }
 
-enum class Resolution
-{
-    Found,
-    Missing,
-    Ambiguous
-};
-
-// Find the one body of theBodies that theRef names, against the INPUT
-// shape -- the model as it stands at this point in the timeline. There is
-// no body table to ask here; it is derived from the finished document, so
-// mid-timeline it describes a model this feature has not built yet.
-//
-// Refusing beats guessing, the same bargain GeometryRef and ProfileRef
-// make: one re-pick is cheap, a pattern that quietly moved to the body
-// next door is not.
-Resolution ResolveBodyRef(const std::vector<TopoDS_Shape>& theBodies,
-                          const CombineBodyRef&            theRef,
-                          std::size_t&                     theIndex)
-{
-    if (theRef.IsNull()) {
-        return Resolution::Missing;
-    }
-
-    std::size_t winner   = theBodies.size();
-    double      best     = std::numeric_limits<double>::max();
-    double      runnerUp = std::numeric_limits<double>::max();
-
-    for (std::size_t i = 0; i < theBodies.size(); ++i) {
-        double volume = 0.0;
-        gp_Pnt centre;
-        if (!MeasureSolid(theBodies[i], volume, centre)) {
-            continue;
-        }
-
-        // Magnitudes, because a reversed solid is still the same body.
-        const double found  = std::fabs(volume);
-        const double wanted = std::fabs(theRef.volume);
-        const double scale  = std::max({found, wanted, kMinVolume});
-        if (std::fabs(found - wanted) / scale > kSameSizeRatio) {
-            continue;
-        }
-
-        const double distance = centre.Distance(theRef.centre);
-        if (distance > kSameCentre) {
-            continue;
-        }
-
-        if (distance < best) {
-            runnerUp = best;
-            best = distance;
-            winner = i;
-        } else if (distance < runnerUp) {
-            runnerUp = distance;
-        }
-    }
-
-    if (winner == theBodies.size()) {
-        return Resolution::Missing;
-    }
-    // An exact match still wins outright -- best is then zero and nothing
-    // clears the bar -- which is what keeps an untouched body resolving
-    // even with a near-twin beside it.
-    if (runnerUp < std::numeric_limits<double>::max()
-        && runnerUp < best * kAmbiguityMargin + kSameCentre * 1.0e-3) {
-        return Resolution::Ambiguous;
-    }
-
-    theIndex = winner;
-    return Resolution::Found;
-}
+using Resolution = BodyMatch;
 
 std::string LostBodyMessage(const CombineBodyRef& theRef, Resolution theOutcome)
 {
@@ -518,7 +442,7 @@ bool PatternFeature::Compute(const ComputeContext& theContext,
         seeds.reserve(myBodies.size());
         for (const CombineBodyRef& ref : myBodies) {
             std::size_t index = 0;
-            const Resolution outcome = ResolveBodyRef(bodies, ref, index);
+            const Resolution outcome = FindBodyForRef(bodies, ref, index);
             if (outcome != Resolution::Found) {
                 theError = LostBodyMessage(ref, outcome);
                 return false;
@@ -561,7 +485,7 @@ bool PatternFeature::Compute(const ComputeContext& theContext,
             double seedVolume = 0.0;
             gp_Pnt seedCentre;
             if (!MeasureSolid(seed, seedVolume, seedCentre)) {
-                // ResolveBodyRef measured this a moment ago, so it cannot
+                // FindBodyForRef measured this a moment ago, so it cannot
                 // normally fail here -- but a guessed centre would poison
                 // the coincidence check below, which is the one thing
                 // standing between the user and a doubled volume.

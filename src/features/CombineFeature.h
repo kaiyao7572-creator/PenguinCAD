@@ -3,6 +3,7 @@
 #include "core/Feature.h"
 #include "features/FeatureUtils.h"
 
+#include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
 
 #include <cmath>
@@ -58,6 +59,27 @@ std::size_t CountCombineBodyRefSegments(const std::string& theText);
 // Combine is a solid operation, and Join, Cut and Intersect mean nothing
 // for a surface or a wire.
 CombineBodyRef MakeCombineBodyRef(const Body& theBody);
+
+// How a body reference resolved against a list of body shapes.
+enum class BodyMatch
+{
+    Found,
+    Missing,
+    Ambiguous
+};
+
+// Find the one shape of theShapes that theRef names, by volume and centre,
+// using BodyTable's own numbers: a pick keeps resolving for exactly as long
+// as the body's NAME would have survived. Refusing beats guessing, the same
+// bargain GeometryRef and ProfileRef make -- nothing matching, or two things
+// matching equally well, is Missing or Ambiguous, never the first to hand.
+//
+// The ONE copy of this rule. Combine, the patterns, Mirror and the
+// transform gizmos all ask it; there used to be three copies, identical
+// only because nobody had changed one yet.
+BodyMatch FindBodyForRef(const std::vector<TopoDS_Shape>& theShapes,
+                         const CombineBodyRef&            theRef,
+                         std::size_t&                     theIndex);
 
 // The operations Fusion's Combine offers, in dropdown order. NewBody is
 // deliberately absent: two bodies that already exist are already separate

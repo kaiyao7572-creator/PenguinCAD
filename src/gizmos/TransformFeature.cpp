@@ -22,17 +22,6 @@ namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kDegToRad = kPi / 180.0;
 
-// What "the same body" means when a pick is resolved against the input
-// shape. BodyTable's numbers, by way of CombineFeature: a pick has to
-// keep resolving for exactly as long as the body's NAME would have
-// survived, so the rule belongs to the pick rather than to whichever
-// feature is holding it. The copies of this rule -- here, in
-// CombineFeature.cpp and in PatternFeatures.cpp -- have to stay in step.
-constexpr double kSameSizeRatio   = 0.02;
-constexpr double kSameCentre      = 1.0;  // mm
-constexpr double kAmbiguityMargin = 4.0;
-constexpr double kMinVolume       = 1.0e-9;
-
 // A scale is a similarity ratio, so the sane band is symmetric about one.
 // The ends are guards against a mistyped exponent rather than a modelling
 // limit: at a millionth the kernel's own tolerance swallows the body, and
@@ -52,26 +41,6 @@ bool IsUsableScale(double theFactor)
     return std::isfinite(theFactor) && theFactor >= kMinScale && theFactor <= kMaxScale;
 }
 
-// Size and position of a solid, measured the way Body measures them so
-// the two agree. The magnitude of the volume, not its sign: an imported
-// solid can arrive reversed, and a sign flip upstream must not make a
-// body unrecognisable when it is plainly the same size in the same place.
-bool VolumeAndCentre(const TopoDS_Shape& theShape, double& theVolume, gp_Pnt& theCentre)
-{
-    if (theShape.IsNull() || !HasSolid(theShape)) {
-        return false;
-    }
-    try {
-        GProp_GProps properties;
-        BRepGProp::VolumeProperties(theShape, properties);
-        theVolume = std::fabs(properties.Mass());
-        theCentre = properties.CentreOfMass();
-        return theVolume > kMinVolume;
-    } catch (const Standard_Failure&) {
-        return false;
-    }
-}
-
 std::string LostBodyMessage(const CombineBodyRef& theRef, BodyMatch theOutcome)
 {
     const std::string what = "the body '" + theRef.name + "'";
@@ -82,60 +51,6 @@ std::string LostBodyMessage(const CombineBodyRef& theRef, BodyMatch theOutcome)
 }
 
 } // namespace
-
-BodyMatch FindBodyForRef(const std::vector<TopoDS_Shape>& theShapes,
-                         const CombineBodyRef&            theRef,
-                         std::size_t&                     theIndex)
-{
-    if (theRef.IsNull()) {
-        return BodyMatch::Missing;
-    }
-
-    std::size_t winner   = theShapes.size();
-    double      best     = std::numeric_limits<double>::max();
-    double      runnerUp = std::numeric_limits<double>::max();
-
-    for (std::size_t i = 0; i < theShapes.size(); ++i) {
-        double volume = 0.0;
-        gp_Pnt centre;
-        if (!VolumeAndCentre(theShapes[i], volume, centre)) {
-            continue;
-        }
-
-        const double wanted = std::fabs(theRef.volume);
-        const double scale  = std::max({volume, wanted, kMinVolume});
-        if (std::fabs(volume - wanted) / scale > kSameSizeRatio) {
-            continue;
-        }
-
-        const double distance = centre.Distance(theRef.centre);
-        if (distance > kSameCentre) {
-            continue;
-        }
-
-        if (distance < best) {
-            runnerUp = best;
-            best = distance;
-            winner = i;
-        } else if (distance < runnerUp) {
-            runnerUp = distance;
-        }
-    }
-
-    if (winner == theShapes.size()) {
-        return BodyMatch::Missing;
-    }
-    // An exact match still wins outright -- best is then zero and nothing
-    // clears the bar -- which is what keeps an untouched body resolving
-    // even with a near-twin beside it.
-    if (runnerUp < std::numeric_limits<double>::max()
-        && runnerUp < best * kAmbiguityMargin + kSameCentre * 1.0e-3) {
-        return BodyMatch::Ambiguous;
-    }
-
-    theIndex = winner;
-    return BodyMatch::Found;
-}
 
 TransformFeature::TransformFeature(double theTx, double theTy, double theTz,
                                    double theRxDeg, double theRyDeg, double theRzDeg,
