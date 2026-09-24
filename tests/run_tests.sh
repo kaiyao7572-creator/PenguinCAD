@@ -46,6 +46,7 @@ build_widget() {
     g++ -std=c++17 -fPIC -I"$SRC" $QT_INC \
         "$ROOT/tests/widget_test.cpp" "$OUT/moc_UnitLineEdit.cpp" \
         "$SRC/widgets/UnitLineEdit.cpp" "$SRC/core/Units.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" \
         -lQt6Core -lQt6Gui -lQt6Widgets -lQt6Test -o "$OUT/widget_test" || return 1
     QT_QPA_PLATFORM=offscreen "$OUT/widget_test"
 }

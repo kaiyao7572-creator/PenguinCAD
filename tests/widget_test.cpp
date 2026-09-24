@@ -1,5 +1,6 @@
 // Functional test of the unit-aware input field: does typing "12.9in"
 // actually convert AND flip the field into inches, the way the user asked?
+#include "core/ParameterTable.h"
 #include "widgets/UnitLineEdit.h"
 
 #include <QApplication>
@@ -91,6 +92,69 @@ int main(int argc, char** argv)
     check(imperial.text() == "1 in", "new field honours the inch default, got \""
                                          + imperial.text().toStdString() + "\"");
     SetDefaultLengthUnit(LengthUnit::Millimeter);
+
+    std::cout << "-- arithmetic in any field, no parameters needed --" << std::endl;
+    {
+        UnitLineEdit plain(UnitKind::Length);
+        typeInto(plain, "3 * 4");
+        check(std::fabs(plain.Value() - 12.0) < 1e-9, "\"3 * 4\" -> 12 mm");
+        check(plain.Expression().empty(), "and is a number, not an expression");
+        check(plain.text() == "12 mm", "shown as the number");
+        plain.SetDisplayLengthUnit(LengthUnit::Inch);
+        typeInto(plain, "1/2 + 1/4");
+        check(std::fabs(plain.Value() - 19.05) < 1e-9, "bare arithmetic reads in the field's unit");
+        typeInto(plain, "plate_t * 2");
+        check(std::fabs(plain.Value() - 19.05) < 1e-9, "a name, with no table, reverts");
+        check(plain.IsAcceptable(), "and does not hold the field hostage");
+    }
+
+    std::cout << "-- expressions over the document's parameters --" << std::endl;
+    {
+        ParameterTable table;
+        std::string error;
+        table.Add("plate_t", "5 mm", error);
+        UnitLineEdit driven(UnitKind::Length);
+        driven.SetParameterTable(&table);
+        driven.SetValue(3.0);
+
+        QSignalSpy changed(&driven, &UnitLineEdit::ValueChanged);
+        QSignalSpy acceptable(&driven, &UnitLineEdit::AcceptableChanged);
+        typeInto(driven, "plate_t * 2");
+        check(std::fabs(driven.Value() - 10.0) < 1e-9, "\"plate_t * 2\" -> 10 mm");
+        check(driven.Expression() == "plate_t * 2", "and is kept as an expression");
+        check(driven.text() == "plate_t * 2", "the field shows the expression, as Fusion's do");
+        check(driven.toolTip().contains("10 mm"), "the tooltip says what it comes to");
+        check(changed.count() == 1, "one ValueChanged");
+
+        typeInto(driven, "plate_tt * 2");
+        check(!driven.IsAcceptable(), "an unknown name makes the field unacceptable");
+        check(driven.text() == "plate_tt * 2", "the typed text is HELD, not thrown away");
+        check(std::fabs(driven.Value() - 10.0) < 1e-9, "the value is left alone");
+        check(driven.toolTip().contains("plate_tt"), "the tooltip names the problem");
+        check(acceptable.count() == 1, "AcceptableChanged fired");
+        check(changed.count() == 1, "and no ValueChanged");
+
+        typeInto(driven, "plate_t");
+        check(driven.IsAcceptable(), "fixing it makes the field acceptable again");
+        check(std::fabs(driven.Value() - 5.0) < 1e-9, "at 5 mm");
+
+        typeInto(driven, "5");
+        check(driven.Expression().empty(), "typing a plain number drops the expression");
+        check(changed.count() == 3, "which counts as a change though the number is the same");
+
+        driven.SetExpression("plate_t * 3", 15.0);
+        check(driven.text() == "plate_t * 3", "SetExpression shows the expression");
+        driven.SetValue(4.0);
+        check(driven.Expression().empty() && driven.text() == "4 mm", "SetValue clears it");
+
+        UnitLineEdit bounded(UnitKind::Length);
+        bounded.SetParameterTable(&table);
+        bounded.SetRange(0.0, 100.0);
+        typeInto(bounded, "plate_t * 100");
+        check(!bounded.IsAcceptable(), "an expression out of range is refused, not clamped");
+        typeInto(bounded, "3 * 100");
+        check(std::fabs(bounded.Value() - 100.0) < 1e-9, "arithmetic on numbers still clamps");
+    }
 
     std::cout << (failures == 0 ? "\nALL WIDGET TESTS PASSED\n" : "\nFAILURES\n");
     return failures == 0 ? 0 : 1;

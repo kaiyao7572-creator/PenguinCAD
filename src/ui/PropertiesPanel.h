@@ -53,6 +53,9 @@ private:
     QWidget* MakeEditorWidget(std::size_t theIndex, const Parameter& theParameter);
     void CommitParameter(const Parameter& theEdited);
 
+    // Show theError under the header in the error colour, or hide it.
+    void ShowError(const std::string& theError);
+
     Document*  m_document = nullptr;
     FeaturePtr m_activeFeature;               // identity the current rows were built for
     std::vector<Parameter> m_lastParameters;  // shape + values the rows currently show

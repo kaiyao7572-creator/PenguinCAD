@@ -151,7 +151,7 @@ void PropertiesPanel::RebuildEditor()
     m_stack->setCurrentWidget(m_editorPage);
     RefreshHeader();
 
-    m_lastParameters = m_activeFeature->Parameters();
+    m_lastParameters = m_activeFeature->EditableParameters();
     for (std::size_t i = 0; i < m_lastParameters.size(); ++i) {
         QWidget* editor = MakeEditorWidget(i, m_lastParameters[i]);
         m_rowWidgets.push_back(editor);
@@ -167,18 +167,22 @@ void PropertiesPanel::RefreshHeader()
     m_nameLabel->setText(QString::fromStdString(m_activeFeature->Name()));
     m_typeLabel->setText(QString::fromStdString(m_activeFeature->TypeName()));
 
-    const std::string& error = m_activeFeature->LastError();
-    if (error.empty()) {
+    ShowError(m_activeFeature->LastError());
+}
+
+void PropertiesPanel::ShowError(const std::string& theError)
+{
+    if (theError.empty()) {
         m_errorLabel->hide();
         m_errorLabel->clear();
         m_errorLabel->setPalette(QPalette());
-    } else {
-        m_errorLabel->setText(QString::fromStdString(error));
-        QPalette pal;
-        pal.setColor(QPalette::WindowText, ErrorTextColor(m_errorLabel->palette()));
-        m_errorLabel->setPalette(pal);
-        m_errorLabel->show();
+        return;
     }
+    m_errorLabel->setText(QString::fromStdString(theError));
+    QPalette pal;
+    pal.setColor(QPalette::WindowText, ErrorTextColor(m_errorLabel->palette()));
+    m_errorLabel->setPalette(pal);
+    m_errorLabel->show();
 }
 
 void PropertiesPanel::RefreshValues()
@@ -186,7 +190,7 @@ void PropertiesPanel::RefreshValues()
     if (!m_activeFeature) {
         return;
     }
-    const std::vector<Parameter> current = m_activeFeature->Parameters();
+    const std::vector<Parameter> current = m_activeFeature->EditableParameters();
 
     if (!SameShape(current)) {
         // No current feature changes its parameter set on the fly, but if
@@ -208,7 +212,7 @@ void PropertiesPanel::RefreshValues()
         switch (parameter.type) {
         case Parameter::Type::Double:
             if (auto* box = qobject_cast<UnitLineEdit*>(editor)) {
-                box->SetValue(parameter.doubleValue);
+                box->SetExpression(parameter.expression, parameter.doubleValue);
             }
             break;
         case Parameter::Type::Int:
@@ -251,25 +255,27 @@ QWidget* PropertiesPanel::MakeEditorWidget(std::size_t theIndex, const Parameter
     case Parameter::Type::Double: {
         // The parameter's declared unit decides what kind of quantity this
         // is; the field then accepts any unit of that kind, so a radius can
-        // be retyped as "1/4in" and will keep showing inches afterwards.
-        const UnitKind kind =
-            theParameter.unit == "deg"  ? UnitKind::Angle
-            : theParameter.unit.empty() ? UnitKind::Unitless
-                                        : UnitKind::Length;
-        auto* spin = new UnitLineEdit(kind, m_formContainer);
+        // be retyped as "1/4in" and will keep showing inches afterwards --
+        // or an expression over the document's parameters, which the row
+        // then shows instead of the number, as Fusion's fields do.
+        auto* spin = new UnitLineEdit(theParameter.Kind(), m_formContainer);
+        if (m_document != nullptr) {
+            spin->SetParameterTable(&m_document->UserParameters());
+        }
         if (theParameter.minimum != theParameter.maximum) {
             spin->SetRange(theParameter.minimum, theParameter.maximum);
         }
         // Commits on Enter/focus-out rather than per keystroke, so typing
         // "-5" doesn't rebuild the model after every digit.
-        spin->SetValue(theParameter.doubleValue);
+        spin->SetExpression(theParameter.expression, theParameter.doubleValue);
         connect(spin, &UnitLineEdit::ValueChanged, this,
-                [this, theIndex](double theValue) {
+                [this, theIndex, spin](double theValue) {
                     if (theIndex >= m_lastParameters.size()) {
                         return;
                     }
                     Parameter edited = m_lastParameters[theIndex];
                     edited.doubleValue = theValue;
+                    edited.expression = spin->Expression();
                     CommitParameter(edited);
                 });
         return spin;
@@ -336,8 +342,16 @@ void PropertiesPanel::CommitParameter(const Parameter& theEdited)
     if (!m_activeFeature || m_document == nullptr) {
         return;
     }
-    if (m_activeFeature->SetParameter(theEdited)) {
-        m_document->Rebuild();
+    // Through the document rather than straight into the feature: that is
+    // what makes the edit undoable, and what checks an expression against
+    // the parameters before the feature is driven by it.
+    std::string error;
+    if (!m_document->SetFeatureParameter(m_activeFeature, theEdited, error)) {
+        // Refused, so the model did not change and nothing will refresh
+        // the row: put it back, and say why where the feature's own errors
+        // go. The next document change clears the message.
+        RefreshValues();
+        ShowError(error);
     }
 }
 

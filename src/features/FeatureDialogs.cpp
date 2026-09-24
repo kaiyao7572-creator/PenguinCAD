@@ -1,5 +1,9 @@
 #include "features/FeatureDialogs.h"
 
+#include "core/Feature.h"
+
+#include <algorithm>
+
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -9,6 +13,7 @@
 #include "widgets/UnitLineEdit.h"
 #include <QFormLayout>
 #include <QLabel>
+#include <QPushButton>
 #include <QWidget>
 
 namespace lcad {
@@ -49,7 +54,8 @@ DialogField DialogField::Toggle(QString theLabel, bool theValue)
 bool ShowFeatureDialog(QWidget*                  theParent,
                        const QString&            theTitle,
                        std::vector<DialogField>& theFields,
-                       const QString&            theHint)
+                       const QString&            theHint,
+                       const ParameterTable*     theParameters)
 {
     QDialog dialog(theParent);
     dialog.setWindowTitle(theTitle);
@@ -67,12 +73,18 @@ bool ShowFeatureDialog(QWidget*                  theParent,
                 // The declared suffix says what the number means; the field
                 // itself then accepts any unit of that kind ("12.9in") and
                 // re-displays in whatever the user typed.
-                const UnitKind kind = field.suffix.contains("deg") ? UnitKind::Angle
-                                      : field.suffix.trimmed().isEmpty() ? UnitKind::Unitless
-                                                                         : UnitKind::Length;
+                //
+                // Revolve's angle says " °", not "deg": reading only "deg"
+                // made it a LENGTH field showing "360 mm".
+                const UnitKind kind =
+                    (field.suffix.contains("deg") || field.suffix.contains(QChar(0x00B0)))
+                        ? UnitKind::Angle
+                    : field.suffix.trimmed().isEmpty() ? UnitKind::Unitless
+                                                       : UnitKind::Length;
                 UnitLineEdit* box = new UnitLineEdit(kind, &dialog);
+                box->SetParameterTable(theParameters);
                 box->SetRange(field.minimum, field.maximum);
-                box->SetValue(field.value);
+                box->SetExpression(field.expression, field.value);
                 form->addRow(field.label, box);
                 editors[i] = box;
                 break;
@@ -109,6 +121,25 @@ bool ShowFeatureDialog(QWidget*                  theParent,
     QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     form->addRow(buttons);
 
+    // OK waits while any field holds text it could not read, so an
+    // expression naming a missing parameter cannot slip through as the
+    // number the field had before.
+    QPushButton* ok = buttons->button(QDialogButtonBox::Ok);
+    const auto refreshOk = [&editors, ok]() {
+        bool acceptable = true;
+        for (QWidget* editor : editors) {
+            if (UnitLineEdit* box = qobject_cast<UnitLineEdit*>(editor)) {
+                acceptable = acceptable && box->IsAcceptable();
+            }
+        }
+        ok->setEnabled(acceptable);
+    };
+    for (QWidget* editor : editors) {
+        if (UnitLineEdit* box = qobject_cast<UnitLineEdit*>(editor)) {
+            QObject::connect(box, &UnitLineEdit::AcceptableChanged, &dialog, refreshOk);
+        }
+    }
+
     if (dialog.exec() != QDialog::Accepted) {
         return false;
     }
@@ -119,6 +150,7 @@ bool ShowFeatureDialog(QWidget*                  theParent,
             case DialogField::Kind::Number:
                 if (UnitLineEdit* box = qobject_cast<UnitLineEdit*>(editors[i])) {
                     field.value = box->Value();
+                    field.expression = box->Expression();
                 }
                 break;
             case DialogField::Kind::Choice:
@@ -134,6 +166,28 @@ bool ShowFeatureDialog(QWidget*                  theParent,
         }
     }
     return true;
+}
+
+bool ApplyFieldExpressions(Feature& theFeature, const std::vector<DialogField>& theFields)
+{
+    const std::vector<Parameter> parameters = theFeature.Parameters();
+    bool allMatched = true;
+    for (const DialogField& field : theFields) {
+        if (field.kind != DialogField::Kind::Number || field.expression.empty()) {
+            continue;
+        }
+        const std::string name = field.label.toStdString();
+        const bool matched =
+            std::any_of(parameters.begin(), parameters.end(), [&name](const Parameter& theP) {
+                return theP.name == name && theP.type == Parameter::Type::Double;
+            });
+        if (matched) {
+            theFeature.SetExpression(name, field.expression);
+        } else {
+            allMatched = false;
+        }
+    }
+    return allMatched;
 }
 
 } // namespace lcad

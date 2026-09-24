@@ -20,6 +20,10 @@ class QString;
 //                           this BEFORE the `run` that opens the dialog:
 //                           the script loop parks inside the dialog's own
 //                           event loop, so only a timer can reach in.
+//   arm <ms> shot <path>    photograph the open dialog
+//   arm <ms> type <Label> = <text>
+//                           type into the dialog field with that label
+//   arm <ms> dump           print its fields and which buttons are enabled
 //   tab <Name>              bring a ribbon tab forward
 //   move <x> <y>            move the cursor in the viewport
 //   click <x> <y> [ctrl]    press+release left button; trailing "ctrl",

@@ -5,7 +5,11 @@
 #include <QColor>
 #include <QLineEdit>
 
+#include <string>
+
 namespace lcad {
+
+class ParameterTable;
 
 // A numeric field that speaks units.
 //
@@ -21,6 +25,11 @@ namespace lcad {
 // That last behaviour is the point: a field adopts whatever unit you
 // typed into it, so you can work in inches on one dimension without
 // changing the document default.
+//
+// It also takes arithmetic ("3 * 4", "1/2 in + 2 mm"), and, given the
+// document's parameters, an EXPRESSION over them ("plate_t * 2"). A field
+// driven by an expression shows the expression, not the number, and the
+// tooltip says what it comes to -- the way Fusion's fields behave.
 class UnitLineEdit : public QLineEdit
 {
     Q_OBJECT
@@ -37,14 +46,38 @@ public:
 
     UnitKind Kind() const { return myKind; }
 
+    // Let the field take expressions over these parameters. Without a
+    // table it still takes arithmetic on numbers, which names nothing.
+    // The table must outlive the field; a Document's does.
+    void SetParameterTable(const ParameterTable* theTable);
+
+    // The expression driving the value, or empty for a plain number. Only
+    // an expression that names a parameter is kept as one: "3 * 4" has
+    // nothing that can change, so it becomes the number 12.
+    const std::string& Expression() const { return myExpression; }
+
+    // Show a driven value: the field displays theExpression and reports
+    // theInternalValue. An empty expression is the same as SetValue.
+    void SetExpression(const std::string& theExpression, double theInternalValue);
+
+    // False while the field holds text it could not read -- an expression
+    // naming a parameter that does not exist, say. The typed text stays,
+    // in red, so it can be fixed rather than retyped; a dialog should
+    // refuse OK meanwhile.
+    bool IsAcceptable() const { return myIsAcceptable; }
+
     LengthUnit DisplayLengthUnit() const { return myLengthUnit; }
     void SetDisplayLengthUnit(LengthUnit theUnit);
 
     AngleUnit DisplayAngleUnit() const { return myAngleUnit; }
 
 signals:
-    // Emitted when the value actually changes, in internal units.
+    // Emitted when the value actually changes, in internal units -- or
+    // when the expression driving it does, even to one that gives the same
+    // number, since that changes what the value will do later.
     void ValueChanged(double theInternalValue);
+
+    void AcceptableChanged(bool theIsAcceptable);
 
 private slots:
     void onEditingFinished();
@@ -53,10 +86,21 @@ private slots:
 private:
     void Reformat();
     void ApplyValidityStyling(bool theIsValid);
+    void SetAcceptable(bool theIsAcceptable, const QString& theWhy = QString());
+    void RefreshToolTip();
+
+    // Evaluate text that is not a plain value. False with theError when
+    // it does not evaluate against the table (or, without one, at all).
+    bool EvaluateText(const std::string& theText, double& theValue, std::string& theError) const;
 
     UnitKind   myKind = UnitKind::Length;
     LengthUnit myLengthUnit = LengthUnit::Millimeter;
     AngleUnit  myAngleUnit = AngleUnit::Degree;
+
+    const ParameterTable* myTable = nullptr;
+    std::string myExpression;
+    bool myIsAcceptable = true;
+    QString myProblem;
 
     double myValue = 0.0;
     double myMinimum = 0.0;

@@ -194,6 +194,14 @@ void ApplyPlacement(const std::vector<DialogField>& theFields,
     theFeature.SetOperation(BooleanOpFromInt(theFields[theFirst + 3].choice));
 }
 
+// The document's parameters, for a dialog whose numbers may be driven by
+// them. Only pass this where every Number field's label is the name of the
+// feature parameter it sets -- ApplyFieldExpressions matches them by name.
+const ParameterTable* ParametersOf(const CommandContext& theContext)
+{
+    return theContext.document != nullptr ? &theContext.document->UserParameters() : nullptr;
+}
+
 // Adds the feature and reports what the rebuild made of it. A feature
 // that failed stays in the timeline on purpose -- the properties panel
 // is where the user fixes the number that was wrong.
@@ -253,12 +261,14 @@ public:
         AppendPlacementFields(fields, DefaultOperationChoice(theContext));
 
         if (!ShowFeatureDialog(theContext.parent, "Box", fields,
-                               "The origin is the box's minimum corner.")) {
+                               "The origin is the box's minimum corner.",
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto box = std::make_shared<BoxFeature>(fields[0].value, fields[1].value, fields[2].value);
         ApplyPlacement(fields, 3, *box);
+        ApplyFieldExpressions(*box, fields);
         AddAndReport(theContext, box);
     }
 };
@@ -288,12 +298,14 @@ public:
 
         if (!ShowFeatureDialog(theContext.parent, "Cylinder", fields,
                                "A negative height builds downwards, which is what a "
-                               "drilled hole usually wants.")) {
+                               "drilled hole usually wants.",
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto cylinder = std::make_shared<CylinderFeature>(fields[0].value, fields[1].value);
         ApplyPlacement(fields, 2, *cylinder);
+        ApplyFieldExpressions(*cylinder, fields);
         AddAndReport(theContext, cylinder);
     }
 };
@@ -318,12 +330,14 @@ public:
         AppendPlacementFields(fields, DefaultOperationChoice(theContext));
 
         if (!ShowFeatureDialog(theContext.parent, "Sphere", fields,
-                               "The origin is the sphere's centre.")) {
+                               "The origin is the sphere's centre.",
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto sphere = std::make_shared<SphereFeature>(fields[0].value);
         ApplyPlacement(fields, 1, *sphere);
+        ApplyFieldExpressions(*sphere, fields);
         AddAndReport(theContext, sphere);
     }
 };
@@ -353,13 +367,15 @@ public:
         AppendPlacementFields(fields, DefaultOperationChoice(theContext));
 
         if (!ShowFeatureDialog(theContext.parent, "Cone", fields,
-                               "A top radius of zero gives a pointed cone.")) {
+                               "A top radius of zero gives a pointed cone.",
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto cone = std::make_shared<ConeFeature>(fields[0].value, fields[1].value,
                                                   fields[2].value);
         ApplyPlacement(fields, 3, *cone);
+        ApplyFieldExpressions(*cone, fields);
         AddAndReport(theContext, cone);
     }
 };
@@ -388,12 +404,14 @@ public:
         AppendPlacementFields(fields, DefaultOperationChoice(theContext));
 
         if (!ShowFeatureDialog(theContext.parent, "Torus", fields,
-                               "The minor radius must stay smaller than the major one.")) {
+                               "The minor radius must stay smaller than the major one.",
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto torus = std::make_shared<TorusFeature>(fields[0].value, fields[1].value);
         ApplyPlacement(fields, 2, *torus);
+        ApplyFieldExpressions(*torus, fields);
         AddAndReport(theContext, torus);
     }
 };
@@ -429,7 +447,8 @@ protected:
                                              ToChoices(names),
                                              static_cast<int>(names.size()) - 1));
 
-        if (!ShowFeatureDialog(theContext.parent, theTitle, theFields, theHint)) {
+        if (!ShowFeatureDialog(theContext.parent, theTitle, theFields, theHint,
+                               ParametersOf(theContext))) {
             return false;
         }
 
@@ -478,7 +497,8 @@ protected:
         theFields.insert(theFields.begin(),
                          DialogField::Choice("Profile", QStringList{target}, 0));
 
-        if (!ShowFeatureDialog(theContext.parent, theTitle, theFields, theHint)) {
+        if (!ShowFeatureDialog(theContext.parent, theTitle, theFields, theHint,
+                               ParametersOf(theContext))) {
             return false;
         }
 
@@ -533,6 +553,7 @@ public:
         extrude->SetReversed(fields[2].toggle);
         extrude->SetSymmetric(fields[3].toggle);
         extrude->SetOperation(BooleanOpFromInt(fields[4].choice));
+        ApplyFieldExpressions(*extrude, fields);
         AddAndReport(theContext, extrude);
         ClearPickedProfiles();
     }
@@ -581,6 +602,7 @@ public:
         revolve->SetProfiles(profiles);
         revolve->SetReversed(fields[3].toggle);
         revolve->SetOperation(BooleanOpFromInt(fields[4].choice));
+        ApplyFieldExpressions(*revolve, fields);
         AddAndReport(theContext, revolve);
         ClearPickedProfiles();
     }
@@ -638,11 +660,13 @@ public:
                 : QStringLiteral("Moving %1 faces by the same distance. A negative distance "
                                  "pushes them into the body.")
                       .arg(faces.size());
-        if (!ShowFeatureDialog(theContext.parent, "Press Pull", fields, hint)) {
+        if (!ShowFeatureDialog(theContext.parent, "Press Pull", fields, hint,
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto pressPull = std::make_shared<PressPullFeature>(faces, fields[0].value);
+        ApplyFieldExpressions(*pressPull, fields);
         AddAndReport(theContext, pressPull);
 
         // The faces the user picked no longer exist once they have moved,
@@ -677,11 +701,14 @@ public:
 
         if (!ShowFeatureDialog(theContext.parent, "Fillet", fields,
                                "Applied to every edge. A radius the geometry can't take "
-                               "is reported rather than applied.")) {
+                               "is reported rather than applied.",
+                               ParametersOf(theContext))) {
             return;
         }
 
-        AddAndReport(theContext, std::make_shared<FilletFeature>(fields[0].value));
+        auto fillet = std::make_shared<FilletFeature>(fields[0].value);
+        ApplyFieldExpressions(*fillet, fields);
+        AddAndReport(theContext, fillet);
     }
 };
 
@@ -705,11 +732,14 @@ public:
         fields.push_back(DialogField::Number("Distance", 1.0));
 
         if (!ShowFeatureDialog(theContext.parent, "Chamfer", fields,
-                               "Applied to every edge, equally on both adjoining faces.")) {
+                               "Applied to every edge, equally on both adjoining faces.",
+                               ParametersOf(theContext))) {
             return;
         }
 
-        AddAndReport(theContext, std::make_shared<ChamferFeature>(fields[0].value));
+        auto chamfer = std::make_shared<ChamferFeature>(fields[0].value);
+        ApplyFieldExpressions(*chamfer, fields);
+        AddAndReport(theContext, chamfer);
     }
 };
 
@@ -741,13 +771,15 @@ public:
 
         if (!ShowFeatureDialog(theContext.parent, "Shell", fields,
                                "The open face is re-picked on every rebuild, so it follows "
-                               "the body when upstream dimensions change.")) {
+                               "the body when upstream dimensions change.",
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto shell = std::make_shared<ShellFeature>(fields[0].value,
                                                     ShellOpeningFromInt(fields[1].choice));
         shell->SetOutward(fields[2].toggle);
+        ApplyFieldExpressions(*shell, fields);
         AddAndReport(theContext, shell);
     }
 };
@@ -973,13 +1005,15 @@ public:
         fields.push_back(DialogField::Number("X", 0.0, kAnyNumber));
         fields.push_back(DialogField::Number("Y", 0.0, kAnyNumber));
         fields.push_back(DialogField::Number("Z", 0.0, kAnyNumber));
-        if (!ShowFeatureDialog(theContext.parent, "Point at Coordinates", fields)) {
+        if (!ShowFeatureDialog(theContext.parent, "Point at Coordinates", fields, QString(),
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto point = std::make_shared<ConstructionPointFeature>(
             gp_Pnt(fields[0].value, fields[1].value, fields[2].value));
         NameAsFusionWould(theContext, point, "Point");
+        ApplyFieldExpressions(*point, fields);
         AddAndReport(theContext, point);
     }
 };

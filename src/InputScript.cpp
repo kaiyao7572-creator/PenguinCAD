@@ -19,6 +19,9 @@
 #include <QFile>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
 #include <QMouseEvent>
 #include <QImage>
 #include <QPixmap>
@@ -223,16 +226,66 @@ void SendHotkey(MainWindow* theWindow, const QString& theSequence)
 // nothing further is ever sent -- which is why no dialog-driven command
 // has been verifiable here. A timer fires inside that nested loop, so
 // arming one BEFORE invoking the command is the way in.
+//
+// Besides accept and cancel, a timer can look inside the dialog, which is
+// the only way a script sees one at all:
+//   shot <path>            photograph the dialog (a window grab cannot)
+//   type <Label> = <text>  type into the field beside that label, then
+//                          finish the edit as Tab would
+//   dump                   print every labelled field and whether OK is on
 void ArmDialog(int theDelay, const QString& theAction)
 {
-    const QString action = theAction.trimmed().toLower();
-    QTimer::singleShot(theDelay, qApp, [action]() {
+    const QString verb = theAction.trimmed().section(' ', 0, 0).toLower();
+    const QString rest = theAction.trimmed().section(' ', 1).trimmed();
+    QTimer::singleShot(theDelay, qApp, [verb, rest]() {
         QWidget* dialog = QApplication::activeModalWidget();
         if (dialog == nullptr) {
             std::cout << "  arm: no dialog was open" << std::endl;
             return;
         }
-        if (action == "cancel" || action == "reject") {
+        if (verb == "shot") {
+            dialog->grab().save(rest);
+            std::cout << "  arm: dialog shot -> " << rest.toStdString() << std::endl;
+            return;
+        }
+        if (verb == "type" || verb == "dump") {
+            const QString label = rest.section(" = ", 0, 0).trimmed();
+            const QString text = rest.section(" = ", 1);
+            for (QLabel* caption : dialog->findChildren<QLabel*>()) {
+                auto* field = qobject_cast<QLineEdit*>(caption->buddy());
+                if (field == nullptr) {
+                    continue;
+                }
+                const QString name = caption->text().remove('&').trimmed();
+                if (verb == "dump") {
+                    std::cout << "  arm: [" << name.toStdString() << "] \""
+                              << field->text().toStdString() << "\""
+                              << (field->toolTip().isEmpty()
+                                      ? std::string()
+                                      : "  tip: " + field->toolTip().toStdString())
+                              << std::endl;
+                } else if (name == label) {
+                    field->setFocus();
+                    field->setText(text);
+                    emit field->textEdited(text);
+                    emit field->editingFinished();
+                    std::cout << "  arm: typed \"" << text.toStdString() << "\" into "
+                              << label.toStdString() << std::endl;
+                    return;
+                }
+            }
+            if (verb == "dump") {
+                for (QPushButton* button : dialog->findChildren<QPushButton*>()) {
+                    std::cout << "  arm: button \"" << button->text().remove('&').toStdString()
+                              << "\" " << (button->isEnabled() ? "enabled" : "DISABLED")
+                              << std::endl;
+                }
+            } else {
+                std::cout << "  arm: no field labelled " << label.toStdString() << std::endl;
+            }
+            return;
+        }
+        if (verb == "cancel" || verb == "reject") {
             if (QDialog* box = qobject_cast<QDialog*>(dialog)) {
                 box->reject();
             }
@@ -327,8 +380,11 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         }
 
         if (verb == "arm" && parts.size() >= 3) {
-            ArmDialog(static_cast<int>(number(1)), parts.at(2));
-            std::cout << "  arm " << parts.at(2).toStdString() << " in "
+            // Everything after the delay, spaces and all: "type Distance =
+            // plate_t * 2" needs them.
+            const QString action = line.section(QRegularExpression("\\s+"), 2);
+            ArmDialog(static_cast<int>(number(1)), action);
+            std::cout << "  arm " << action.toStdString() << " in "
                       << static_cast<int>(number(1)) << "ms" << std::endl;
             continue;
         }

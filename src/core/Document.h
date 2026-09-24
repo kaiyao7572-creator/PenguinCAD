@@ -120,6 +120,13 @@ public:
     // number it gave them.
     bool RemoveUserParameter(const std::string& theName, std::string& theError);
 
+    // Everything that reads theName: the user parameters whose expressions
+    // use it, directly or through a chain, then the features with a
+    // parameter driven by it, each once and in order. Empty means nothing
+    // would break without it -- what a UI asks before offering Delete, the
+    // way Fusion refuses to delete a parameter that is in use.
+    std::vector<std::string> UsersOfUserParameter(const std::string& theName) const;
+
     // ---- editing a feature's parameters ----
 
     // Apply one edited parameter to theFeature, undoably, and rebuild.
@@ -131,10 +138,11 @@ public:
     // one that went red. A Double with no expression becomes a plain
     // number again.
     //
-    // An expression that is just arithmetic on numbers -- "1/2", "10*3" --
-    // names nothing that can change, so it is stored as the number it
-    // gives, read in the parameter's own units, and does not stay an
-    // expression.
+    // An expression that names no parameter -- "1/2", "10*3", "1 in + 2 mm"
+    // -- has nothing that can change, so it is stored as the number it
+    // gives and does not stay an expression. A bare "1/2" is read in the
+    // parameter's internal unit; a field showing another unit converts
+    // before it gets here.
     bool SetFeatureParameter(const FeaturePtr& theFeature,
                              const Parameter&  theParameter,
                              std::string&      theError);

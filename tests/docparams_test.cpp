@@ -249,6 +249,16 @@ int main()
     checkVolume(doc, kPi * 100.0 * 10.0, "undo brings the parameter and the solid back");
     check(doc.Errors().empty(), "cleanly");
 
+    std::cout << "-- who reads a parameter, before offering Delete --" << std::endl;
+    {
+        const std::vector<std::string> users = doc.UsersOfUserParameter("plate_width");
+        check(users.size() == 2 && users[0] == "hole_dia" && users[1] == "Sketch1",
+              "plate_width is read by hole_dia, and through it by Sketch1");
+        const std::vector<std::string> direct = doc.UsersOfUserParameter("hole_dia");
+        check(direct.size() == 1 && direct[0] == "Sketch1", "hole_dia is read by Sketch1");
+        check(doc.UsersOfUserParameter("thickness").size() == 1, "thickness by Extrude1");
+    }
+
     std::cout << "-- a cycle is refused and changes nothing --" << std::endl;
     check(!doc.SetUserParameterExpression("plate_width", "hole_dia * 4", error),
           "plate_width = hole_dia * 4 would loop");
@@ -262,6 +272,8 @@ int main()
     checkVolume(doc, kPi * 100.0 * 12.0, "12 mm");
     check(Drive(doc, "Extrude1", "Distance", "1 in", error), "Distance = 1 in");
     checkVolume(doc, kPi * 100.0 * 25.4, "a unit written into it converts");
+    check(Find(doc, "Extrude1")->ExpressionOf("Distance").empty(),
+          "and with no name in it, it is a number too");
     {
         Parameter plain = ParameterOf(Find(doc, "Extrude1"), "Distance");
         plain.expression.clear();

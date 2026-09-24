@@ -432,6 +432,33 @@ bool Document::RemoveUserParameter(const std::string& theName, std::string& theE
     });
 }
 
+std::vector<std::string> Document::UsersOfUserParameter(const std::string& theName) const
+{
+    std::vector<std::string> users = myParameters.Dependents(theName);
+
+    // A feature reading hole_dia breaks when plate_width goes, if hole_dia
+    // is made from plate_width -- so match features against the chain.
+    std::vector<std::string> broken = users;
+    broken.push_back(theName);
+    for (const FeaturePtr& feature : myFeatures) {
+        if (!feature) {
+            continue;
+        }
+        bool reads = false;
+        for (const auto& entry : feature->Expressions()) {
+            for (const std::string& name : ExpressionVariables(entry.second)) {
+                if (std::find(broken.begin(), broken.end(), name) != broken.end()) {
+                    reads = true;
+                }
+            }
+        }
+        if (reads) {
+            users.push_back(feature->Name());
+        }
+    }
+    return users;
+}
+
 bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
                                    const Parameter&  theParameter,
                                    std::string&      theError)
@@ -452,7 +479,7 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
                 return false;
             }
             edited.doubleValue = result.value;
-            if (IsUnitlessExpression(expression)) {
+            if (ExpressionVariables(expression).empty()) {
                 expression.clear();
             }
         }
