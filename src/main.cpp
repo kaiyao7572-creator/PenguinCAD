@@ -1,8 +1,11 @@
 #include "InputScript.h"
 #include "MainWindow.h"
 #include "OcctViewport.h"
+#include "core/Command.h"
+#include "core/Registration.h"
 
 #include <QApplication>
+#include <QKeySequence>
 #include <QGuiApplication>
 #include <QPalette>
 #include <QPixmap>
@@ -14,6 +17,8 @@
 #include <QTimer>
 
 #include <cstdlib>
+#include <iostream>
+#include <map>
 
 namespace {
 
@@ -74,6 +79,68 @@ void ApplySystemColorScheme(QApplication& theApp)
 
 } // namespace
 
+// --check-shortcuts: register every command, with no window, and fail if
+// any key is bound twice. Qt fires NEITHER action on an ambiguous shortcut,
+// so a clash does not pick a winner -- it silently disables both, which is
+// how F and M were dead for a session. Asking the real registry rather than
+// reading the source is the point: commands built from a table (the
+// standard views, the selection filters) never show up to a text scan.
+int CheckShortcuts()
+{
+    lcad::CommandRegistry& registry = lcad::CommandRegistry::Instance();
+    lcad::RegisterAllCommands(registry);
+
+    std::map<QString, QStringList> bound;
+    int commands = 0;
+    int unreadable = 0;
+    for (const std::string& group : registry.Groups()) {
+        for (lcad::Command* command : registry.InGroup(group)) {
+            ++commands;
+            const QString shortcut = QString::fromStdString(command->Shortcut());
+            if (shortcut.isEmpty()) {
+                continue;
+            }
+            const QKeySequence sequence(shortcut, QKeySequence::PortableText);
+            if (sequence.isEmpty()) {
+                std::cout << "  FAIL  " << command->Id() << ": Qt cannot read the shortcut \""
+                          << shortcut.toStdString() << "\"" << std::endl;
+                ++unreadable;
+                continue;
+            }
+            bound[sequence.toString(QKeySequence::PortableText)]
+                << QString::fromStdString(command->Id());
+        }
+    }
+
+    // The window's own menu actions share the same keyboard.
+    const std::pair<const char*, QKeySequence::StandardKey> menuKeys[] = {
+        {"File > Open", QKeySequence::Open},
+        {"File > Quit", QKeySequence::Quit},
+        {"Edit > Undo", QKeySequence::Undo},
+        {"Edit > Redo", QKeySequence::Redo},
+    };
+    for (const auto& entry : menuKeys) {
+        for (const QKeySequence& sequence : QKeySequence::keyBindings(entry.second)) {
+            bound[sequence.toString(QKeySequence::PortableText)] << entry.first;
+        }
+    }
+
+    std::cout << "  " << commands << " commands, " << bound.size() << " bound keys" << std::endl;
+    int clashes = 0;
+    for (const auto& entry : bound) {
+        if (entry.second.size() > 1) {
+            std::cout << "  FAIL  " << entry.first.toStdString() << " is bound to "
+                      << entry.second.join(", ").toStdString() << std::endl;
+            ++clashes;
+        }
+    }
+    if (clashes == 0 && unreadable == 0) {
+        std::cout << "  PASS  no key is bound twice" << std::endl;
+        return 0;
+    }
+    return 1;
+}
+
 int main(int argc, char* argv[])
 {
     // OCCT's window integration on Linux (Xw_Window) needs an X11 window
@@ -92,6 +159,10 @@ int main(int argc, char* argv[])
     }
 
     QApplication app(argc, argv);
+
+    if (app.arguments().contains("--check-shortcuts")) {
+        return CheckShortcuts();
+    }
 
     ApplySystemColorScheme(app);
 

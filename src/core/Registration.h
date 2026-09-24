@@ -31,6 +31,10 @@ void RegisterViewCommands(CommandRegistry& theRegistry);
 void RegisterUnitsCommand(CommandRegistry& theRegistry);   // src/view/UnitsCommand.cpp
 void RegisterInspectCommands(CommandRegistry& theRegistry);
 
+// All of the above, in ribbon order -- src/Registration.cpp. The one list
+// both the window and --check-shortcuts register from.
+void RegisterAllCommands(CommandRegistry& theRegistry);
+
 // Builds the browser tree / timeline / properties dock widgets and adds
 // them to the main window. Implemented in src/ui/Panels.cpp.
 void CreateDockPanels(QMainWindow* theWindow, const CommandContext& theContext);

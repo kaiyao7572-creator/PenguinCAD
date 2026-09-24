@@ -254,6 +254,26 @@ build_docparams() {
     "$OUT/docparams_test"
 }
 
+# ---- shortcuts: asks the real command registry, so it needs the app ----
+#
+# Qt fires neither action on a key bound twice. A scan of the source missed
+# half the commands (the ones built from tables), so this runs the app's
+# own --check-shortcuts, which registers everything with no window. It
+# says so loudly rather than pass quietly when the app is missing or older
+# than the source it would be checking.
+check_shortcuts() {
+    local app="$ROOT/build/linuxcad"
+    if [ ! -x "$app" ]; then
+        echo "  SKIPPED: build/linuxcad does not exist -- run cmake --build build first"
+        return 0
+    fi
+    if [ -n "$(find "$SRC" \( -name '*.cpp' -o -name '*.h' \) -newer "$app" | head -1)" ]; then
+        echo "  SKIPPED: build/linuxcad is older than src/ -- rebuild, or this checks old code"
+        return 0
+    fi
+    QT_QPA_PLATFORM=offscreen "$app" --check-shortcuts
+}
+
 run "Units: parsing and formatting" build_units
 run "Widget: unit-aware input field" build_widget
 run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
@@ -271,7 +291,7 @@ run "Sweep: profile along a path" build_sweep
 run "Selection: what can be picked, and what survives a rebuild" build_selection
 run "Transform: a gizmo drag moves the picked body" build_transform
 run "Document parameters: expressions drive the model" build_docparams
-run "Shortcuts: no key bound to two commands" python3 "$ROOT/tests/shortcut_check.py"
+run "Shortcuts: no key bound to two commands" check_shortcuts
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."

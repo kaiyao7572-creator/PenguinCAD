@@ -111,20 +111,7 @@ MainWindow::MainWindow(QWidget* parent)
     // itself would read the previous selection.
     m_viewport->SetSelectionCallback([this]() { readViewportSelection(); });
 
-    // Every subsystem contributes its tools here. Each of these lives in
-    // its own directory and knows nothing about this file.
-    CommandRegistry& registry = CommandRegistry::Instance();
-    lcad::RegisterSketchCommands(registry);
-    lcad::RegisterFeatureCommands(registry);
-    lcad::RegisterSweepCommands(registry);
-    lcad::RegisterLoftCommands(registry);
-    lcad::RegisterCombineCommands(registry);
-    lcad::RegisterPatternCommands(registry);
-    lcad::RegisterGizmoCommands(registry);
-    // After Move, as Fusion orders its MODIFY panel.
-    lcad::RegisterParameterCommands(registry);
-    lcad::RegisterViewCommands(registry);
-    lcad::RegisterInspectCommands(registry);
+    lcad::RegisterAllCommands(CommandRegistry::Instance());
 
     buildRibbon();
 
