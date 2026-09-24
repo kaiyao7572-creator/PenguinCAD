@@ -226,6 +226,23 @@ int main()
     expectValue("100/4", 25.0);
     expectValue("1/2", 0.5);                 // no unit: plain division, same number
 
+    // Written the way Fusion shows every value, with a space before the
+    // unit. The table suite once passed while refusing "40 mm" outright;
+    // wiring it to the document found that on the first real expression.
+    expectValue("40 mm", 40.0);
+    expectValue("2 in", 50.8);
+    expectValue("1/2 in", 12.7);             // the fraction, spaced
+    expectValue("90 deg", 90.0);
+    expectValue("2.5 cm + 1 mm", 26.0);
+    expectValue("2 * 1 in", 50.8);
+    expectValue("1' 6\"", 457.2);            // the form Units.h's own tests use
+    expectValue("1'6", 457.2);               // glued inches may still go unmarked
+    expectValue("40\tmm", 40.0);
+    expectError("2 x", "x");                 // only a KNOWN unit joins across a space
+    expectError("40 mm2", "mm2");            // and all of it must be the unit
+    expectError("2' 3", "3");                // spaced inches must say so
+    check(!IsUnitlessExpression("40 mm"), "\"40 mm\" is a length, space or no space");
+
     // Which expressions a field's own unit may be applied to -- the
     // question section 11 turns into millimetres.
     check(IsUnitlessExpression("1"), "\"1\" is dimensionless");
@@ -257,7 +274,7 @@ int main()
     expectError("(1+2", "expected \")\"");
     expectError("1+", "expected a value");
     expectError("*3", "expected a value");
-    expectError("2 in", "not expected");      // a unit has to be joined to its number
+    expectError("2 furlongs", "not expected"); // only a unit this document knows joins
     expectError("1e3", "1e3");                // say which of us is wrong
     expectError("what", "no parameter named");
     expectError("sin", "is a function");
@@ -326,6 +343,9 @@ int main()
     check(RenameExpressionVariable("  a  +  b  ", "a", "alpha") == "  alpha  +  b  ",
           "spacing survives exactly");
     check(RenameExpressionVariable("a+b", "c", "d") == "a+b", "nothing to do is a no-op");
+    check(RenameExpressionVariable("10 mm * mm", "mm", "gap") == "10 mm * gap",
+          "the unit of a spaced literal is not a reference either");
+    check(ExpressionVariables("40 mm + w").size() == 1, "nor is it read out as a name");
 
     // ------------------------------------------------------------------
     std::cout << "-- 9. what a name may be --" << std::endl;

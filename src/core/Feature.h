@@ -1,7 +1,10 @@
 #pragma once
 
+#include "core/Units.h"
+
 #include <TopoDS_Shape.hxx>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,6 +30,23 @@ struct Parameter
     double minimum = 0.0;
     double maximum = 0.0;
     std::string unit;
+
+    // A Double may be DRIVEN by an expression over the document's user
+    // parameters ("plate_t * 2") rather than hold a plain number. Empty
+    // means a plain number. doubleValue is always what it last evaluated
+    // to, so code that only reads numbers never needs to know.
+    //
+    // Features never fill this in: Feature::EditableParameters() does,
+    // from the expressions the base class stores. A feature implements
+    // SetParameter for numbers and gets expressions for free.
+    std::string expression;
+
+    // What a Double measures, read off its unit: "deg" is an angle, no
+    // unit is a count or ratio, anything else a length in millimetres.
+    UnitKind Kind() const
+    {
+        return unit == "deg" ? UnitKind::Angle : unit.empty() ? UnitKind::Unitless : UnitKind::Length;
+    }
 
     static Parameter MakeDouble(std::string theName, double theValue, std::string theUnit = "mm")
     {
@@ -125,6 +145,46 @@ public:
         return false;
     }
 
+    // Parameters() with each driven Double's expression filled in -- what
+    // an editor should show.
+    std::vector<Parameter> EditableParameters() const
+    {
+        std::vector<Parameter> parameters = Parameters();
+        for (Parameter& parameter : parameters) {
+            if (parameter.type == Parameter::Type::Double) {
+                parameter.expression = ExpressionOf(parameter.name);
+            }
+        }
+        return parameters;
+    }
+
+    // ---- expressions ----
+    //
+    // Which numeric parameters are driven by an expression, keyed by
+    // parameter name. They live HERE rather than in each feature so every
+    // numeric parameter of every feature can be driven without the feature
+    // knowing: Document::Rebuild evaluates them and pushes the numbers
+    // through SetParameter before the feature computes. Go through
+    // Document::SetFeatureParameter to change one -- it checks the
+    // expression evaluates before storing it and makes the edit undoable.
+    const std::map<std::string, std::string>& Expressions() const { return myExpressions; }
+
+    std::string ExpressionOf(const std::string& theParameterName) const
+    {
+        const auto found = myExpressions.find(theParameterName);
+        return found != myExpressions.end() ? found->second : std::string();
+    }
+
+    // Empty clears it, leaving the parameter a plain number again.
+    void SetExpression(const std::string& theParameterName, std::string theExpression)
+    {
+        if (theExpression.empty()) {
+            myExpressions.erase(theParameterName);
+        } else {
+            myExpressions[theParameterName] = std::move(theExpression);
+        }
+    }
+
     const std::string& Name() const { return myName; }
     void SetName(std::string theName) { myName = std::move(theName); }
 
@@ -146,11 +206,13 @@ protected:
     {
         theOther.myName = myName;
         theOther.myIsSuppressed = myIsSuppressed;
+        theOther.myExpressions = myExpressions;
     }
 
 private:
     std::string  myName;
     bool         myIsSuppressed = false;
+    std::map<std::string, std::string> myExpressions;
     std::string  myLastError;
     TopoDS_Shape myResultShape;
 };

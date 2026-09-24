@@ -55,6 +55,7 @@ build_pipeline() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/pipeline_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/ShapeFeature.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
         "$SRC/core/Body.cpp" "$SRC/core/Entity.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
@@ -70,6 +71,7 @@ build_entities() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/entity_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
         "$SRC/core/GeometryRef.cpp" "$SRC/core/ProfileProvider.cpp" \
         "$SRC/features/PrimitiveFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/entity_test" || return 1
@@ -81,6 +83,7 @@ build_presspull() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/presspull_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" \
         "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
         "$SRC/core/Units.cpp" \
         "$SRC/core/ProfileProvider.cpp" \
@@ -107,6 +110,7 @@ build_construction() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/construction_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
         "$SRC/core/Origin.cpp" "$SRC/core/ConstructionGeometry.cpp" \
         "$SRC/features/ConstructionFeatures.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
         "$SRC/features/FeatureUtils.cpp" \
@@ -131,6 +135,7 @@ build_gizmo() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/gizmo_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" \
         "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
         "$SRC/core/Units.cpp" \
         "$SRC/core/ProfileProvider.cpp" \
@@ -194,6 +199,7 @@ build_sweep() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/sweep_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Origin.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
         "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
         "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
         "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
@@ -209,6 +215,7 @@ build_selection() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/selection_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" \
         "$SRC/core/GeometryRef.cpp" "$SRC/core/GeometrySelection.cpp" \
         "$SRC/core/ProfileProvider.cpp" "$SRC/core/ProfileSelection.cpp" \
         "$SRC/core/Units.cpp" \
@@ -222,11 +229,28 @@ build_transform() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
         "$ROOT/tests/transform_test.cpp" \
         "$SRC/core/Document.cpp" "$SRC/core/ShapeFeature.cpp" "$SRC/core/Entity.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" \
         "$SRC/core/Body.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Units.cpp" \
         "$SRC/gizmos/TransformFeature.cpp" \
         "$SRC/features/CombineFeature.cpp" "$SRC/features/FeatureUtils.cpp" \
         -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/transform_test" || return 1
     "$OUT/transform_test"
+}
+
+# ---- document parameters: named values driving features' numbers ----
+build_docparams() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/docparams_test.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Origin.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
+        "$SRC/core/Entity.cpp" "$SRC/core/Body.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/features/ProfileFeatures.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
+        "$SRC/features/FeatureUtils.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/docparams_test" || return 1
+    "$OUT/docparams_test"
 }
 
 run "Units: parsing and formatting" build_units
@@ -245,6 +269,7 @@ run "Parameters: named values and expressions" build_parameters
 run "Sweep: profile along a path" build_sweep
 run "Selection: what can be picked, and what survives a rebuild" build_selection
 run "Transform: a gizmo drag moves the picked body" build_transform
+run "Document parameters: expressions drive the model" build_docparams
 run "Shortcuts: no key bound to two commands" python3 "$ROOT/tests/shortcut_check.py"
 
 if [ "$failed" -eq 0 ]; then

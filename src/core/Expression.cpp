@@ -123,6 +123,44 @@ bool IsUnitChar(unsigned char theChar)
            || theChar == 0xC2 || theChar == 0xB0;
 }
 
+bool IsSpace(char theChar)
+{
+    return theChar == ' ' || theChar == '\t';
+}
+
+// Where a unit word written after a SPACE ends ("40 mm", "1/2 in"), or npos
+// when what follows thePos is not whitespace and then a unit this document
+// knows. "40 mm" is how Fusion writes every value it shows, and how the
+// numeric fields already read, so an expression refusing it was refusing
+// the most ordinary thing a user types. Only a KNOWN unit joins across the
+// space: a number followed by a name was never valid, so "2 x" stays the
+// syntax error it always was and nothing that used to parse changes.
+std::size_t SpacedUnitEnd(const std::string& theText, std::size_t thePos)
+{
+    const std::size_t n = theText.size();
+    std::size_t scan = thePos;
+    while (scan < n && IsSpace(theText[scan])) {
+        ++scan;
+    }
+    if (scan == thePos) {
+        return std::string::npos;
+    }
+    std::size_t end = scan;
+    while (end < n && IsUnitChar(Byte(theText[end]))) {
+        ++end;
+    }
+    if (end == scan || (end < n && IsNameChar(Byte(theText[end])))) {
+        return std::string::npos;
+    }
+    const std::string word = theText.substr(scan, end - scan);
+    LengthUnit lengthUnit = LengthUnit::Millimeter;
+    AngleUnit  angleUnit = AngleUnit::Degree;
+    if (!LengthUnitFromText(word, lengthUnit) && !AngleUnitFromText(word, angleUnit)) {
+        return std::string::npos;
+    }
+    return end;
+}
+
 std::string Describe(const Token& theToken)
 {
     switch (theToken.kind) {
@@ -179,14 +217,25 @@ bool TakeNumber(const std::string& theText, std::size_t& thePos, Token& theToken
         while (scan < n && std::isdigit(Byte(theText[scan])) != 0) {
             ++scan;
         }
-        if (scan > thePos + 1 && scan < n && IsUnitChar(Byte(theText[scan]))) {
+        if (scan > thePos + 1
+            && ((scan < n && IsUnitChar(Byte(theText[scan])))
+                || SpacedUnitEnd(theText, scan) != std::string::npos)) {
             thePos = scan;
         }
     }
 
-    const std::size_t suffixStart = thePos;
+    std::size_t suffixStart = thePos;
     while (thePos < n && IsUnitChar(Byte(theText[thePos]))) {
         ++thePos;
+    }
+    if (thePos == suffixStart) {
+        const std::size_t spacedEnd = SpacedUnitEnd(theText, thePos);
+        if (spacedEnd != std::string::npos) {
+            while (IsSpace(theText[suffixStart])) {
+                ++suffixStart;
+            }
+            thePos = spacedEnd;
+        }
     }
     const std::string suffix = theText.substr(suffixStart, thePos - suffixStart);
 
@@ -196,14 +245,27 @@ bool TakeNumber(const std::string& theText, std::size_t& thePos, Token& theToken
     // makes it a syntax error instead of a quietly different number.
     LengthUnit firstUnit = LengthUnit::Millimeter;
     if (!suffix.empty() && LengthUnitFromText(suffix, firstUnit)
-        && firstUnit == LengthUnit::Foot
-        && thePos < n && std::isdigit(Byte(theText[thePos])) != 0) {
-        while (thePos < n
-               && (std::isdigit(Byte(theText[thePos])) != 0 || theText[thePos] == '.')) {
-            ++thePos;
+        && firstUnit == LengthUnit::Foot) {
+        std::size_t inches = thePos;
+        while (inches < n && IsSpace(theText[inches])) {
+            ++inches;
         }
-        while (thePos < n && IsUnitChar(Byte(theText[thePos]))) {
-            ++thePos;
+        if (inches < n && std::isdigit(Byte(theText[inches])) != 0) {
+            std::size_t digitsEnd = inches;
+            while (digitsEnd < n
+                   && (std::isdigit(Byte(theText[digitsEnd])) != 0 || theText[digitsEnd] == '.')) {
+                ++digitsEnd;
+            }
+            std::size_t unitEnd = digitsEnd;
+            while (unitEnd < n && IsUnitChar(Byte(theText[unitEnd]))) {
+                ++unitEnd;
+            }
+            // Glued ("1'6") the inches may go unmarked, as they always
+            // could. Across a space ("1' 6\"") they must say so, or
+            // "2' 3" would swallow a number that was meant to stand alone.
+            if (inches == thePos || unitEnd > digitsEnd) {
+                thePos = unitEnd;
+            }
         }
     }
 

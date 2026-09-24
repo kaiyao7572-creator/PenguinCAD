@@ -2,6 +2,7 @@
 
 #include "core/Body.h"
 #include "core/Feature.h"
+#include "core/ParameterTable.h"
 
 #include <TopoDS_Shape.hxx>
 
@@ -85,6 +86,59 @@ public:
     const std::vector<BodyPtr>& Bodies() const { return myBodies.Bodies(); }
     Body* FindBody(const std::string& theName) const { return myBodies.Find(theName); }
 
+    // ---- user parameters (Fusion's MODIFY > Change Parameters) ----
+    //
+    // Named values any feature's numeric parameter can be driven by. Every
+    // edit here is undoable and rebuilds, so changing one parameter reaches
+    // every feature that reads it, directly or through other parameters.
+    // Each returns false with theError set, and changes nothing, when the
+    // edit is refused: a malformed or taken name, or a cycle. An expression
+    // that merely fails to evaluate is accepted and its row says why --
+    // the table's own rule, see core/ParameterTable.h.
+    const ParameterTable& UserParameters() const { return myParameters; }
+
+    bool AddUserParameter(const UserParameter& theParameter, std::string& theError);
+    bool SetUserParameterExpression(const std::string& theName,
+                                    const std::string& theExpression,
+                                    std::string&       theError);
+    bool SetUserParameterComment(const std::string& theName,
+                                 const std::string& theComment,
+                                 std::string&       theError);
+    bool SetUserParameterUnit(const std::string& theName, UnitKind theKind,
+                              LengthUnit theLengthUnit, AngleUnit theAngleUnit,
+                              std::string& theError);
+
+    // Also rewrites every feature expression that named the old one, so
+    // the model keeps working -- what Fusion does.
+    bool RenameUserParameter(const std::string& theOldName,
+                             const std::string& theNewName,
+                             std::string&       theError);
+
+    // Allowed even while features read it: refusing would leave a model
+    // that cannot be taken apart. Those features fail on the rebuild and
+    // say which name went missing, rather than quietly keeping the last
+    // number it gave them.
+    bool RemoveUserParameter(const std::string& theName, std::string& theError);
+
+    // ---- editing a feature's parameters ----
+
+    // Apply one edited parameter to theFeature, undoably, and rebuild.
+    //
+    // A Double whose `expression` is set is DRIVEN by it from now on. The
+    // expression has to evaluate against the user parameters now, or the
+    // edit is refused and nothing changes: a field that took
+    // "plate_tt * 2" and then failed on every rebuild would be worse than
+    // one that went red. A Double with no expression becomes a plain
+    // number again.
+    //
+    // An expression that is just arithmetic on numbers -- "1/2", "10*3" --
+    // names nothing that can change, so it is stored as the number it
+    // gives, read in the parameter's own units, and does not stay an
+    // expression.
+    bool SetFeatureParameter(const FeaturePtr& theFeature,
+                             const Parameter&  theParameter,
+                             std::string&      theError);
+
     // ---- active feature (what the properties panel edits) ----
 
     void SetActiveFeature(const FeaturePtr& theFeature);
@@ -92,9 +146,9 @@ public:
 
     // ---- undo / redo ----
 
-    // Snapshot the current timeline before a mutation. Commands that
-    // change the model should call this first; AddFeature and friends do
-    // it automatically.
+    // Snapshot the current timeline and user parameters before a mutation.
+    // Commands that change the model should call this first; AddFeature
+    // and friends do it automatically.
     void PushUndoSnapshot();
     bool CanUndo() const { return !myUndoStack.empty(); }
     bool CanRedo() const { return !myRedoStack.empty(); }
@@ -124,10 +178,34 @@ public:
     void NotifyChanged();
 
 private:
+    // Everything undo puts back. The parameters travel with the timeline:
+    // undoing a parameter edit must undo its effect on the model too, and
+    // a timeline restored without the table it was built against could
+    // name parameters that no longer exist.
+    struct Snapshot
+    {
+        std::vector<FeaturePtr> timeline;
+        ParameterTable          parameters;
+    };
+
     std::vector<FeaturePtr> CloneTimeline() const;
-    void RestoreTimeline(std::vector<FeaturePtr> theTimeline);
+    Snapshot TakeSnapshot() const;
+    void PushSnapshot(Snapshot theSnapshot);
+    void RestoreSnapshot(Snapshot theSnapshot);
+
+    // Snapshot, try theEdit on the table, and keep the snapshot and
+    // rebuild only if it was accepted -- a refused edit must not leave an
+    // undo step that does nothing.
+    template <typename Edit>
+    bool EditUserParameters(Edit&& theEdit);
+
+    // Push the current value of every expression-driven parameter into
+    // theFeature. False, with theError saying which parameter and why,
+    // when one does not evaluate or the feature refuses what it gives.
+    bool ApplyExpressions(Feature& theFeature, std::string& theError) const;
 
     std::vector<FeaturePtr>        myFeatures;
+    ParameterTable                 myParameters;
     std::vector<std::string>       myErrors;
     TopoDS_Shape                   myShape;
     BodyTable                      myBodies;
@@ -136,8 +214,8 @@ private:
     std::string                    myName = "Untitled";
     bool                           myIsModified = false;
 
-    std::vector<std::vector<FeaturePtr>> myUndoStack;
-    std::vector<std::vector<FeaturePtr>> myRedoStack;
+    std::vector<Snapshot> myUndoStack;
+    std::vector<Snapshot> myRedoStack;
 
     std::vector<DocumentObserver*> myObservers;
     bool myIsNotifying = false;
