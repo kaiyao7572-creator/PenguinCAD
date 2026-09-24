@@ -76,6 +76,38 @@ Ownership is per-directory (`src/sketch/`, `src/ui/`, `src/features/`,
 `src/view/`, `src/inspect/`, `src/gizmos/`). Parallel agents in one
 directory produce merge chaos. Sequence them instead.
 
+### 1.4b Your own shell can silently skip the edit
+
+A patch was written as `grep ... && python3 - <<'PYEOF'`. The grep found
+nothing, returned 1, and `&&` threw the patch away without a word. The
+build then "succeeded" because it compiled the *unchanged* file, the
+screenshot came back identical, and the conclusion drawn was "the fix
+does not work" — when the fix had never been applied.
+
+Fish also aborts a whole command when any glob matches nothing, so
+`rm -f a*.png b*.png` deletes neither if only `b*` exists.
+
+**Always confirm an edit landed** (`grep` for the new symbol) before you
+measure whether it worked. A measurement of code you did not change is
+worse than no measurement, because it looks like evidence.
+
+### 1.4c Symmetry can masquerade as "the renderer is broken"
+
+A box rendered as a flat orange hexagon — one uniform colour, no edge
+between its faces. It looked exactly like lighting was off. It was not:
+a sphere in the same scene rendered with 435 distinct shades.
+
+`V3d_Viewer::SetDefaultLights()` installs a **headlight**, pointing
+straight down the view direction. In an isometric view the three visible
+faces of a cube make *equal* angles with that direction, so all three
+return identical brightness. The renderer was working perfectly and
+reporting a true fact about an unlucky geometry.
+
+The fix is in `OcctNativeWindow::initializeOcctViewer()`: an off-axis
+key light plus ambient. **Test a curved body before concluding anything
+about shading** — a sphere distinguishes "unlit" from "symmetric" in one
+shot.
+
 ### 1.5 Build gotchas
 
 - `CMakeLists.txt` globs `src/**/*.cpp`. **Never edit it to add files.**
@@ -137,12 +169,38 @@ area computed by hand.
 revolve, fillet, chamfer, shell. All parametric and re-editable. Verified
 against real OCCT volumes (a 40×30×10 extrude is exactly 12000mm³).
 
+**Added 2026-09-20/23** — the modelling-breadth gap is largely closed:
+
+| Command | File | Proof it is correct |
+|---|---|---|
+| `solid.sweep` | `SweepFeature.*`, `SweepCommands.cpp` | a circle swept along a circle is a torus: **3553.06mm³** vs closed-form 2π²Rr² = 3553.06 |
+| `solid.loft` | `LoftFeature.*`, `LoftCommands.cpp` | 29 headless assertions; Closed/Ruled both exercised |
+| `modify.combine` | `CombineFeature.*`, `CombineCommands.cpp` | 60-check harness: volumes, keep-tools, multi-tool, undo |
+| `solid.pattern.rectangular` / `.circular` / `solid.mirror` | `PatternFeatures.*` | 100 checks asserting **positions as well as volumes** |
+| `export.step` / `export.obj` | `src/io/` | STEP round-trips at 6000mm³ and 3 bodies stay 3; OBJ indices 1-based, in range |
+| `gizmo.rotate` / `gizmo.scale` | `src/gizmos/RotateScaleGizmo*` | built, registered, **never driven by hand — see 3.9** |
+| `gizmo.press_pull` | `GizmoCommands.cpp` | arrow-blue pixels: 0 after a face click, 388 after invoking it |
+
+**Named parameters** (`src/core/Expression.*`, `ParameterTable.*`) — a
+degrees-based expression evaluator (`sin(30)` is 0.5, asserted) with
+unit-aware literals reusing `Units.h`, plus an ordered parameter table
+with **iterative** cycle detection that names the parameters in the loop.
+`tests/parameters_test.cpp` passes. **The engine is NOT wired into
+`Document` or any feature yet** — nothing but the test includes it. That
+wiring is job #1 next session (§7.1).
+
 **Units** (`src/core/Units.h`) — mm internally, always. Type `12.9in`,
 `1/2"`, `1'6"`, `2.5cm` into any numeric field and it converts *and* the
 field adopts that unit. 40 parser tests.
 
 **UI/view/inspect** — browser, timeline, properties panels; standard
 views, display modes, view cube, model properties, measure, section.
+
+**Shading** — the viewer now uses an off-axis key light plus ambient, so
+a cube reads as a cube (three faces at 200/167/87 brightness, each about
+13.4k pixels, which is the equal projected area isometric demands).
+Sphere and cylinder verified too. See §1.4c for why this looked like a
+renderer bug and was not.
 
 ---
 
@@ -294,11 +352,28 @@ Still missing:
 Fusion's right-click radial menu is one of its most distinctive
 interactions. Right-click currently does nothing.
 
-### 3.7 Modelling breadth
+### 3.7 Modelling breadth — mostly closed 2026-09-23
 
-Sweep, Loft, Rib, Web, Emboss, Hole, Thread, Draft, Scale, Combine,
-Replace/Split Face, Split Body. Extrude also lacks taper angle and
-"to object". No components, joints or assemblies at all.
+**Now present:** Sweep, Loft, Combine, Rectangular/Circular Pattern,
+Mirror, Scale (uniform), STEP + OBJ export. See the table in §2.
+
+**Still missing:** Rib, Web, Emboss, Hole, Thread, Draft, Replace/Split
+Face, Split Body. Extrude still lacks taper angle and "to object".
+Sweep takes only a **closed** path (ProfileProvider hands over closed
+wires and nothing else — widening it is a change to that seam, not to
+`SweepFeature`). Loft has no rails, no centreline, no tangency
+conditions, and refuses annular sections. Patterns work on **bodies
+only**, on world axes/planes through the world origin — not on features,
+faces, or a picked edge/construction axis.
+
+**No components, joints or assemblies at all.** This is now the single
+largest structural gap, and it is a document-model project rather than a
+feature: it needs a component tree above the linear timeline, joints, and
+per-occurrence transforms. Deliberately not attempted while nine agents
+were editing `src/features/` in parallel.
+
+**No 2D drawings.** Second largest. Needs a drawing-view + annotation
+subsystem downstream of the model.
 
 ### 3.8 Browser and timeline are half-Fusion
 
@@ -321,10 +396,23 @@ What is left:
 
 ### 3.9 Never verified by anyone
 
-Written, compiles, **never driven**: view cube clicking, Measure
-Distance, Section View, and the gizmo drag → `TransformFeature` path.
-Three agents died before testing these. Treat them as unknown, not
-working.
+Written, compiles, **never driven by hand**: view cube clicking, Measure
+Distance, Section View, `gizmo.rotate`, `gizmo.scale`, and the
+`RotateScaleGizmoTool` drag path. Several agents died before testing
+these. Treat them as unknown, not working.
+
+The gizmo drag → `TransformFeature` path is **no longer** in this list:
+it had a real bug (below) and now has `tests/transform_test.cpp` behind
+it. But that test drives the FEATURE, not the mouse — the actual drag
+gesture is still unproven.
+
+**A bug that was in this list and is now fixed, as a warning about the
+rest of it:** `TransformFeature` grew per-body targeting, but all three
+call sites constructed it *without* a target, so `myTarget.IsNull()` was
+true and every drag transformed the whole upstream shape. Invisible while
+a document held one body — and Combine, patterns and mirror now make a
+second body routine. Everything else in this section is the same kind of
+risk: plausible-looking code nobody has actually operated.
 
 ---
 
@@ -387,3 +475,230 @@ tell you whether an interaction actually did anything.
 - Never let `Compute()` throw. Catch `Standard_Failure` and report it
   through `theError`.
 - Commit in working increments with real commit messages.
+
+---
+
+## 6. Session log — 2026-09-20 → 2026-09-23
+
+### What was asked
+
+Close the gaps in `docs/FUSION360_COMPARISON.md` using many parallel
+agents, so linuxCAD matches Fusion except where the difference is the
+point (local vs cloud, OCCT vs ASM, free/Linux vs paid/absent).
+
+### How it went
+
+Four `Workflow` runs, 34 agents, ~3.5M subagent tokens. **Every one of
+the four runs lost agents to usage limits** (9 killed, then 10, then 5,
+then 2). What made the difference was structure, not luck: the first run
+fanned out nine agents at once and banked *nothing* when the limit hit. Subsequent runs used sequential
+waves of three, so each wave's work landed on disk before the next
+started. Combine and Loft survived a limit that way; Pattern, Parameters
+and Export survived the next one.
+
+**Agents that died still left usable work.** `SweepFeature.{h,cpp}` was
+787 complete, syntax-clean lines from an agent that died before writing
+its command — the orchestrator wrote `SweepCommands.cpp` and it worked.
+`tests/identity_test.cpp` was complete and passing, just never wired into
+the runner. Always check the tree before assuming a dead agent produced
+nothing.
+
+### Three bugs found by verifying rather than trusting
+
+1. **Sweep was never verified by anyone** (its agent died before
+   reporting). A torus test proved it correct to 5 s.f.
+2. **`Expression.cpp` SIGSEGV'd** on a long run of unary signs: depth was
+   counted in `Unary` but only *tested* in `Primary`, which a sign run
+   never reaches. Confirmed crash at 200k minuses; now refuses 1M cleanly.
+3. **A gizmo drag moved every body**, not the picked one (§3.9).
+
+### Two corrections made out loud
+
+- Claimed `CombineFeature` could not resolve reversed-orientation solids,
+  from diffing two copies of a resolver and seeing `std::fabs` in one but
+  not the other. **Wrong** — Combine applies it one level up in
+  `VolumeAndCentre`. Same constants, same behaviour. The duplication is
+  real; the drift was not.
+- Claimed the viewer's lights were activated before the view existed.
+  **Wrong** — see §1.4c. That "fix" was reverted rather than left in.
+
+### A brief the agents corrected
+
+Agents were told to store body references by name and resolve via
+`Document::FindBody()`. `CombineFeature`'s agent refused, and was right:
+`core/GeometryRef.h` line 66 says a feature computing mid-timeline sees
+its INPUT shape and there are no bodies at that point. The brief would
+have produced a feature that worked once and broke on every rebuild
+after. Later waves were briefed with the correction.
+
+### State at the end
+
+- Build green. **16 suites, 1037 assertions, all passing.**
+- **57 registered commands**, 38.1k lines of `src/`, 5.4k of `tests/`.
+- **Nothing is committed.** 38 files new or modified, all on `main`.
+
+---
+
+## 7. Next session: do this
+
+Copy this whole section into the next session as the brief.
+
+### 7.0 First, orient (10 minutes, do not skip)
+
+```bash
+cd /home/kaidaidk/Documents/linuxCAD
+git status --porcelain          # expect ~38 new/modified, nothing committed
+cmake --build build -j$(nproc)  # must be green before you touch anything
+./tests/run_tests.sh            # expect "All test suites passed."
+```
+
+Read `docs/ARCHITECTURE.md` fully, then §1 of this file. If the build is
+NOT green, stop and fix that first — everything below assumes a green
+baseline.
+
+**Decide with the user before writing code:** 38 files are uncommitted.
+Offer to commit, either as one commit or split by subsystem (features /
+io / gizmos / core-parameters / tests / docs). Do not commit unasked.
+
+### 7.1 Wire the parameter engine in — highest value
+
+`src/core/Expression.*` and `src/core/ParameterTable.*` exist, are
+tested, and **nothing uses them**. Until they are wired in, the app is
+still only "parametric-looking": you cannot write
+`hole_dia = plate_width / 4` and have it propagate.
+
+Concretely:
+
+1. Give `Document` a `ParameterTable` member, plus accessors and a
+   `NotifyChanged()` on edit. `Document.h/.cpp` are shared files — you
+   own them now, no agents are running.
+2. Let a feature store an **expression string** alongside its resolved
+   double. Start with `ExtrudeFeature::myDistance` as the pilot: add
+   `myDistanceExpr`, resolve it in `Compute()` through the document's
+   table, fall back to the literal when the string is empty.
+3. Resolve the table **before** the feature loop in `Document::Rebuild()`,
+   and surface a cycle or a bad name as a rebuild error, not a crash.
+4. Extend the properties panel so a numeric row accepts text. `Parameter`
+   already has a `String` type — prefer reusing it over inventing a
+   `Type::Expression`.
+5. Add a MODIFY > Change Parameters dialog listing name / expression /
+   value / unit / comment, matching Fusion's columns.
+
+**Test it end to end:** a document where an extrude's distance is
+`plate_t * 2`, then edit `plate_t` and assert the solid's volume changes.
+That single assertion is the whole point of the feature.
+
+### 7.2 Fix `select.faces` not restricting picking
+
+Confirmed by hand: with the Faces filter on, a click still returned
+`Edge   Length 20 mm` in the status bar. The filter commands
+(`SelectionFilterCommand` in `src/features/FeatureCommands.cpp`, applied
+by `MainWindow::applySelectionFilters`) look **additive** where Fusion's
+are **exclusive**.
+
+Reproduce:
+
+```
+arm 1200 accept
+run solid.box
+wait 1200
+run select.faces
+wait 400
+click 620 250
+wait 900
+shot sel.png
+```
+
+Then read the status bar strip of `sel.png` (crop the bottom ~58px). It
+should say `Face   Area 400 mm²`. `(620, 250)` is a known-good face hit
+on a default box; `(535, 288)` lands on an edge — useful as the negative
+control.
+
+### 7.3 Resolve the two shortcut collisions
+
+`F` → `modify.fillet` **and** `view.fit_all`. `M` → `gizmo.move` **and**
+`inspect.measure_distance`. Qt fires neither on an ambiguous binding, so
+both are broken. Fusion's own bindings are F = Fillet and M = Move, so
+the other two should move. **Ask the user which keys they want** before
+rebinding — it is muscle memory, not a technical call.
+
+Detect them again with:
+
+```bash
+python3 - <<'EOF'
+import re,os,collections
+ids={}
+for root,_,fs in os.walk('src'):
+    for f in fs:
+        if not f.endswith('.cpp'): continue
+        t=open(os.path.join(root,f),errors='ignore').read()
+        for m in re.finditer(r'std::string Id\(\) const override\s*\{\s*return "([^"]+)";', t):
+            tail=t[m.end():m.end()+2500]
+            sm=re.search(r'std::string Shortcut\(\) const override\s*\{\s*return "([^"]+)";', tail)
+            if sm: ids[m.group(1)]=sm.group(1)
+d=collections.defaultdict(list)
+for cid,sc in ids.items(): d[sc].append(cid)
+for sc,cs in sorted(d.items()):
+    if len(cs)>1: print(f"{sc!r} -> {', '.join(sorted(cs))}")
+EOF
+```
+
+### 7.4 Drive the never-verified UI by hand (§3.9)
+
+`gizmo.rotate`, `gizmo.scale`, the `RotateScaleGizmoTool` drag, view cube
+clicking, Measure Distance, Section View. All compile; none has been
+operated. Expect real bugs — the `TransformFeature` multi-body bug came
+out of exactly this category.
+
+For the rotate/scale gizmos specifically, assert the things a compile
+cannot: rotating about a centroid leaves the centroid **fixed**, a
+uniform scale of 2 multiplies volume by exactly **8**, and scale 0 or
+negative is **refused**.
+
+### 7.5 Reconcile where export lives
+
+`export.step` and `export.obj` landed in a new **Utilities** ribbon tab;
+STL export is in the **File** menu. Users expect all three together.
+Fusion puts export under File. Moving them means touching
+`MainWindow::buildMenus` — a shared file, fine now that no agents run.
+
+### 7.6 Worth doing, lower urgency
+
+- **De-duplicate the body resolver.** `ResolveBodyRef` plus its constants
+  (`kSameSizeRatio` 0.02, `kSameCentre` 1.0mm, `kAmbiguityMargin` 4.0)
+  is file-local in **both** `CombineFeature.cpp` and
+  `PatternFeatures.cpp`. They have **not** drifted (verified), but two
+  copies of an identity rule will. Lifting it needs `CombineBodyRef` to
+  move out of `CombineFeature.h` — `PatternFeatures`, `TransformFeature`
+  and `MoveGizmoTool` all include it for that type. Better: write a test
+  asserting both resolvers agree on the same input, so drift is caught
+  rather than hoped against.
+- **Construction geometry is unreachable.** Nothing in `src/` draws a
+  construction plane — the only `new AIS_Shape` sites are bodies, sketch
+  display, the press/pull gizmo and the picker's origin rectangles. The
+  features exist and resolve each other by name, but a user cannot see or
+  pick one.
+- **Emoji icons.** `Command::Icon()` returns one emoji. It is the app's
+  weakest first impression and the fix touches every command file, so do
+  it in one deliberate pass, not incidentally.
+- **CI.** `tests/run_tests.sh` is green and nothing runs it automatically.
+  The screenshot harness is still manual.
+
+### 7.7 The two big ones, when there is room
+
+**Assemblies / components** and **2D drawings**. Both are document-model
+projects, not features (§3.7). Each deserves its own session and its own
+plan. Do not start either as a side-quest.
+
+### If you use agents again
+
+- **Sequential waves of three.** Nine at once banked nothing when the
+  limit hit; waves of three survived two separate limits.
+- Give every agent a **disjoint file list**, and keep shared files
+  (`CMakeLists.txt`, `MainWindow.*`, `OcctViewport.*`, `core/Registration.h`,
+  `run_tests.sh`) for yourself.
+- Have agents define their own `Register*Commands` and wire it yourself.
+- **Demand evidence, not "it compiles."** The agents that produced real
+  numbers (100 position checks, a divergence-theorem volume) produced
+  correct work. Then verify the highest-risk claims yourself anyway: the
+  orchestrator's own round-trip and torus tests each caught something.
