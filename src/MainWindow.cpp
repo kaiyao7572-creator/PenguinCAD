@@ -120,6 +120,7 @@ MainWindow::MainWindow(QWidget* parent)
     lcad::RegisterLoftCommands(registry);
     lcad::RegisterCombineCommands(registry);
     lcad::RegisterPatternCommands(registry);
+    lcad::RegisterIoCommands(registry);
     lcad::RegisterGizmoCommands(registry);
     lcad::RegisterViewCommands(registry);
     lcad::RegisterInspectCommands(registry);
