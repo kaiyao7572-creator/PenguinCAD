@@ -11,6 +11,8 @@
 #include <OpenGl_GraphicDriver.hxx>
 #include <gp_Pnt.hxx>
 #include <SelectMgr_ViewerSelector.hxx>
+#include <V3d_AmbientLight.hxx>
+#include <V3d_DirectionalLight.hxx>
 #include <Xw_Window.hxx>
 
 #include <algorithm>
@@ -151,7 +153,33 @@ void OcctNativeWindow::initializeOcctViewer()
     Handle(OpenGl_GraphicDriver) graphicDriver = new OpenGl_GraphicDriver(displayConnection, false);
 
     m_viewer = new V3d_Viewer(graphicDriver);
-    m_viewer->SetDefaultLights();
+
+    // Shading a box needs a light that is NOT coaxial with the camera.
+    // SetDefaultLights() installs a HEADLIGHT, pointing straight down the
+    // view direction, and in an isometric view the three visible faces of
+    // a cube make EQUAL angles with that direction. All three then come
+    // back at the same brightness and a box renders as a flat orange
+    // hexagon with no edge between its faces. (A sphere still shaded
+    // correctly, which is what narrowed this to the symmetry rather than
+    // to the lighting being off.)
+    //
+    // Offsetting the key light up and to the left breaks the tie, the way
+    // every CAD package's default studio light does. It stays a headlight
+    // so it travels with the camera and the shading does not swim about
+    // as the model is orbited; the ambient term keeps the faces turned
+    // away from it off black.
+    Handle(V3d_DirectionalLight) keyLight =
+        new V3d_DirectionalLight(gp_Dir(-0.45, -0.60, -1.0), Quantity_NOC_WHITE, Standard_True);
+    m_viewer->AddLight(keyLight);
+
+    // Intensities left at OCCT's defaults deliberately. Dropping the key
+    // to 0.85 and pinning ambient to 0.55 was tried and made every face
+    // darker, not softer -- the stock ambient is already stronger than
+    // that -- so the defaults are what the three shades below were
+    // measured from.
+    Handle(V3d_AmbientLight) fillLight = new V3d_AmbientLight(Quantity_NOC_WHITE);
+    m_viewer->AddLight(fillLight);
+
     m_viewer->SetLightOn();
 
     m_context = new AIS_InteractiveContext(m_viewer);
