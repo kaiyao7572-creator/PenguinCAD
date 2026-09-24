@@ -157,6 +157,7 @@ void GeometrySelection::SetFilter(EntityType theType, bool theOn)
     if (theOn) {
         if (found == myFilters.end()) {
             myFilters.push_back(theType);
+            myHasPriority = false;
             ++myFilterGeneration;
         }
         return;
@@ -165,8 +166,39 @@ void GeometrySelection::SetFilter(EntityType theType, bool theOn)
     // can be picked looks broken rather than filtered.
     if (found != myFilters.end() && myFilters.size() > 1) {
         myFilters.erase(found);
+        myHasPriority = false;
         ++myFilterGeneration;
     }
+}
+
+void GeometrySelection::SetPriority(EntityType theType)
+{
+    if (myHasPriority && myPriority == theType) {
+        return;
+    }
+    if (!IsFilterOn(theType)) {
+        myFilters.push_back(theType);
+    }
+    myHasPriority = true;
+    myPriority = theType;
+    ++myFilterGeneration;
+}
+
+void GeometrySelection::ClearPriority()
+{
+    if (!myHasPriority) {
+        return;
+    }
+    myHasPriority = false;
+    ++myFilterGeneration;
+}
+
+std::vector<EntityType> GeometrySelection::PickableTypes() const
+{
+    if (myHasPriority) {
+        return {myPriority};
+    }
+    return myFilters;
 }
 
 void GeometrySelection::Set(std::vector<GeometryRef> theItems)

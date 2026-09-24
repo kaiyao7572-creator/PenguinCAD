@@ -41,13 +41,31 @@ public:
     void SetFilter(EntityType theType, bool theOn);
     const std::vector<EntityType>& Filters() const { return myFilters; }
 
-    // Bumped whenever the filter changes. The shell watches this to know
+    // Bumped whenever the filter or the priority changes. The shell watches this to know
     // when to re-activate OCCT's selection modes, rather than every
     // filter command needing a handle on the window and the body list.
     std::size_t FilterGeneration() const { return myFilterGeneration; }
 
     // Every type a filter can apply to, in the order the UI shows them.
     static const std::vector<EntityType>& FilterableTypes();
+
+    // ---- selection priority ----
+    //
+    // Fusion's Select Body / Face / Edge Priority: ONE type becomes the
+    // only thing a click can pick, whatever the filters say, until it is
+    // turned off. The filters are independent checkboxes -- in Fusion too
+    // -- so turning Faces off leaves edges pickable, and anyone who wanted
+    // "faces only" reads that as a broken filter. Priority is the tool for
+    // that. Only one at a time; setting one also ticks its filter, as
+    // Fusion's does; changing any filter ends it.
+    bool HasPriority() const { return myHasPriority; }
+    EntityType Priority() const { return myPriority; }
+    void SetPriority(EntityType theType);
+    void ClearPriority();
+
+    // What a click can pick right now: the priority alone, or the filters.
+    // This, not Filters(), is what the viewport activates.
+    std::vector<EntityType> PickableTypes() const;
 
     // ---- what is picked ----
 
@@ -67,6 +85,8 @@ private:
 
     std::vector<EntityType>  myFilters;
     std::size_t              myFilterGeneration = 1;
+    bool                     myHasPriority = false;
+    EntityType               myPriority = EntityType::BRepFace;
     std::vector<GeometryRef> myItems;
 };
 

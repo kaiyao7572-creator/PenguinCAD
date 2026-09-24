@@ -611,7 +611,7 @@ void MainWindow::applySelectionFilters()
             continue;
         }
         context->Deactivate(object);
-        for (const lcad::EntityType type : lcad::GeometrySelection::Instance().Filters()) {
+        for (const lcad::EntityType type : lcad::GeometrySelection::Instance().PickableTypes()) {
             context->Activate(object, AIS_Shape::SelectionMode(lcad::TopAbsTypeOf(type)),
                               Standard_False);
         }
@@ -627,9 +627,6 @@ void MainWindow::readViewportSelection()
 
     std::vector<lcad::GeometryRef> picked;
     for (context->InitSelected(); context->MoreSelected(); context->NextSelected()) {
-        // A sub-shape pick arrives as a BRep owner carrying the shape;
-        // asked for through the owner rather than the context's own
-        // DetectedShape(), which OCCT 7.9 deprecates with local context.
         // A sub-shape pick arrives as a BRep owner carrying the shape;
         // asked for through the owner rather than the context's own
         // DetectedShape(), which OCCT 7.9 deprecates with local context.

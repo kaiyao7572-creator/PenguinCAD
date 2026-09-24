@@ -1114,6 +1114,67 @@ private:
     std::string myIcon;
 };
 
+// Fusion's Select Body / Face / Edge Priority. One family, so the ribbon
+// shows a single Priority button with the three behind it, the way Fusion
+// keeps them in one submenu under SELECT.
+class SelectionPriorityCommand : public Command
+{
+public:
+    SelectionPriorityCommand(EntityType theType, std::string theId, std::string theTitle,
+                             std::string theNoun)
+        : myType(theType)
+        , myId(std::move(theId))
+        , myTitle(std::move(theTitle))
+        , myNoun(std::move(theNoun))
+    {
+    }
+
+    std::string Id() const override { return myId; }
+    std::string Title() const override { return myTitle; }
+    std::string Group() const override { return kSolidGroup; }
+    std::string Section() const override { return "Select"; }
+    std::string Icon() const override { return "🎯"; }
+    std::string Description() const override
+    {
+        return "Only " + myNoun + " can be picked until this is turned off again";
+    }
+
+    bool IsCheckable() const override { return true; }
+    bool IsChecked(const CommandContext& theContext) const override
+    {
+        (void)theContext;
+        const GeometrySelection& selection = GeometrySelection::Instance();
+        return selection.HasPriority() && selection.Priority() == myType;
+    }
+
+    void Execute(CommandContext& theContext) override
+    {
+        GeometrySelection& selection = GeometrySelection::Instance();
+        const bool turningOff = selection.HasPriority() && selection.Priority() == myType;
+        if (turningOff) {
+            selection.ClearPriority();
+            ShowStatus(theContext, QString::fromStdString(myTitle) + " off.");
+        } else {
+            selection.SetPriority(myType);
+            ShowStatus(theContext, QString::fromStdString(myTitle) + ": only "
+                                       + QString::fromStdString(myNoun) + " can be picked.");
+        }
+        // Anything picked before may not be pickable now.
+        selection.Clear();
+        const Handle(AIS_InteractiveContext) aisContext = theContext.AisContext();
+        if (!aisContext.IsNull()) {
+            aisContext->ClearSelected(Standard_False);
+        }
+        theContext.Redraw();
+    }
+
+private:
+    EntityType  myType;
+    std::string myId;
+    std::string myTitle;
+    std::string myNoun;
+};
+
 void RegisterFeatureCommands(CommandRegistry& theRegistry)
 {
     theRegistry.Add(std::make_unique<BoxCommand>());
@@ -1146,6 +1207,13 @@ void RegisterFeatureCommands(CommandRegistry& theRegistry)
         EntityType::BRepEdge, "select.edges", "Edges", "╲"));
     theRegistry.Add(std::make_unique<SelectionFilterCommand>(
         EntityType::BRepVertex, "select.vertices", "Vertices", "◦"));
+
+    theRegistry.Add(std::make_unique<SelectionPriorityCommand>(
+        EntityType::BRepBody, "select.priority.body", "Select Body Priority", "bodies"));
+    theRegistry.Add(std::make_unique<SelectionPriorityCommand>(
+        EntityType::BRepFace, "select.priority.face", "Select Face Priority", "faces"));
+    theRegistry.Add(std::make_unique<SelectionPriorityCommand>(
+        EntityType::BRepEdge, "select.priority.edge", "Select Edge Priority", "edges"));
 }
 
 } // namespace lcad

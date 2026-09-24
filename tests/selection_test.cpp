@@ -327,6 +327,45 @@ int main()
 
         selection.SetFilter(EntityType::BRepEdge, true);  // back to the default pair
 
+        // Selection priority, Fusion's other tool, and the one the handoff
+        // wanted when it called select.faces broken. The filters are
+        // independent checkboxes; turning Faces off with the default pair
+        // on leaves EDGES pickable, which is what that report saw.
+        selection.SetFilter(EntityType::BRepFace, false);
+        {
+            const std::vector<EntityType> pickable = selection.PickableTypes();
+            check(pickable.size() == 1 && pickable[0] == EntityType::BRepEdge,
+                  "the report reproduced: Faces toggled OFF leaves edges alone pickable");
+        }
+        selection.SetFilter(EntityType::BRepFace, true);
+
+        const std::size_t beforePriority = selection.FilterGeneration();
+        selection.SetPriority(EntityType::BRepFace);
+        {
+            const std::vector<EntityType> pickable = selection.PickableTypes();
+            check(pickable.size() == 1 && pickable[0] == EntityType::BRepFace,
+                  "Face Priority: faces are the ONLY thing a click can pick");
+        }
+        check(selection.IsFilterOn(EntityType::BRepEdge),
+              "without unticking the Edges filter underneath");
+        check(selection.FilterGeneration() != beforePriority, "the viewport re-arms for it");
+
+        selection.SetPriority(EntityType::BRepEdge);
+        check(selection.HasPriority() && selection.Priority() == EntityType::BRepEdge,
+              "only one priority at a time -- Edge replaces Face");
+
+        selection.SetPriority(EntityType::BRepBody);
+        check(selection.IsFilterOn(EntityType::BRepBody),
+              "a priority ticks its own filter, as Fusion's does");
+        selection.SetFilter(EntityType::BRepBody, false);  // restore the default pair
+        check(!selection.HasPriority(), "changing a filter ends the priority");
+        checkCount(selection.PickableTypes().size(), 2, "and the filters rule again");
+
+        selection.SetPriority(EntityType::BRepFace);
+        selection.ClearPriority();
+        check(!selection.HasPriority(), "a priority turns off");
+        checkCount(selection.PickableTypes().size(), 2, "leaving faces and edges, as before");
+
         Document doc;
         auto     box = std::make_shared<BoxFeature>(20.0, 20.0, 20.0);
         box->SetName("Box1");
