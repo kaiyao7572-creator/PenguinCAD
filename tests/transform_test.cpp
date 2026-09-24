@@ -10,7 +10,9 @@
 #include "features/CombineFeature.h"
 #include "gizmos/TransformFeature.h"
 
+#include <BRepBndLib.hxx>
 #include <BRepGProp.hxx>
+#include <Bnd_Box.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRep_Builder.hxx>
 #include <GProp_GProps.hxx>
@@ -162,6 +164,63 @@ int main()
         check(cloned->Target().name == "Body1", "Clone carries the target pick");
         check(std::fabs(cloned->Target().volume - 1000.0) < 1e-9,
               "including the signature that resolves it");
+    }
+
+    // ---- rotate and scale: what a compile cannot tell you ----
+    //
+    // The rotate and scale gizmos had never been operated. Before driving
+    // them by hand, pin what they must do to the model: turning about the
+    // centroid leaves the centroid where it was, a uniform scale of 2 is
+    // exactly 8x the volume, and a scale that would crush or invert the
+    // body is refused rather than built.
+    std::cout << "==============================================================" << std::endl;
+    std::cout << "  Rotate and scale about a body's own centre" << std::endl;
+    std::cout << "==============================================================" << std::endl;
+    {
+        // 10 x 20 x 30, centroid (5, 10, 15): long enough in every axis
+        // that a rotation shows up in the bounding box.
+        const TopoDS_Shape brick = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 10, 20, 30).Shape();
+        auto centreOf = [](const TopoDS_Shape& theShape) {
+            GProp_GProps p;
+            BRepGProp::VolumeProperties(theShape, p);
+            return p.CentreOfMass();
+        };
+        auto run = [&brick](TransformFeature& theFeature, TopoDS_Shape& theOut) {
+            std::string error;
+            ComputeContext context;
+            return theFeature.Compute(context, brick, theOut, error);
+        };
+
+        TransformFeature turn(0, 0, 0, 0, 0, 90, gp_Pnt(5, 10, 15));
+        TopoDS_Shape turned;
+        check(run(turn, turned), "a 90 degree turn about Z computes");
+        check(centreOf(turned).Distance(gp_Pnt(5, 10, 15)) < 1e-9,
+              "turning about the centroid leaves the centroid exactly where it was");
+        check(std::fabs(VolumeOf(turned) - 6000.0) < 1e-6, "and the volume alone");
+        Bnd_Box bounds;
+        BRepBndLib::Add(turned, bounds);
+        double x0, y0, z0, x1, y1, z1;
+        bounds.Get(x0, y0, z0, x1, y1, z1);
+        check(std::fabs((x1 - x0) - 20.0) < 1e-3 && std::fabs((y1 - y0) - 10.0) < 1e-3,
+              "the 10 x 20 footprint is now 20 x 10 -- it really turned");
+
+        TransformFeature grow;
+        grow.SetPivot(gp_Pnt(5, 10, 15));
+        check(grow.SetScale(2.0), "a scale of 2 is accepted");
+        TopoDS_Shape grown;
+        check(run(grow, grown), "and computes");
+        std::cout << "    scaled volume " << VolumeOf(grown) << " (expect 48000)" << std::endl;
+        check(std::fabs(VolumeOf(grown) - 48000.0) < 1e-6, "a uniform scale of 2 is exactly 8x");
+        check(centreOf(grown).Distance(gp_Pnt(5, 10, 15)) < 1e-9,
+              "scaling about the centroid leaves it fixed too");
+
+        TransformFeature bad;
+        check(!bad.SetScale(0.0), "a scale of 0 is refused");
+        check(!bad.SetScale(-1.0), "a negative scale is refused -- it would turn the body inside out");
+        check(!bad.SetScale(std::nan("")), "NaN is refused");
+        check(std::fabs(bad.Scale() - 1.0) < 1e-12, "and a refusal leaves the scale at 1");
+        Parameter zero = Parameter::MakeDouble("Scale", 0.0, "");
+        check(!bad.SetParameter(zero), "typing 0 into the Scale row is refused as well");
     }
 
     // ---- the one rule for which body a pick names ----
