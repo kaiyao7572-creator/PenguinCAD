@@ -217,7 +217,9 @@ std::vector<Parameter> ConstructionPlaneFeature::Parameters() const
 
     switch (myKind) {
         case PlaneKind::Offset:
-            parameters.push_back(Parameter::MakeDouble("Offset", myOffset));
+            // "Distance", as Fusion's Offset Plane calls it -- and as the
+            // dialog labels it, which is how a typed expression finds it.
+            parameters.push_back(Parameter::MakeDouble("Distance", myOffset));
             break;
         case PlaneKind::AtAngle:
             parameters.push_back(Parameter::MakeDouble("Angle", myAngleDegrees, "deg"));
@@ -258,7 +260,7 @@ bool ConstructionPlaneFeature::SetParameter(const Parameter& theParameter)
         mySecondPlane = theParameter.stringValue;
         return true;
     }
-    if (theParameter.name == "Offset") {
+    if (theParameter.name == "Distance") {
         myOffset = theParameter.doubleValue;
         return true;
     }

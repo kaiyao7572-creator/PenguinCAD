@@ -819,13 +819,15 @@ public:
         std::vector<DialogField> fields;
         fields.push_back(DialogField::Choice("Plane", ToChoices(planes), 0));
         fields.push_back(DialogField::Number("Distance", 10.0, kAnyNumber));
-        if (!ShowFeatureDialog(theContext.parent, "Offset Plane", fields)) {
+        if (!ShowFeatureDialog(theContext.parent, "Offset Plane", fields, QString(),
+                               ParametersOf(theContext))) {
             return;
         }
 
         auto plane = std::make_shared<ConstructionPlaneFeature>(
             planes[static_cast<std::size_t>(fields[0].choice)], fields[1].value);
         NameAsFusionWould(theContext, plane, "Plane");
+        ApplyFieldExpressions(*plane, fields);
         AddAndReport(theContext, plane);
     }
 };
@@ -849,7 +851,8 @@ public:
         std::vector<DialogField> fields;
         fields.push_back(DialogField::Choice("Plane", ToChoices(planes), 0));
         fields.push_back(DialogField::Number("Angle", 45.0, kAnyNumber, " °"));
-        if (!ShowFeatureDialog(theContext.parent, "Plane at Angle", fields)) {
+        if (!ShowFeatureDialog(theContext.parent, "Plane at Angle", fields, QString(),
+                               ParametersOf(theContext))) {
             return;
         }
 
@@ -858,6 +861,7 @@ public:
         plane->SetBasePlane(planes[static_cast<std::size_t>(fields[0].choice)]);
         plane->SetAngleDegrees(fields[1].value);
         NameAsFusionWould(theContext, plane, "Plane");
+        ApplyFieldExpressions(*plane, fields);
         AddAndReport(theContext, plane);
     }
 };

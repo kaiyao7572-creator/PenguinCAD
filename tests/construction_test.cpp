@@ -92,7 +92,7 @@ int main()
         check(doc.Bodies().empty(), "and no body");
 
         // Editing the offset is what makes it parametric.
-        Parameter offset = Parameter::MakeDouble("Offset", -10.0);
+        Parameter offset = Parameter::MakeDouble("Distance", -10.0);
         check(plane->SetParameter(offset), "the offset is editable");
         doc.Rebuild();
         check(PlaneOf(plane, built) && std::fabs(built.Location().Z() + 10.0) < 1.0e-12,
