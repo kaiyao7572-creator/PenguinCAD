@@ -132,6 +132,42 @@ public:
     double mySize = 5.0;
 };
 
+// A pattern-like feature with a bounded whole-number Count.
+class CountedFeature : public Feature
+{
+public:
+    std::string TypeName() const override { return "Counted"; }
+    bool Compute(const ComputeContext&, const TopoDS_Shape& theInput, TopoDS_Shape& theOutput,
+                 std::string&) override
+    {
+        theOutput = theInput;
+        return true;
+    }
+    std::unique_ptr<Feature> Clone() const override
+    {
+        auto copy = std::make_unique<CountedFeature>();
+        copy->myCount = myCount;
+        CopyBaseTo(*copy);
+        return copy;
+    }
+    std::vector<Parameter> Parameters() const override
+    {
+        Parameter count = Parameter::MakeInt("Count", myCount);
+        count.minimum = 1.0;
+        count.maximum = 10.0;
+        return {count};
+    }
+    bool SetParameter(const Parameter& theParameter) override
+    {
+        if (theParameter.name != "Count") {
+            return false;
+        }
+        myCount = theParameter.intValue;
+        return true;
+    }
+    int myCount = 2;
+};
+
 } // namespace
 
 int main()
@@ -429,6 +465,40 @@ int main()
         d.Rebuild();
         check(d.UsersOfUserParameter("hole_dia").empty(),
               "hole_dia is used by nothing once the dimension it drove is gone");
+    }
+
+    std::cout << "-- a count driven by an expression, as a pattern quantity is --" << std::endl;
+    {
+        Document d;
+        UserParameter n;
+        n.name = "n";
+        n.expression = "3";
+        n.kind = UnitKind::Unitless;
+        check(d.AddUserParameter(n, error), "n = 3 (no units)");
+        auto counted = std::make_shared<CountedFeature>();
+        counted->SetName("Counted1");
+        d.AddFeature(counted);
+        check(Drive(d, "Counted1", "Count", "n", error), "Count = n");
+        auto live = std::dynamic_pointer_cast<CountedFeature>(Find(d, "Counted1"));
+        check(live->myCount == 3, "the count is 3");
+        check(ParameterOf(live, "Count").expression == "n", "and the row shows its expression");
+        check(d.SetUserParameterExpression("n", "7", error), "n = 7");
+        live = std::dynamic_pointer_cast<CountedFeature>(Find(d, "Counted1"));
+        check(live->myCount == 7, "the count follows it to 7");
+
+        check(!Drive(d, "Counted1", "Count", "n / 2", error), "Count = n / 2 (3.5) is refused");
+        std::cout << "        said: " << error << std::endl;
+        check(error.find("whole number") != std::string::npos, "because a count must be whole");
+
+        check(d.SetUserParameterExpression("n", "4.5", error), "n = 4.5 is fine in the table");
+        live = std::dynamic_pointer_cast<CountedFeature>(Find(d, "Counted1"));
+        std::cout << "        feature says: " << live->LastError() << std::endl;
+        check(!live->LastError().empty(), "but the feature it drives fails, not rounds");
+        check(d.SetUserParameterExpression("n", "20", error), "n = 20");
+        check(!Find(d, "Counted1")->LastError().empty(), "and 20 is outside Count's 1..10");
+        check(d.SetUserParameterExpression("n", "5", error), "n = 5");
+        live = std::dynamic_pointer_cast<CountedFeature>(Find(d, "Counted1"));
+        check(live->LastError().empty() && live->myCount == 5, "back to a good count of 5");
     }
 
     std::cout << std::endl;

@@ -179,7 +179,7 @@ bool ApplyFieldExpressions(Feature& theFeature, const std::vector<DialogField>& 
         const std::string name = field.label.toStdString();
         const bool matched =
             std::any_of(parameters.begin(), parameters.end(), [&name](const Parameter& theP) {
-                return theP.name == name && theP.type == Parameter::Type::Double;
+                return theP.name == name && theP.IsNumber();
             });
         if (matched) {
             theFeature.SetExpression(name, field.expression);

@@ -67,8 +67,8 @@ bool ShowFeatureDialog(QWidget*                  theParent,
                        const ParameterTable*     theParameters = nullptr);
 
 // Drive theFeature's parameters by the expressions typed into theFields,
-// matching each Number field to the Double parameter with the same name
-// as its label. Call it on a new feature before adding it to the
+// matching each Number field to the Double or Int parameter with the same
+// name as its label. Call it on a new feature before adding it to the
 // document. False when a field carried an expression no parameter of the
 // feature is named for -- the feature then holds only the number, so the
 // command must not pass the parameters for such a field.

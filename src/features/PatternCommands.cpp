@@ -339,7 +339,10 @@ public:
                              "A negative spacing runs the other way, and a quantity of 1 "
                              "leaves that direction alone.");
 
-        if (!ShowFeatureDialog(theContext.parent, "Rectangular Pattern", fields, hint)) {
+        // Every Number label here is the name of the parameter it sets, so
+        // the fields take expressions ("n_holes", "pitch * 2").
+        if (!ShowFeatureDialog(theContext.parent, "Rectangular Pattern", fields, hint,
+                               &theContext.document->UserParameters())) {
             return;
         }
 
@@ -356,6 +359,7 @@ public:
         pattern->SetDirection2(PatternAxisFromInt(fields[direction2Row].choice));
         pattern->SetOperation(BooleanOpFromInt(fields[operationRow].choice));
 
+        ApplyFieldExpressions(*pattern, fields);
         AddAndReport(theContext, pattern);
         ClearPicks(theContext);
     }
@@ -414,7 +418,8 @@ public:
                              "quantity; a smaller angle leaves the last instance sitting on "
                              "it. The axis runs through the world origin.");
 
-        if (!ShowFeatureDialog(theContext.parent, "Circular Pattern", fields, hint)) {
+        if (!ShowFeatureDialog(theContext.parent, "Circular Pattern", fields, hint,
+                               &theContext.document->UserParameters())) {
             return;
         }
 
@@ -428,6 +433,7 @@ public:
             CountOf(fields[quantityRow]), fields[angleRow].value);
         pattern->SetOperation(BooleanOpFromInt(fields[operationRow].choice));
 
+        ApplyFieldExpressions(*pattern, fields);
         AddAndReport(theContext, pattern);
         ClearPicks(theContext);
     }

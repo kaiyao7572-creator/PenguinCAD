@@ -2,6 +2,8 @@
 #include "ui/UiUtils.h"
 
 #include <QCheckBox>
+
+#include <cmath>
 #include <QDoubleSpinBox>
 
 #include "widgets/UnitLineEdit.h"
@@ -216,8 +218,8 @@ void PropertiesPanel::RefreshValues()
             }
             break;
         case Parameter::Type::Int:
-            if (auto* spin = qobject_cast<QSpinBox*>(editor)) {
-                spin->setValue(parameter.intValue);
+            if (auto* count = qobject_cast<UnitLineEdit*>(editor)) {
+                count->SetExpression(parameter.expression, parameter.intValue);
             }
             break;
         case Parameter::Type::Bool:
@@ -281,27 +283,36 @@ QWidget* PropertiesPanel::MakeEditorWidget(std::size_t theIndex, const Parameter
         return spin;
     }
     case Parameter::Type::Int: {
-        auto* spin = new QSpinBox(m_formContainer);
-        spin->setKeyboardTracking(false);
+        // A count is a number field too, so a pattern's quantity can be
+        // "n_holes" as in Fusion. The document insists on a whole number;
+        // a spin box could never have taken an expression at all.
+        auto* count = new UnitLineEdit(UnitKind::Unitless, m_formContainer);
+        if (m_document != nullptr) {
+            count->SetParameterTable(&m_document->UserParameters());
+        }
         if (theParameter.minimum != theParameter.maximum) {
-            spin->setRange(static_cast<int>(theParameter.minimum), static_cast<int>(theParameter.maximum));
-        } else {
-            spin->setRange(-kDefaultIntRange, kDefaultIntRange);
+            count->SetRange(theParameter.minimum, theParameter.maximum);
         }
-        if (!theParameter.unit.empty()) {
-            spin->setSuffix(" " + QString::fromStdString(theParameter.unit));
-        }
-        spin->setValue(theParameter.intValue);
-        connect(spin, qOverload<int>(&QSpinBox::valueChanged), this,
-                [this, theIndex](int theValue) {
+        count->SetExpression(theParameter.expression, theParameter.intValue);
+        connect(count, &UnitLineEdit::ValueChanged, this,
+                [this, theIndex, count](double theValue) {
                     if (theIndex >= m_lastParameters.size()) {
                         return;
                     }
                     Parameter edited = m_lastParameters[theIndex];
-                    edited.intValue = theValue;
+                    edited.expression = count->Expression();
+                    if (edited.expression.empty()) {
+                        const double whole = std::round(theValue);
+                        if (std::fabs(theValue - whole) > 1.0e-9) {
+                            RefreshValues();
+                            ShowError(edited.name + " needs a whole number");
+                            return;
+                        }
+                        edited.intValue = static_cast<int>(whole);
+                    }
                     CommitParameter(edited);
                 });
-        return spin;
+        return count;
     }
     case Parameter::Type::Bool: {
         auto* check = new QCheckBox(m_formContainer);

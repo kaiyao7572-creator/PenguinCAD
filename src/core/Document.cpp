@@ -49,6 +49,25 @@ std::string Trimmed(const std::string& theText)
     return theText.substr(first, last - first + 1);
 }
 
+// Put theValue into a numeric parameter. An Int takes only a whole number:
+// rounding 3.5 copies to 4 would build something nobody asked for.
+bool SetNumber(Parameter& theParameter, double theValue, std::string& theError)
+{
+    if (theParameter.type != Parameter::Type::Int) {
+        theParameter.doubleValue = theValue;
+        return true;
+    }
+    const double whole = std::round(theValue);
+    if (std::fabs(theValue - whole) > 1.0e-9 * std::max(1.0, std::fabs(theValue))
+        || std::fabs(whole) > 1.0e9) {
+        theError = theParameter.name + " needs a whole number, not "
+                   + FormatValue(theValue, UnitKind::Unitless);
+        return false;
+    }
+    theParameter.intValue = static_cast<int>(whole);
+    return true;
+}
+
 // "must be between 0.001 mm and 1000000 mm", in the parameter's own terms.
 bool InRange(const Parameter& theParameter, double theValue, std::string& theError)
 {
@@ -252,7 +271,7 @@ bool Document::ApplyExpressions(Feature& theFeature, std::string& theError) cons
 
         const Parameter* parameter = nullptr;
         for (const Parameter& candidate : parameters) {
-            if (candidate.name == name && candidate.type == Parameter::Type::Double) {
+            if (candidate.name == name && candidate.IsNumber()) {
                 parameter = &candidate;
                 break;
             }
@@ -273,11 +292,15 @@ bool Document::ApplyExpressions(Feature& theFeature, std::string& theError) cons
             theError = name + " = " + expression + ": " + rangeError;
             return false;
         }
-        if (SameValue(result.value, parameter->doubleValue)) {
+        if (SameValue(result.value, parameter->Number())) {
             continue;
         }
         Parameter edited = *parameter;
-        edited.doubleValue = result.value;
+        std::string wholeError;
+        if (!SetNumber(edited, result.value, wholeError)) {
+            theError = name + " = " + expression + ": " + wholeError;
+            return false;
+        }
         if (!theFeature.SetParameter(edited)) {
             theError = name + " = " + expression + " gives "
                        + FormatValue(result.value, parameter->Kind()) + ", which "
@@ -481,7 +504,7 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
 
     Parameter edited = theParameter;
     std::string expression;
-    if (edited.type == Parameter::Type::Double) {
+    if (edited.IsNumber()) {
         expression = Trimmed(edited.expression);
         if (!expression.empty()) {
             if (IsLiteralOfWrongKind(expression, edited.Kind(), theError)) {
@@ -492,12 +515,14 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
                 theError = result.error;
                 return false;
             }
-            edited.doubleValue = result.value;
+            if (!SetNumber(edited, result.value, theError)) {
+                return false;
+            }
             if (ExpressionVariables(expression).empty()) {
                 expression.clear();
             }
         }
-        if (!InRange(edited, edited.doubleValue, theError)) {
+        if (!InRange(edited, edited.Number(), theError)) {
             return false;
         }
     }
@@ -516,7 +541,7 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
                        && current.expression == expression;
                 break;
             case Parameter::Type::Int:
-                same = current.intValue == edited.intValue;
+                same = current.intValue == edited.intValue && current.expression == expression;
                 break;
             case Parameter::Type::Bool:
                 same = current.boolValue == edited.boolValue;
@@ -536,7 +561,7 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
         theError = theFeature->Name() + " does not accept that " + edited.name;
         return false;
     }
-    if (edited.type == Parameter::Type::Double) {
+    if (edited.IsNumber()) {
         theFeature->SetExpression(edited.name, expression);
     }
     PushSnapshot(std::move(snapshot));

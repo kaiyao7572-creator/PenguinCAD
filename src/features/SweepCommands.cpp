@@ -214,7 +214,10 @@ public:
             QStringLiteral("The path is a closed sketch loop. Perpendicular keeps the "
                            "profile square to the path; Parallel slides it along unturned.");
 
-        if (!ShowFeatureDialog(theContext.parent, "Sweep", fields, hint)) {
+        // Taper Angle and Twist Angle are the names of the parameters they
+        // set, so both take expressions.
+        if (!ShowFeatureDialog(theContext.parent, "Sweep", fields, hint,
+                               &theContext.document->UserParameters())) {
             return;
         }
 
@@ -244,6 +247,7 @@ public:
         sweep->SetTaperDegrees(fields[3].value);
         sweep->SetTwistDegrees(fields[4].value);
         sweep->SetOperation(BooleanOpFromInt(fields[5].choice));
+        ApplyFieldExpressions(*sweep, fields);
         AddAndReport(theContext, sweep);
 
         // A profile is consumed once it has been built on: leaving it

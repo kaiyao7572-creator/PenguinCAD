@@ -31,10 +31,12 @@ struct Parameter
     double maximum = 0.0;
     std::string unit;
 
-    // A Double may be DRIVEN by an expression over the document's user
-    // parameters ("plate_t * 2") rather than hold a plain number. Empty
-    // means a plain number. doubleValue is always what it last evaluated
-    // to, so code that only reads numbers never needs to know.
+    // A Double or an Int may be DRIVEN by an expression over the
+    // document's user parameters ("plate_t * 2", "n_holes") rather than
+    // hold a plain number. Empty means a plain number. doubleValue or
+    // intValue is always what it last evaluated to, so code that only
+    // reads numbers never needs to know. An Int's expression must give a
+    // whole number: 3.5 copies of a body is refused, not rounded.
     //
     // Features never fill this in: Feature::EditableParameters() does,
     // from the expressions the base class stores. A feature implements
@@ -45,8 +47,14 @@ struct Parameter
     // unit is a count or ratio, anything else a length in millimetres.
     UnitKind Kind() const
     {
+        if (type == Type::Int) {
+            return UnitKind::Unitless;   // a count, whatever it counts
+        }
         return unit == "deg" ? UnitKind::Angle : unit.empty() ? UnitKind::Unitless : UnitKind::Length;
     }
+
+    bool IsNumber() const { return type == Type::Double || type == Type::Int; }
+    double Number() const { return type == Type::Int ? static_cast<double>(intValue) : doubleValue; }
 
     static Parameter MakeDouble(std::string theName, double theValue, std::string theUnit = "mm")
     {
@@ -151,7 +159,7 @@ public:
     {
         std::vector<Parameter> parameters = Parameters();
         for (Parameter& parameter : parameters) {
-            if (parameter.type == Parameter::Type::Double) {
+            if (parameter.IsNumber()) {
                 parameter.expression = ExpressionOf(parameter.name);
             }
         }

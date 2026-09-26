@@ -170,7 +170,7 @@ QString UserUnitSymbol(const UserParameter& theParameter)
 std::string ShownExpression(const Parameter& theParameter)
 {
     return theParameter.expression.empty()
-               ? FormatValue(theParameter.doubleValue, theParameter.Kind())
+               ? FormatValue(theParameter.Number(), theParameter.Kind())
                : theParameter.expression;
 }
 
@@ -544,7 +544,7 @@ void ParametersDialog::Refresh()
             }
             std::vector<Parameter> numbers;
             for (const Parameter& parameter : feature->EditableParameters()) {
-                if (parameter.type == Parameter::Type::Double) {
+                if (parameter.IsNumber()) {
                     numbers.push_back(parameter);
                 }
             }
@@ -589,7 +589,7 @@ void ParametersDialog::Refresh()
                 row->setText(kUnitColumn, ModelUnitSymbol(kind));
                 row->setText(kExpressionColumn, QString::fromStdString(ShownExpression(parameter)));
                 row->setText(kValueColumn,
-                             QString::fromStdString(FormatValue(parameter.doubleValue, kind)));
+                             QString::fromStdString(FormatValue(parameter.Number(), kind)));
 
                 row->setFlags(row->flags() | Qt::ItemIsEditable);
                 row->setData(kExpressionColumn, kEditableRole, true);
@@ -757,7 +757,7 @@ void ParametersDialog::CommitModelParameter(const std::string& theFeatureName, i
     Parameter edited;
     bool found = false;
     for (const Parameter& parameter : feature->EditableParameters()) {
-        if (parameter.type == Parameter::Type::Double && parameter.name == theParameterName) {
+        if (parameter.IsNumber() && parameter.name == theParameterName) {
             edited = parameter;
             found = true;
             break;
