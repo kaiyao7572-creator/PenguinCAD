@@ -64,11 +64,49 @@ on the second click of drawing a rectangle — `AIS_Shape` only materialises
 its shading aspect once a colour is set, and nothing without a viewer can
 catch that. Drive anything touching AIS on screen before calling it done.
 
+### 1.2d Qt ignores every shortcut while no window is active
+
+The first on-screen shortcut test made four working keys look dead. With
+nobody at the machine the window manager never focused the freshly
+started app, and Qt consults its shortcut map only for an active window.
+The script verb `key` has a second trap: it sends straight to the GL
+window, which bypasses the shortcut map altogether. Use `hotkey F6` — it
+asks for focus first and **warns when focus was refused**, so a failed
+hotkey is never read as a dead binding.
+
+### 1.2e More instruments that lied this session
+
+- `magick ... -crop 45%x3` is 45% wide and **three pixels** tall. It read
+  back an empty status bar that actually said `Edge  Length 20 mm`. Crop
+  in pixels: the status bar of a window grab is `-crop 1400x56+0+1770`.
+- `magick compare -metric AE` reported 3.2e9 changed pixels for a
+  2.5M-pixel image. Sanity-check any count against the image size.
+- A shortcut checker that **scanned the source** saw 56 commands; the
+  registry holds 102 (tables of views, filters, priorities). It now asks
+  the registry (`linuxcad --check-shortcuts`). Check the thing itself,
+  not a text picture of it.
+- A tool call that was interrupted by the user **had already run**: the
+  test block it added appeared twice when it was re-applied. After any
+  interruption, grep the file before re-applying an edit.
+
 ### 1.3 Sessions die mid-task on usage limits
 
 Repeatedly. **Commit working increments as you go.** Several agents were
 killed seconds before reporting; the work survived only because it was on
 disk and building. Never leave the tree unbuildable across a long step.
+
+It happened three more times on 2026-09-24/26: whole workflows died with
+every agent on "usage limit" — once with 322 tool calls done and nothing
+committed. Workflow agents run in **git worktrees**
+(`git worktree list` shows them under `.claude/worktrees/`); their
+uncommitted work survives there, and a fresh agent told to finish it in
+place picked it up. Check `git worktree list` before assuming a dead
+agent left nothing, and delete a worktree only after
+`git -C <tree> status` shows nothing worth keeping.
+
+Three agents building at once (`-j$(nproc)` each) on this 15 GB machine
+got a build killed by memory pressure (exit 144). Brief agents to use
+`-j4`.
 
 ### 1.4 Two agents must never share a directory
 
@@ -177,17 +215,49 @@ against real OCCT volumes (a 40×30×10 extrude is exactly 12000mm³).
 | `solid.loft` | `LoftFeature.*`, `LoftCommands.cpp` | 29 headless assertions; Closed/Ruled both exercised |
 | `modify.combine` | `CombineFeature.*`, `CombineCommands.cpp` | 60-check harness: volumes, keep-tools, multi-tool, undo |
 | `solid.pattern.rectangular` / `.circular` / `solid.mirror` | `PatternFeatures.*` | 100 checks asserting **positions as well as volumes** |
-| `export.step` / `export.obj` | `src/io/` | STEP round-trips at 6000mm³ and 3 bodies stay 3; OBJ indices 1-based, in range |
+| STEP / OBJ export (now File > Export…) | `src/io/` | STEP round-trips at 6000mm³ and 3 bodies stay 3; OBJ indices 1-based, in range |
 | `gizmo.rotate` / `gizmo.scale` | `src/gizmos/RotateScaleGizmo*` | built, registered, **never driven by hand — see 3.9** |
 | `gizmo.press_pull` | `GizmoCommands.cpp` | arrow-blue pixels: 0 after a face click, 388 after invoking it |
 
-**Named parameters** (`src/core/Expression.*`, `ParameterTable.*`) — a
-degrees-based expression evaluator (`sin(30)` is 0.5, asserted) with
-unit-aware literals reusing `Units.h`, plus an ordered parameter table
-with **iterative** cycle detection that names the parameters in the loop.
-`tests/parameters_test.cpp` passes. **The engine is NOT wired into
-`Document` or any feature yet** — nothing but the test includes it. That
-wiring is job #1 next session (§7.1).
+**Named parameters — wired in 2026-09-24.** The document owns a
+`ParameterTable`, and **every numeric parameter of every feature**
+(Double and Int) can be driven by an expression over it: an extrude's
+distance, a box's sides, a sketch's `d1`, a pattern's quantity. The
+contract is in `docs/ARCHITECTURE.md` ("Parameters and expressions").
+Undo restores the table with the timeline; a rename rewrites the
+features that read it; a feature whose expression stops evaluating —
+or whose SKETCH's expression does — fails and says why rather than
+building on the last number. `tests/docparams_test.cpp` has the
+handoff's own example: `plate_width` → `hole_dia = plate_width / 4` →
+a sketch diameter → an extrude, 785.40 → 3141.59 mm³ by hand.
+
+Every numeric field takes arithmetic, and expressions where the document's
+parameters are passed: the properties panel, the Change Parameters
+dialog, and the dialogs of Box, Cylinder, Sphere, Cone, Torus, Extrude,
+Revolve, Press Pull, Fillet, Chamfer, Shell, Point, Rectangular and
+Circular Pattern and Sweep. An expression naming a missing parameter is
+held red and greys OK out; a lone literal of the wrong kind (`2 in` in
+an angle field) is refused.
+
+**MODIFY > Change Parameters** (`src/ui/ParametersDialog.*`) — Fusion's
+columns (Parameter, Name, Unit, Expression, Value, Comments), User
+Parameters with `+`, Model Parameters per feature, edit in place, every
+edit its own undo step, Delete refused for a parameter in use. Driven on
+screen end to end: `plate_t` edited 5 → 10 mm doubled an extrude from
+6576.367 to 13152.734 mm³, and Edit > Undo put it back.
+
+**Also added 2026-09-24/26**, each verified on screen as well as by tests:
+
+| What | Where | Evidence |
+|---|---|---|
+| Right-click **marking menu**, Fusion's eight in Fusion's places | `src/ui/MarkingMenu*` | Repeat Box re-ran Box (8000 → 16000 mm³), Undo from the ring back to 8000, a right DRAG still orbits |
+| **Selection Priority** (Body / Face / Edge) | `GeometrySelection`, `SelectionPriorityCommand` | clicking an edge under Face Priority reports `Face Area 400 mm²` |
+| **File > Export…** with STEP/STL/OBJ in one dialog; Utilities tab gone | `src/io/ExportDialog.*` | three formats written; asks before overwriting the file it really writes |
+| **Construction geometry is drawn** (planes, axes, points) | `MainWindow::redisplayConstruction` | offset plane at 30 mm, point at (40,0,0), axis at X=40 all appear |
+| One body from an extrude of **adjoining** profiles; separate for disjoint | `FuseProfileSolids` | ring + disc → one 6-face body; two circles → two bodies |
+| **One** body-pick resolver (there were three) | `FindBodyForRef` in `CombineFeature.h` | rule pinned by 9 assertions |
+| Shortcut clashes fail the suite | `linuxcad --check-shortcuts` | catches `F` bound twice |
+| F6 = Fit All, I = Measure (F = Fillet, M = Move, as Fusion) | view/inspect commands | all four fired on screen |
 
 **Units** (`src/core/Units.h`) — mm internally, always. Type `12.9in`,
 `1/2"`, `1'6"`, `2.5cm` into any numeric field and it converts *and* the
@@ -220,14 +290,19 @@ are in `docs/ARCHITECTURE.md`.
 
 What is NOT done, in rough order of value:
 
-- Extruding several adjoining profiles at once makes a **compound of
-  touching solids** where Fusion makes one body. Fusing the prisms is
-  probably ten lines in `ExtrudeFeature::Compute`.
+- ~~Extruding several adjoining profiles makes a compound of touching
+  solids.~~ Fixed 2026-09-26 for Extrude, Revolve and Sweep
+  (`FuseProfileSolids`).
 - The Extrude dialog names its target ("Sketch1 (1 profile)") but offers
   no way to change the picked profiles from inside the dialog, and no
   manipulator arrow to drag. Fusion has both.
 - Profiles are only pickable while the sketch is open. In Fusion a
-  finished sketch's profiles stay pickable from the model view.
+  finished sketch's profiles stay pickable from the model view — finish
+  the sketch, click a region, press E. **This is the most Fusion-feel
+  item left in this area** and it crosses `SketchDisplay` (fills are
+  drawn for the active sketch only), `SketchSelection` (an interaction
+  pushed only while a sketch is open), the viewport selection in
+  `MainWindow` and the Extrude command. Plan it before starting.
 - No box selection of several profiles at once.
 - Regions are recomputed on every `Refresh()`. Measured fine for
   hand-drawn sketches (~1ms; 25 overlapping circles ~20ms), but a
@@ -298,11 +373,11 @@ What is left here:
   fuses; Fusion extends the adjacent walls instead. Fine for prismatic
   parts, wrong for a draft.
 
-### 3.4 No typed input while drawing
+### 3.4 ~~No typed input while drawing~~ — this entry was stale
 
-In Fusion you draw a line, type `25`, press Enter, and it is exactly
-25mm. Same for angles and for every dialog-free tool. Currently every
-dimension is after-the-fact. Mostly headless-testable.
+Typed input while drawing exists (commits `a236b66`, `d1cadd4`;
+`tests/sketchinput_test.cpp`, 144 assertions). Not driven on screen in
+the 2026-09-24/26 session.
 
 ### 3.5 Sketch feedback gaps
 
@@ -347,15 +422,30 @@ Still missing:
 - Trim does not preview which segment will vanish.
 - No Project/Include of existing edges into a sketch.
 
-### 3.6 No marking menu
+### 3.6 ~~No marking menu~~ DONE (first version)
 
-Fusion's right-click radial menu is one of its most distinctive
-interactions. Right-click currently does nothing.
+Right-click the canvas: Repeat, Press Pull, Redo, Hole, Sketch,
+Move/Copy, Undo, Delete, clockwise from the top as Autodesk's reference
+lists them; Cancel and OK replace Undo and Redo while a tool runs. Hole
+and Delete are greyed in their places (the commands do not exist yet).
+
+Left to do:
+- **Gestures.** In Fusion a right-button press-drag-release in a
+  direction runs that wedge without the menu appearing. Here a right
+  DRAG orbits, because this app has always orbited on right-drag and
+  Fusion's own orbit is Shift+middle. **Changing the orbit binding is
+  the user's call — ask before touching it.**
+- The second-level Sketch ring (hover Sketch for Line, Rectangle...).
+- The overflow menu below the ring (Fusion: Pan, Zoom, Orbit, Isolate,
+  context commands for what is under the cursor).
+- Hole and Delete themselves.
 
 ### 3.7 Modelling breadth — mostly closed 2026-09-23
 
 **Now present:** Sweep, Loft, Combine, Rectangular/Circular Pattern,
 Mirror, Scale (uniform), STEP + OBJ export. See the table in §2.
+Construction planes/axes/points are now **drawn** but not **pickable**:
+you cannot yet start a sketch on an offset plane by clicking it.
 
 **Still missing:** Rib, Web, Emboss, Hole, Thread, Draft, Replace/Split
 Face, Split Body. Extrude still lacks taper angle and "to object".
@@ -393,6 +483,24 @@ What is left:
   dock is resizable. Real fix is icons plus dropping the Type column.
 - No Document Settings or Named Views folders. Deliberate: both would be
   inert, and a folder that does nothing is worse than a missing one.
+
+### 3.10 Parameters — what is not Fusion yet
+
+- **Model parameters have no names except sketch dimensions.** Fusion
+  names every feature dimension (`d1`, `d2`, ...) and lets expressions
+  read them (`d3 * 2`). Here only sketch dimensions carry `d#`, and no
+  expression can read a model parameter — the lookup is user parameters
+  only.
+- **No dimensional analysis.** A lone literal of the wrong kind is
+  refused, but `n = 4 mm` used as a pattern quantity is accepted as 4,
+  and `plate_t` (a length) typed into an angle field is accepted as that
+  many degrees. Fusion checks units through the whole expression.
+- A user parameter's **unit is fixed** once added (the dialog cell is
+  read-only; `Document::SetUserParameterUnit` exists).
+- **Offset Plane's** dialog field says "Distance" as Fusion's does while
+  the parameter is "Offset", so that dialog takes arithmetic only;
+  drive it from the properties panel.
+- Fusion's Favorites column and filter box are absent.
 
 ### 3.9 Never verified by anyone
 
@@ -458,6 +566,21 @@ Diagnostics that do not need eyes: the Browser panel lists features, and
 the contextual **Sketch tab only exists when a sketch is open** — both
 tell you whether an interaction actually did anything.
 
+The harness grew a lot on 2026-09-24/26 — see `src/InputScript.h` and
+`docs/ARCHITECTURE.md` for the list: `hotkey`, `menu File > Export...`,
+`arm <ms> dump|type|click|cell|shot` to see and drive modal dialogs from
+inside, `popup dump|shot|move|click` for the marking menu, and
+`drag ... right`. The single most useful one:
+
+```
+arm 800 dump
+arm 1000 accept
+run inspect.model_properties     # prints volume, area, centre, bounding box
+```
+
+reads the model back as numbers, which settles most "did it work"
+questions without judging a screenshot.
+
 ---
 
 ## 5. Working style the user expects
@@ -478,7 +601,65 @@ tell you whether an interaction actually did anything.
 
 ---
 
-## 6. Session log — 2026-09-20 → 2026-09-23
+## 6. Session log — 2026-09-24 → 2026-09-26
+
+### What was asked
+
+Work through the §7 brief the previous session left: commit its 38
+files, wire the parameter engine in, fix `select.faces`, resolve the
+shortcut collisions, drive the never-verified UI, reconcile export,
+de-duplicate the resolver.
+
+### What landed (all on `main`, each commit builds on its own)
+
+- The previous session's work, split into seven commits by subsystem
+  (the lighting fix got its own), each built in isolation first.
+- **Parameters wired end to end** (§2): document table, expressions on
+  every numeric parameter, undoable edits, fields and dialogs that take
+  expressions, Change Parameters. The pilot the brief suggested
+  (`ExtrudeFeature::myDistanceExpr`) was replaced by a generic mechanism
+  on the `Feature` base, so no feature needed code for it.
+- **Shortcuts:** F6 Fit All, I Measure (the user chose Fusion's keys);
+  a registry-based check fails the suite on any clash.
+- **Selection Priority**, **File > Export**, **marking menu**,
+  **construction geometry drawn**, **adjoining profiles fused**, **one
+  resolver** — see §2.
+
+### Findings the brief had wrong, corrected out loud
+
+- **`select.faces` was not broken.** The filters start as Faces + Edges,
+  so the command toggled Faces OFF and the click found an edge. And
+  Fusion's filters ARE independent checkboxes (Autodesk's help: "The
+  object types that are checked are selected"). What the report wanted
+  is a different Fusion tool, Selection Priority — which was added.
+- **The resolver had three copies, not two** (Transform had a public
+  one). And a test that copies agree was impossible — two were
+  file-local — and weaker than one copy.
+- **"A unit has to be joined to its number"** was an asserted rule of
+  the expression engine. It refused `40 mm`, which is how Fusion writes
+  every value and how this app's own fields already read. Reversed.
+
+### Bugs found by verifying rather than trusting
+
+- Revolve's and Plane at Angle's **angle fields were LENGTH fields**
+  (`" °"` was not recognised as an angle suffix).
+- Properties-panel edits were **never undoable**.
+- An adversarial review (three finders, each required to reproduce) found
+  **eleven** defects in this session's own parameter work, all
+  reproduced, fixed and tested — every new assertion fails against the
+  previous code. The worst: a field read `5 m - 1 m` as 6000 mm (Units.h
+  reads it as a compound and adds), `2 in` in an angle field became 50.8
+  degrees, an extrude kept building on a sketch whose parameter had
+  broken, the sketch tools deleted every constraint added to such a
+  sketch, and Enter in an untouched row threw away the redo history.
+- The **Move gizmo** drew ~10 px across — handed to §3.9's agents.
+
+### State at the end
+
+See §3.9 for the UI the last workflow drove. Build green, all suites
+passing (`./tests/run_tests.sh`), 102 registered commands.
+
+## 6b. Session log — 2026-09-20 → 2026-09-23
 
 ### What was asked
 
@@ -547,148 +728,44 @@ Copy this whole section into the next session as the brief.
 
 ```bash
 cd /home/kaidaidk/Documents/linuxCAD
-git status --porcelain          # expect ~38 new/modified, nothing committed
+git status --porcelain          # expect clean
+git worktree list               # leftover agent worktrees? read §1.3 first
 cmake --build build -j$(nproc)  # must be green before you touch anything
 ./tests/run_tests.sh            # expect "All test suites passed."
 ```
 
-Read `docs/ARCHITECTURE.md` fully, then §1 of this file. If the build is
-NOT green, stop and fix that first — everything below assumes a green
-baseline.
+Read `docs/ARCHITECTURE.md` fully, then §1 of this file.
 
-**Decide with the user before writing code:** 38 files are uncommitted.
-Offer to commit, either as one commit or split by subsystem (features /
-io / gizmos / core-parameters / tests / docs). Do not commit unasked.
+### 7.1 Finished-sketch profiles pickable from the model view
 
-### 7.1 Wire the parameter engine in — highest value
+Finish a sketch, click a region, press E: the most common Fusion gesture
+there is, and here it only works while the sketch is still open (§3.1).
+Plan it first — it crosses SketchDisplay, SketchSelection, MainWindow's
+viewport selection and the Extrude command.
 
-`src/core/Expression.*` and `src/core/ParameterTable.*` exist, are
-tested, and **nothing uses them**. Until they are wired in, the app is
-still only "parametric-looking": you cannot write
-`hole_dia = plate_width / 4` and have it propagate.
+### 7.2 Model parameter names and dimensional analysis (§3.10)
 
-Concretely:
+Give every feature dimension a `d#` name that survives undo and rename,
+let expressions read them, and check units through an expression so a
+length cannot drive an angle or a count. Both are core work in
+`Document` / `ParameterTable` / `Expression`, headless-testable.
 
-1. Give `Document` a `ParameterTable` member, plus accessors and a
-   `NotifyChanged()` on edit. `Document.h/.cpp` are shared files — you
-   own them now, no agents are running.
-2. Let a feature store an **expression string** alongside its resolved
-   double. Start with `ExtrudeFeature::myDistance` as the pilot: add
-   `myDistanceExpr`, resolve it in `Compute()` through the document's
-   table, fall back to the literal when the string is empty.
-3. Resolve the table **before** the feature loop in `Document::Rebuild()`,
-   and surface a cycle or a bad name as a rebuild error, not a crash.
-4. Extend the properties panel so a numeric row accepts text. `Parameter`
-   already has a `String` type — prefer reusing it over inventing a
-   `Type::Expression`.
-5. Add a MODIFY > Change Parameters dialog listing name / expression /
-   value / unit / comment, matching Fusion's columns.
+### 7.3 Construction geometry pickable
 
-**Test it end to end:** a document where an extrude's distance is
-`plate_t * 2`, then edit `plate_t` and assert the solid's volume changes.
-That single assertion is the whole point of the feature.
+It is drawn now; make a construction plane something `sketch.create` can
+be clicked onto, the way the origin planes are.
 
-### 7.2 Fix `select.faces` not restricting picking
+### 7.4 Marking menu, second pass (§3.6)
 
-Confirmed by hand: with the Faces filter on, a click still returned
-`Edge   Length 20 mm` in the status bar. The filter commands
-(`SelectionFilterCommand` in `src/features/FeatureCommands.cpp`, applied
-by `MainWindow::applySelectionFilters`) look **additive** where Fusion's
-are **exclusive**.
+The Sketch sub-ring, the overflow menu, and Delete. Ask the user about
+the orbit binding before implementing gestures.
 
-Reproduce:
+### 7.5 Whatever §3.9 still lists
 
-```
-arm 1200 accept
-run solid.box
-wait 1200
-run select.faces
-wait 400
-click 620 250
-wait 900
-shot sel.png
-```
+### 7.6 The two big ones, when there is room
 
-Then read the status bar strip of `sel.png` (crop the bottom ~58px). It
-should say `Face   Area 400 mm²`. `(620, 250)` is a known-good face hit
-on a default box; `(535, 288)` lands on an edge — useful as the negative
-control.
-
-### 7.3 Resolve the two shortcut collisions
-
-`F` → `modify.fillet` **and** `view.fit_all`. `M` → `gizmo.move` **and**
-`inspect.measure_distance`. Qt fires neither on an ambiguous binding, so
-both are broken. Fusion's own bindings are F = Fillet and M = Move, so
-the other two should move. **Ask the user which keys they want** before
-rebinding — it is muscle memory, not a technical call.
-
-Detect them again with:
-
-```bash
-python3 - <<'EOF'
-import re,os,collections
-ids={}
-for root,_,fs in os.walk('src'):
-    for f in fs:
-        if not f.endswith('.cpp'): continue
-        t=open(os.path.join(root,f),errors='ignore').read()
-        for m in re.finditer(r'std::string Id\(\) const override\s*\{\s*return "([^"]+)";', t):
-            tail=t[m.end():m.end()+2500]
-            sm=re.search(r'std::string Shortcut\(\) const override\s*\{\s*return "([^"]+)";', tail)
-            if sm: ids[m.group(1)]=sm.group(1)
-d=collections.defaultdict(list)
-for cid,sc in ids.items(): d[sc].append(cid)
-for sc,cs in sorted(d.items()):
-    if len(cs)>1: print(f"{sc!r} -> {', '.join(sorted(cs))}")
-EOF
-```
-
-### 7.4 Drive the never-verified UI by hand (§3.9)
-
-`gizmo.rotate`, `gizmo.scale`, the `RotateScaleGizmoTool` drag, view cube
-clicking, Measure Distance, Section View. All compile; none has been
-operated. Expect real bugs — the `TransformFeature` multi-body bug came
-out of exactly this category.
-
-For the rotate/scale gizmos specifically, assert the things a compile
-cannot: rotating about a centroid leaves the centroid **fixed**, a
-uniform scale of 2 multiplies volume by exactly **8**, and scale 0 or
-negative is **refused**.
-
-### 7.5 Reconcile where export lives
-
-`export.step` and `export.obj` landed in a new **Utilities** ribbon tab;
-STL export is in the **File** menu. Users expect all three together.
-Fusion puts export under File. Moving them means touching
-`MainWindow::buildMenus` — a shared file, fine now that no agents run.
-
-### 7.6 Worth doing, lower urgency
-
-- **De-duplicate the body resolver.** `ResolveBodyRef` plus its constants
-  (`kSameSizeRatio` 0.02, `kSameCentre` 1.0mm, `kAmbiguityMargin` 4.0)
-  is file-local in **both** `CombineFeature.cpp` and
-  `PatternFeatures.cpp`. They have **not** drifted (verified), but two
-  copies of an identity rule will. Lifting it needs `CombineBodyRef` to
-  move out of `CombineFeature.h` — `PatternFeatures`, `TransformFeature`
-  and `MoveGizmoTool` all include it for that type. Better: write a test
-  asserting both resolvers agree on the same input, so drift is caught
-  rather than hoped against.
-- **Construction geometry is unreachable.** Nothing in `src/` draws a
-  construction plane — the only `new AIS_Shape` sites are bodies, sketch
-  display, the press/pull gizmo and the picker's origin rectangles. The
-  features exist and resolve each other by name, but a user cannot see or
-  pick one.
-- **Emoji icons.** `Command::Icon()` returns one emoji. It is the app's
-  weakest first impression and the fix touches every command file, so do
-  it in one deliberate pass, not incidentally.
-- **CI.** `tests/run_tests.sh` is green and nothing runs it automatically.
-  The screenshot harness is still manual.
-
-### 7.7 The two big ones, when there is room
-
-**Assemblies / components** and **2D drawings**. Both are document-model
-projects, not features (§3.7). Each deserves its own session and its own
-plan. Do not start either as a side-quest.
+**Assemblies / components** and **2D drawings** (§3.7). Each is a
+document-model project with its own session and plan. Not side-quests.
 
 ### If you use agents again
 

@@ -105,11 +105,25 @@ it — no third-party solver.
   every body, not just the one the gizmo is attached to.
 - **Construction geometry:** offset / angled / midplane / 3-point planes, axes
   through two points or along a plane's normal, points by coordinates or at an
-  axis-plane intersection. These are fully parametric and appear in the browser,
-  but they are not drawn in the viewport yet and nothing outside the construction
-  commands themselves consumes them — you cannot currently sketch on a
-  construction plane or revolve about a construction axis.
-- **Selection filters** for bodies, faces, edges and vertices.
+  axis-plane intersection. These are fully parametric, appear in the browser
+  and are drawn in the viewport (translucent orange planes, dashed axes,
+  point markers), but nothing outside the construction commands consumes them
+  yet — you cannot currently sketch on a construction plane or revolve about a
+  construction axis.
+- **Selection filters** for bodies, faces, edges and vertices — independent
+  checkboxes, as in Fusion — and **Selection Priority** (body, face or edge
+  only) for when geometry is crowded.
+
+### Parameters
+
+- **MODIFY > Change Parameters** is Fusion's dialog: user parameters you name
+  (`plate_width`, `hole_dia = plate_width / 4`) and every feature dimension
+  as a model parameter, all editable in place, every edit undoable.
+- **Any numeric field takes an expression** over them — the properties panel
+  and the dialogs of the primitives, Extrude, Revolve, Sweep, Press Pull,
+  Fillet, Chamfer, Shell, the patterns and Point — and a change to one
+  parameter rebuilds everything that reads it, sketch dimensions included.
+  Fields also take plain arithmetic (`3 * 4`, `5 m - 1 m`, `1/2 in + 2 mm`).
 
 ### Timeline, browser, properties
 
@@ -120,8 +134,9 @@ it — no third-party solver.
   — with per-body visibility. It lists what the design contains; it is
   deliberately not a second copy of the timeline.
 - The **properties panel** reads the active feature's parameters and builds an
-  editor row per parameter. Change a fillet radius after the fact and the model
-  rebuilds on the spot. This is what makes the app parametric from the user's
+  editor row per parameter. Change a fillet radius after the fact — as a
+  number or an expression — and the model rebuilds on the spot; the edit is
+  undoable. This is what makes the app parametric from the user's
   side, and it works for any feature without the panel knowing its type.
 - A feature that fails does not wipe the model: the upstream shape carries
   forward and the error is attached to the feature.
@@ -143,19 +158,21 @@ it — no third-party solver.
 Left-click to select, Ctrl+click to add. Left-drag rubber-band selects —
 left-to-right encloses only, drawn solid blue; right-to-left crosses, drawn
 dashed green. Right-drag orbits, middle-drag pans, scroll zooms at the cursor.
+A right **click** opens Fusion's marking menu: Repeat, Press Pull, Redo, Hole,
+Sketch, Move/Copy, Undo, Delete around the cursor (Cancel and OK while a tool
+is running; Hole and Delete are shown but not available yet).
 
 ### Files
 
 `File > Open STEP...` imports a `.step`/`.stp` file as a single timeline
 feature — geometry only, with no feature history behind it.
-`File > Export STL...` writes the evaluated model as ASCII STL.
+`File > Export...` writes the evaluated model in the format chosen in the
+dialog's type list, as Fusion's Export does:
 
-Two more exports live in the **Utilities** ribbon tab rather than the File
-menu:
-
-- **Export STEP** — AP214, millimetres, one STEP product per body, named as
-  the browser names them.
-- **Export OBJ** — a Wavefront triangle mesh, one group per body, at the same
+- **STEP** — AP214, millimetres, one STEP product per body, named as the
+  browser names them.
+- **STL** — ASCII triangles.
+- **OBJ** — a Wavefront triangle mesh, one group per body, at the same
   deflection STL uses. A mesh format is a one-way door: curved faces leave as
   facets.
 
@@ -168,12 +185,11 @@ Named honestly, because the gaps are large and structural:
 - **No assemblies or components.** One document, one timeline, one body table.
   Multi-part designs are out of reach, not just awkward.
 - **No 2D drawings.** There is no dimensioned output a shop could act on.
-- **No named parameters or expressions in the app.** You can type `12.9in` into
-  any field and dimensions drive geometry, but you cannot write
-  `hole_dia = plate_width / 4` and have it propagate. The engine for it is
-  written and tested (`src/core/Expression.*`, `src/core/ParameterTable.*`,
-  `tests/parameters_test.cpp`) — and is not wired into `Document` or any
-  feature, so nothing in the UI can reach it yet.
+- **Parameters are not Fusion's yet in two ways.** Feature dimensions other
+  than sketch dimensions have no `d#` names an expression can read, and units
+  are not checked through an expression — a length parameter used as a
+  pattern quantity is accepted by its number. And with no native file format,
+  parameters, like everything else, do not survive closing the app.
 - **Import is STEP only** — no IGES, Parasolid, SAT, DXF, 3MF, and no STL in.
 - **Linux and X11 only.** OCCT's window integration wants an X11 window handle,
   so Wayland is reached through XWayland rather than natively.
@@ -290,12 +306,12 @@ Layout:
 
 ```
 src/core/        Document, Feature, Command, Entity/Body, units, selection seams,
-                 the (not yet wired in) expression and parameter engine
+                 the expression and parameter engine
 src/sketch/      sketcher: entities, geometry, constraints, profiles, tools, display
 src/features/    primitives, extrude/revolve/sweep/loft, combine, pattern/mirror,
                  fillet/chamfer/shell, construction geometry
 src/gizmos/      press/pull and move/rotate manipulators
-src/io/          STEP and OBJ export
+src/io/          File > Export (STEP, STL, OBJ)
 src/inspect/     measurement and analysis
 src/view/        orientation, display modes, units
 src/ui/          browser, timeline, properties panels
