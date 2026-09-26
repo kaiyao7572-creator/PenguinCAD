@@ -15,6 +15,7 @@
 #include <AIS_Point.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
+#include <AIS_ViewCube.hxx>
 #include <Geom_CartesianPoint.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Vec2.hxx>
@@ -391,16 +392,25 @@ private:
         outer->addLayout(buttons);
     }
 
-    // Top-right of the canvas, where Fusion's command dialogs sit.
+    // Right-hand side of the canvas, where Fusion's command dialogs sit,
+    // but BELOW the ViewCube. Pinned to the very top it covered the cube
+    // completely (panel 2072..2640 x 406..1030 in a window grab, cube
+    // 2370..2495 x 405..550), so nobody could turn the view while
+    // measuring. The cube is drawn by OCCT in device pixels -- measured
+    // on screen, it and its axis letters end 175 device pixels down -- so
+    // the reserve is in device pixels too.
     void Place()
     {
         if (m_frame.isNull() || m_frame->parentWidget() == nullptr) {
             return;
         }
-        constexpr int kMargin = 12;
+        constexpr int    kMargin = 12;
+        constexpr double kViewCubeDevicePixels = 190.0;
         m_frame->adjustSize();
         const QWidget* host = m_frame->parentWidget();
-        m_frame->move(host->width() - m_frame->width() - kMargin, kMargin);
+        const double   ratio = host->devicePixelRatioF() > 0.0 ? host->devicePixelRatioF() : 1.0;
+        const int      top = static_cast<int>(kViewCubeDevicePixels / ratio) + kMargin;
+        m_frame->move(host->width() - m_frame->width() - kMargin, top);
     }
 
     QPointer<QFrame>     m_frame;
@@ -476,11 +486,21 @@ public:
         ArmPicking();
         Handle(SelectMgr_EntityOwner) owner;
         TopoDS_Shape shape;
+        myPressConsumed = false;
         if (!Detect(thePos, owner, shape)) {
+            // The ViewCube sits below every tool on the interaction stack
+            // and only gets the clicks a tool lets through. Swallowing
+            // them left the cube dead for as long as Measure was open.
+            const Handle(AIS_InteractiveContext) ctx = myContext.AisContext();
+            if (!ctx.IsNull() && !Handle(AIS_ViewCubeOwner)::DownCast(ctx->DetectedOwner()).IsNull()) {
+                return false;
+            }
             // A click on empty canvas picks nothing and keeps what is
             // there: Fusion only reacts to geometry.
+            myPressConsumed = true;
             return true;
         }
+        myPressConsumed = true;
 
         const Handle(AIS_InteractiveContext) ctx = myContext.AisContext();
         // A click after a finished measurement starts the next one with
@@ -532,10 +552,16 @@ public:
     {
         (void)thePos;
         (void)theModifiers;
-        // The press was consumed, so the viewport's controller never saw
-        // the button go down; handing it the release would leave it in a
-        // state it can't make sense of (see sketch/SketchTools.cpp).
-        return myIsRunning && theButton == Qt::LeftButton;
+        // A consumed press never reached the viewport's controller, so
+        // handing it the release would leave it in a state it can't make
+        // sense of (see sketch/SketchTools.cpp). A press let through to
+        // the ViewCube needs its release to go the same way.
+        if (!myIsRunning || theButton != Qt::LeftButton) {
+            return false;
+        }
+        const bool consumed = myPressConsumed;
+        myPressConsumed = false;
+        return consumed;
     }
 
     bool OnKeyPress(int theKey, Qt::KeyboardModifiers theModifiers) override
@@ -855,6 +881,7 @@ private:
 
     CommandContext    myContext;
     bool              myIsRunning = false;
+    bool              myPressConsumed = false;
     std::vector<Pick> myPicks;
     std::vector<Handle(AIS_InteractiveObject)> myMarkers;
     MeasurePanel      myPanel;
