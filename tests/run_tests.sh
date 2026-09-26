@@ -254,6 +254,13 @@ build_docparams() {
     "$OUT/docparams_test"
 }
 
+# ---- marking menu: the ring's geometry, no window needed ----
+build_markingmenu() {
+    g++ -std=c++17 -Wall -Wextra -I"$SRC" \
+        "$ROOT/tests/markingmenu_test.cpp" -o "$OUT/markingmenu_test" || return 1
+    "$OUT/markingmenu_test"
+}
+
 # ---- shortcuts: asks the real command registry, so it needs the app ----
 #
 # Qt fires neither action on a key bound twice. A scan of the source missed
@@ -291,6 +298,7 @@ run "Sweep: profile along a path" build_sweep
 run "Selection: what can be picked, and what survives a rebuild" build_selection
 run "Transform: a gizmo drag moves the picked body" build_transform
 run "Document parameters: expressions drive the model" build_docparams
+run "Marking menu: which wedge the pointer is in" build_markingmenu
 run "Shortcuts: no key bound to two commands" check_shortcuts
 
 if [ "$failed" -eq 0 ]; then

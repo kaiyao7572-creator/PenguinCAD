@@ -5,6 +5,7 @@
 #include "OcctViewport.h"
 #include "StepImport.h"
 #include "io/ExportDialog.h"
+#include "ui/MarkingMenu.h"
 #include "core/Registration.h"
 #include "core/ShapeFeature.h"
 
@@ -112,6 +113,9 @@ MainWindow::MainWindow(QWidget* parent)
     m_viewport->SetSelectionCallback([this]() { readViewportSelection(); });
 
     lcad::RegisterAllCommands(CommandRegistry::Instance());
+
+    m_viewport->SetContextClickCallback(
+        [this](const QPoint& theGlobalPos) { showMarkingMenu(theGlobalPos); });
 
     buildRibbon();
 
@@ -493,6 +497,10 @@ void MainWindow::runCommand(Command* theCommand)
     if (theCommand == nullptr) {
         return;
     }
+    const std::string& id = theCommand->Id();
+    if (id.rfind("select.", 0) != 0 && id.rfind("view.", 0) != 0) {
+        m_lastCommand = theCommand;
+    }
     CommandContext context = makeContext();
     theCommand->Execute(context);
     refreshCommandStates();
@@ -664,6 +672,78 @@ void MainWindow::onOpenStep()
     m_document.AddFeature(feature);
     m_viewport->FitAll();
     statusBar()->showMessage("Loaded " + path);
+}
+
+void MainWindow::showMarkingMenu(const QPoint& theGlobalPos)
+{
+    using lcad::MarkingMenu;
+    const CommandContext context = makeContext();
+
+    const auto commandItem = [this, &context](const char* theId, const QString& theLabel) {
+        MarkingMenu::Item item;
+        item.label = theLabel;
+        Command* command = CommandRegistry::Instance().Find(theId);
+        item.enabled = command != nullptr && command->IsEnabled(context);
+        item.tooltip = command != nullptr ? QString::fromStdString(command->Description()) : QString();
+        item.action = [this, command]() { runCommand(command); };
+        return item;
+    };
+    // Shown where Fusion shows them, greyed, so the hand learns the right
+    // place now and the wedge lights up the day the command exists.
+    const auto notYet = [](const QString& theLabel) {
+        MarkingMenu::Item item;
+        item.label = theLabel;
+        item.enabled = false;
+        item.tooltip = theLabel + " is not available yet";
+        return item;
+    };
+    // Cancel and OK go to whichever tool is running when they are CHOSEN,
+    // looked up then rather than now: the menu is open in between.
+    const auto toolKey = [this](int theKey) {
+        return [this, theKey]() {
+            if (lcad::ViewportInteraction* tool = m_viewport->ExclusiveInteraction()) {
+                tool->OnKeyPress(theKey, Qt::NoModifier);
+                makeContext().Redraw();
+                refreshCommandStates();
+            }
+        };
+    };
+
+    // Clockwise from the top, in Fusion's order: Repeat, Press Pull, Redo,
+    // Hole, Sketch, Move/Copy, Undo, Delete.
+    std::array<MarkingMenu::Item, 8> items;
+
+    if (m_lastCommand != nullptr) {
+        items[0].label = "Repeat " + QString::fromStdString(m_lastCommand->Title());
+        items[0].enabled = m_lastCommand->IsEnabled(context);
+        Command* last = m_lastCommand;
+        items[0].action = [this, last]() { runCommand(last); };
+    } else {
+        items[0] = notYet("Repeat");
+        items[0].tooltip = "Nothing to repeat yet";
+    }
+    items[1] = commandItem("modify.press_pull", "Press Pull");
+    items[3] = notYet("Hole");
+    items[4] = commandItem("sketch.create", "Sketch");
+    items[5] = commandItem("gizmo.move", "Move/Copy");
+    items[7] = notYet("Delete");
+
+    if (m_viewport->ExclusiveInteraction() != nullptr) {
+        items[6].label = "Cancel";
+        items[6].action = toolKey(Qt::Key_Escape);
+        items[2].label = "OK";
+        items[2].action = toolKey(Qt::Key_Return);
+    } else {
+        items[6].label = "Undo";
+        items[6].enabled = m_document.CanUndo();
+        items[6].action = [this]() { onUndo(); };
+        items[2].label = "Redo";
+        items[2].enabled = m_document.CanRedo();
+        items[2].action = [this]() { onRedo(); };
+    }
+
+    auto* menu = new MarkingMenu(items, this);
+    menu->PopUp(theGlobalPos);
 }
 
 void MainWindow::onExport()

@@ -16,6 +16,10 @@ class QString;
 // Commands, one per line, '#' starts a comment:
 //
 //   run <command.id>        invoke a registered command (e.g. sketch.create)
+//   popup dump|shot <path>  list or photograph the open popup (the
+//                           right-click marking menu)
+//   popup move|click <dx> <dy>
+//                           point or click at an offset from its centre
 //   menu <Menu> > <Item>    trigger a menu-bar item by its text, e.g.
 //                           "menu File > Export..." or "menu Edit > Undo"
 //   arm <ms> accept|cancel  answer the next modal dialog after <ms>. Arm
@@ -38,7 +42,9 @@ class QString;
 //   rclick <x> <y>          press+release right button
 //   press <x> <y>           left button down
 //   release <x> <y>         left button up
-//   drag <x1> <y1> <x2> <y2>   press, several moves, release
+//   drag <x1> <y1> <x2> <y2> [right]
+//                           press, several moves, release; "right" drags
+//                           with the right button, which orbits
 //   key <Name>              Escape, Return, Delete, or a single character,
 //                           sent to the viewport as a tool would see it
 //   hotkey <Seq>            a key as the SHORTCUT map sees it ("F6",

@@ -63,6 +63,14 @@ public:
         m_onSelectionChanged = std::move(theCallback);
     }
 
+    // A right CLICK -- pressed and released without moving -- in global
+    // screen coordinates, which is where Fusion opens its marking menu. A
+    // right DRAG still orbits and never reaches this.
+    void SetContextClickCallback(std::function<void(const QPoint&)> theCallback)
+    {
+        m_onContextClick = std::move(theCallback);
+    }
+
 protected:
     void exposeEvent(QExposeEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
@@ -119,6 +127,11 @@ private:
     std::vector<lcad::ViewportInteraction*> m_interactions;
 
     std::function<void()> m_onSelectionChanged;
+
+    // Where the right button went down, to tell a click from an orbit.
+    std::function<void(const QPoint&)> m_onContextClick;
+    QPointF m_rightPressPos;
+    bool    m_rightPressed = false;
 };
 
 // Thin QWidget wrapper so this drops into a normal Qt layout (menus,
@@ -143,6 +156,10 @@ public:
     void SetSelectionCallback(std::function<void()> theCallback)
     {
         m_window->SetSelectionCallback(std::move(theCallback));
+    }
+    void SetContextClickCallback(std::function<void(const QPoint&)> theCallback)
+    {
+        m_window->SetContextClickCallback(std::move(theCallback));
     }
     lcad::ViewportInteraction* CurrentInteraction() const
     {

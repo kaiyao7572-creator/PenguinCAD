@@ -16,6 +16,7 @@
 #include <Xw_Window.hxx>
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <initializer_list>
 
@@ -388,6 +389,10 @@ void OcctNativeWindow::mousePressEvent(QMouseEvent* event)
         m_selectionStartX = pos.x();
         m_lastMoveX = m_selectionStartX;
     }
+    if (event->button() == Qt::RightButton) {
+        m_rightPressPos = event->position();
+        m_rightPressed = true;
+    }
 
     // Detect what is under the press BEFORE handing the click on.
     //
@@ -427,6 +432,16 @@ void OcctNativeWindow::mouseReleaseEvent(QMouseEvent* event)
                         ToAspectFlags(event->modifiers()),
                         false);
     updateView();
+
+    // A right press that went nowhere was a click, not an orbit. Four
+    // logical pixels of slack, because a hand pressing a button moves.
+    if (event->button() == Qt::RightButton && m_rightPressed) {
+        m_rightPressed = false;
+        const QPointF travel = event->position() - m_rightPressPos;
+        if (std::abs(travel.x()) + std::abs(travel.y()) <= 4.0 && m_onContextClick) {
+            m_onContextClick(mapToGlobal(event->position().toPoint()));
+        }
+    }
 }
 
 void OcctNativeWindow::OnSelectionChanged(const Handle(AIS_InteractiveContext)& theCtx,

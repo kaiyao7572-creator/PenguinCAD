@@ -2,6 +2,7 @@
 
 #include "MainWindow.h"
 #include "OcctViewport.h"
+#include "ui/MarkingMenu.h"
 
 #include <V3d_View.hxx>
 
@@ -26,6 +27,7 @@
 #include <QTreeWidgetItemIterator>
 #include <QMenu>
 #include <QMenuBar>
+#include <QPointer>
 #include <QPushButton>
 #include <QMouseEvent>
 #include <QImage>
@@ -477,6 +479,55 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
             continue;
         }
 
+        if (verb == "popup" && parts.size() >= 2) {
+            // A popup (the marking menu) is not modal, so the script is not
+            // parked inside it and can act on it directly.
+            QWidget* popup = QApplication::activePopupWidget();
+            const QString what = parts.at(1).toLower();
+            if (popup == nullptr) {
+                std::cout << "  popup: none is open" << std::endl;
+            } else if (what == "shot" && parts.size() >= 3) {
+                popup->grab().save(parts.at(2));
+                std::cout << "  popup shot -> " << parts.at(2).toStdString() << std::endl;
+            } else if (what == "dump") {
+                if (auto* ring = qobject_cast<lcad::MarkingMenu*>(popup)) {
+                    static const char* const kCompass[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+                    for (int i = 0; i < 8; ++i) {
+                        const lcad::MarkingMenu::Item& item = ring->Items()[static_cast<std::size_t>(i)];
+                        std::cout << "  popup: " << kCompass[i] << " \"" << item.label.toStdString()
+                                  << "\"" << (item.label.isEmpty() ? " (empty)"
+                                               : item.enabled ? "" : " (greyed)")
+                                  << (i == ring->HighlightedWedge() ? "  <- lit" : "") << std::endl;
+                    }
+                }
+            } else if ((what == "move" || what == "click") && parts.size() >= 4) {
+                // Offsets from the ring's centre, where the right-click was.
+                QPoint centre = popup->rect().center();
+                if (auto* ring = qobject_cast<lcad::MarkingMenu*>(popup)) {
+                    centre = ring->Centre();
+                }
+                const QPointF at(centre.x() + number(2), centre.y() + number(3));
+                QMouseEvent moveEvent(QEvent::MouseMove, at, popup->mapToGlobal(at), Qt::NoButton,
+                                      Qt::NoButton, Qt::NoModifier);
+                QCoreApplication::sendEvent(popup, &moveEvent);
+                if (what == "click") {
+                    QPointer<QWidget> alive(popup);
+                    QMouseEvent press(QEvent::MouseButtonPress, at, popup->mapToGlobal(at),
+                                      Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                    QCoreApplication::sendEvent(popup, &press);
+                    if (!alive.isNull()) {
+                        QMouseEvent release(QEvent::MouseButtonRelease, at, popup->mapToGlobal(at),
+                                            Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+                        QCoreApplication::sendEvent(popup, &release);
+                    }
+                }
+                std::cout << "  popup " << what.toStdString() << " " << number(2) << " " << number(3)
+                          << std::endl;
+            }
+            Settle(120);
+            continue;
+        }
+
         if (verb == "menu" && parts.size() >= 2) {
             const QString path = line.section(QRegularExpression("\\s+"), 1);
             std::cout << "  menu " << path.toStdString() << std::endl;
@@ -520,10 +571,14 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         } else if (verb == "drag" && parts.size() >= 5) {
             const QPointF from(number(1), number(2));
             const QPointF to(number(3), number(4));
+            // "drag x1 y1 x2 y2 right" drags with the right button: an
+            // orbit, and the proof that one does not open the marking menu.
+            const Qt::MouseButton button =
+                (parts.size() >= 6 && parts.at(5).toLower() == "right") ? Qt::RightButton
+                                                                         : Qt::LeftButton;
             SendMouse(theWindow, QEvent::MouseMove, from, Qt::NoButton, Qt::NoButton,
                       Qt::NoModifier);
-            SendMouse(theWindow, QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton,
-                      Qt::NoModifier);
+            SendMouse(theWindow, QEvent::MouseButtonPress, from, button, button, Qt::NoModifier);
             // Several intermediate moves: a single jump wouldn't exercise
             // rubber-band previews the way a real drag does.
             const int steps = 8;
@@ -531,11 +586,10 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
                 const double t = static_cast<double>(i) / steps;
                 const QPointF at(from.x() + (to.x() - from.x()) * t,
                                  from.y() + (to.y() - from.y()) * t);
-                SendMouse(theWindow, QEvent::MouseMove, at, Qt::NoButton, Qt::LeftButton,
-                          Qt::NoModifier);
+                SendMouse(theWindow, QEvent::MouseMove, at, Qt::NoButton, button, Qt::NoModifier);
                 Settle(16);
             }
-            SendMouse(theWindow, QEvent::MouseButtonRelease, to, Qt::LeftButton, Qt::NoButton,
+            SendMouse(theWindow, QEvent::MouseButtonRelease, to, button, Qt::NoButton,
                       Qt::NoModifier);
         } else if (verb == "key" && parts.size() >= 2) {
             SendKey(theWindow, parts.at(1));

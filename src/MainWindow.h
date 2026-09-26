@@ -63,6 +63,10 @@ private:
 
     lcad::CommandContext makeContext();
 
+    // Fusion's right-click marking menu, built for what is going on now:
+    // Undo and Redo either side, or Cancel and OK while a tool is running.
+    void showMarkingMenu(const QPoint& theGlobalPos);
+
     OcctViewport* m_viewport = nullptr;
     QTabWidget*   m_ribbon = nullptr;
     lcad::Document m_document;
@@ -85,4 +89,8 @@ private:
 
     QAction* m_undoAction = nullptr;
     QAction* m_redoAction = nullptr;
+
+    // What the marking menu's Repeat runs. Selection filters and camera
+    // commands are not "the last thing I did" in Fusion's sense.
+    lcad::Command* m_lastCommand = nullptr;
 };
