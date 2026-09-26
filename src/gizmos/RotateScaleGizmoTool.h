@@ -21,7 +21,8 @@ namespace lcad {
 class TransformFeature;
 
 // Fusion's rotate and scale manipulators. Select a body and three rings
-// appear round it, one per world axis; drag one and the body turns about
+// appear at its centroid, one per world axis and a fixed size on screen
+// at every zoom, as Fusion's are; drag one and the body turns about
 // that axis THROUGH ITS OWN CENTROID, with the angle counting up in the
 // status bar. Scale is the same tool in its other mode: one handle
 // standing off the centroid, dragged out to grow the body and in to
@@ -45,8 +46,9 @@ class TransformFeature;
 // manipulator that has already moved the object cannot refuse anything.
 //
 // The maths is in RotateScaleGizmo.h, free of AIS and Qt so it can be
-// tested headlessly; what is left here is the two steps that genuinely
-// need a live V3d_View, and the AIS bookkeeping.
+// tested headlessly -- the hit test and the drag included, driven by the
+// view's camera. What is left here is reading that camera off the live
+// view, and the AIS bookkeeping.
 //
 // ONE-SHOT: a committed drag ends the tool. A rotate changes where the
 // body is and a scale changes how big it is, so the ref and the pivot
@@ -109,11 +111,24 @@ private:
     void ClearHandles();
     void Highlight(int theHandle);
 
-    // Screen <-> model. The only two steps that need a live V3d_View.
-    bool RayThrough(const Graphic3d_Vec2i& thePos, gp_Lin& theRay) const;
-    int  HandleUnder(const Graphic3d_Vec2i& thePos) const;
+    // Screen <-> model, from the live view. Everything past this is the
+    // headless maths in RotateScaleGizmo.h.
+    GizmoScreen Screen() const;
+    double DevicePixels(double theLogicalPixels) const;
+
+    // How far the handles stand off the pivot, in MODEL units at the zoom
+    // the view is at right now. The handles are drawn a fixed size on
+    // screen, so this changes with every wheel notch and is never cached.
+    double Reach() const;
+
+    int HandleUnder(const Graphic3d_Vec2i& thePos) const;
 
     gp_Ax1 ScaleAxis() const;
+
+    // The scale handle at theFactor times its rest length, built in device
+    // pixels about the ORIGIN: its zoom persistence carries it to the
+    // pivot and holds it at that size on screen.
+    TopoDS_Shape ScaleHandleShape(double theFactor) const;
 
     // The feature this drag would commit right now. ONE function, used by
     // both the preview and the commit, so what the drag shows and what
@@ -137,8 +152,6 @@ private:
     CombineBodyRef myBody;
     std::string    myBodyName;
     gp_Pnt         myPivot;
-    double         myBodySize = 0.0;  // corner to corner
-    double         myReach    = 0.0;  // ring radius, or handle stand-off
 
     std::vector<Handle(AIS_Shape)>             myHandles;
     Handle(AIS_Shape)                          myPreviewObject;
@@ -149,10 +162,10 @@ private:
     int  myHoverHandle = -1;
     int  myDragHandle  = -1;   // 0/1/2 = world X/Y/Z for a ring; 0 for the scale handle
 
-    double myLastAngle  = 0.0;  // radians, in the dragged ring's own frame
-    double myTotalAngle = 0.0;  // radians, accumulated over the whole drag
-    gp_Pnt myDragStart;         // scale: where on the handle axis the press landed
-    double myFactor     = 1.0;
+    // The drag itself -- pixels to angle or factor -- is the headless half,
+    // so a test can push a drag through exactly what this tool runs.
+    RingDrag  myRingDrag;
+    ScaleDrag myScaleDrag;
 
     // Set while we ask MainWindow to redisplay bodies we hid, and while
     // our own commit is going through. Both come straight back as

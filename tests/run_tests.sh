@@ -238,6 +238,18 @@ build_transform() {
     "$OUT/transform_test"
 }
 
+# ---- rotate/scale gizmos: a mouse drag, pixels in, angle or factor out ----
+#
+# TKService for Graphic3d_Camera: the screen these drags happen on is the
+# app's own home view, stood up with no window.
+build_rotscale_gizmo() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" \
+        "$ROOT/tests/rotscale_gizmo_test.cpp" \
+        "$SRC/gizmos/RotateScaleGizmo.cpp" "$SRC/gizmos/PressPullGizmo.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lTKService -o "$OUT/rotscale_gizmo_test" || return 1
+    "$OUT/rotscale_gizmo_test"
+}
+
 # ---- document parameters: named values driving features' numbers ----
 build_docparams() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
@@ -297,6 +309,7 @@ run "Parameters: named values and expressions" build_parameters
 run "Sweep: profile along a path" build_sweep
 run "Selection: what can be picked, and what survives a rebuild" build_selection
 run "Transform: a gizmo drag moves the picked body" build_transform
+run "Rotate/Scale: dragging the handles" build_rotscale_gizmo
 run "Document parameters: expressions drive the model" build_docparams
 run "Marking menu: which wedge the pointer is in" build_markingmenu
 run "Shortcuts: no key bound to two commands" check_shortcuts

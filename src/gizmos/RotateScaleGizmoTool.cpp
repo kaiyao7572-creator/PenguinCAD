@@ -8,15 +8,14 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ListOfInteractive.hxx>
-#include <BRepBndLib.hxx>
-#include <Bnd_Box.hxx>
+#include <Aspect_Window.hxx>
+#include <Graphic3d_TransformPers.hxx>
 #include <Graphic3d_ZLayerId.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Failure.hxx>
-#include <TopLoc_Location.hxx>
 #include <TopoDS_Iterator.hxx>
 #include <V3d_View.hxx>
-#include <gp_Trsf.hxx>
+#include <gp.hxx>
 #include <gp_Vec.hxx>
 
 #include <cmath>
@@ -30,9 +29,6 @@
 namespace lcad {
 
 namespace {
-
-constexpr double kPi = 3.14159265358979323846;
-constexpr double kRadToDeg = 180.0 / kPi;
 
 // The origin axis lines' own colours, so a red ring turns about the red
 // axis and nobody has to look it up. Taken from OcctViewport's axes
@@ -56,26 +52,9 @@ const Quantity_Color kPreviewColor(0.72, 0.78, 0.86, Quantity_TOC_sRGB);
 // have stolen a great deal more.
 constexpr Standard_Integer kNoSelectionMode = -1;
 
-// How close to a handle a click has to land, in LOGICAL pixels, scaled by
-// the device ratio at use. A pixel radius is what the user perceives as
-// "on the ring"; a model-space radius would grow and shrink with the zoom.
-constexpr double kPickRadiusPixels = 10.0;
-
-// Points round a ring for the hit test. At 64 the gap between samples is
-// under a tenth of the radius, so the straight segments between them are
-// well inside the pick radius of the true circle at any sane zoom.
-constexpr int kRingSamples = 64;
-
-// The scale handle is only grabbable along its outer half. The inner half
-// runs through the body, where a click means "select this face" far more
-// often than it means "resize".
-constexpr double kScaleGrabFrom = 0.5;
-
-// Cube on the end of the scale stalk, as a fraction of the stand-off.
+// Cube on the end of the scale stalk, as a fraction of the stalk's rest
+// length.
 constexpr double kScaleCubeShare = 0.09;
-
-// A body too small to measure still needs handles someone can hit.
-constexpr double kFallbackBodySize = 10.0;
 
 void ShowStatus(const CommandContext& theContext, const QString& theText)
 {
@@ -93,26 +72,6 @@ double DevicePixelRatio(const CommandContext& theContext)
         }
     }
     return 1.0;
-}
-
-// Corner to corner: the only length scale a body of any shape offers.
-double BodySizeOf(const TopoDS_Shape& theShape)
-{
-    if (theShape.IsNull()) {
-        return 0.0;
-    }
-    try {
-        Bnd_Box box;
-        BRepBndLib::Add(theShape, box, Standard_False);
-        if (box.IsVoid()) {
-            return 0.0;
-        }
-        Standard_Real x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
-        box.Get(x1, y1, z1, x2, y2, z2);
-        return gp_Pnt(x1, y1, z1).Distance(gp_Pnt(x2, y2, z2));
-    } catch (const Standard_Failure&) {
-        return 0.0;
-    }
 }
 
 } // namespace
@@ -155,7 +114,7 @@ void RotateScaleGizmoTool::Start(const CommandContext& theContext, Mode theMode)
         // Nothing to grab is worse than no tool at all: say so and leave
         // the viewport alone rather than swallowing every click.
         Stop();
-        ShowStatus(myContext, "That body is too small to put handles on.");
+        ShowStatus(myContext, "Could not build the handles for that body.");
         return;
     }
 
@@ -250,23 +209,47 @@ bool RotateScaleGizmoTool::AttachToSelection()
             }
             myBodyName = body->Name();
             myPivot    = body->Centroid();
-            myBodySize = BodySizeOf(body->Shape());
-            if (!(myBodySize > 0.0)) {
-                myBodySize = kFallbackBodySize;
-            }
             // Null for anything without a volume; Start() says so.
             myBody = MakeCombineBodyRef(*body);
-            myReach = myMode == Mode::Rotate ? RotateRingRadius(myBodySize)
-                                             : ScaleHandleOffset(myBodySize);
             return true;
         }
     }
     return false;
 }
 
+GizmoScreen RotateScaleGizmoTool::Screen() const
+{
+    const Handle(V3d_View) view = myContext.View();
+    if (view.IsNull() || view->Window().IsNull()) {
+        return GizmoScreen();
+    }
+    Standard_Integer width = 0, height = 0;
+    view->Window()->Size(width, height);
+    return GizmoScreen(view->Camera(), width, height);
+}
+
+double RotateScaleGizmoTool::DevicePixels(double theLogicalPixels) const
+{
+    return theLogicalPixels * DevicePixelRatio(myContext);
+}
+
+double RotateScaleGizmoTool::Reach() const
+{
+    const double pixels = myMode == Mode::Rotate ? RotateRingRadiusPixels()
+                                                 : ScaleHandleLengthPixels();
+    return DevicePixels(pixels) * Screen().ModelPerPixel(myPivot);
+}
+
 gp_Ax1 RotateScaleGizmoTool::ScaleAxis() const
 {
     return gp_Ax1(myPivot, ScaleHandleDirection());
+}
+
+TopoDS_Shape RotateScaleGizmoTool::ScaleHandleShape(double theFactor) const
+{
+    const double length = DevicePixels(ScaleHandleLengthPixels());
+    return MakeScaleHandleShape(gp_Ax1(gp::Origin(), ScaleHandleDirection()),
+                                length * theFactor, length * kScaleCubeShare);
 }
 
 void RotateScaleGizmoTool::BuildHandles()
@@ -276,6 +259,14 @@ void RotateScaleGizmoTool::BuildHandles()
     if (aisContext.IsNull()) {
         return;
     }
+
+    // Built in device pixels about the origin and drawn zoom-persistent,
+    // anchored on the pivot: OCCT then scales them so one unit is one
+    // pixel at every zoom, the way Fusion's manipulators hold their size
+    // on screen whatever the wheel does. The hit test asks GizmoScreen for
+    // the same scale, so what is drawn and what is grabbable agree.
+    const Handle(Graphic3d_TransformPers) persistence =
+        new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, myPivot);
 
     auto display = [&](const TopoDS_Shape& theShape, const Quantity_Color& theColor) {
         // A handle that failed to build comes back as an empty compound,
@@ -288,16 +279,22 @@ void RotateScaleGizmoTool::BuildHandles()
         // its shading aspect once one is set, and displaying one without
         // it crashes the first time the presentation is built.
         object->SetColor(theColor);
+        object->SetTransformPersistence(persistence);
+        // Topmost has a depth buffer of its own, so the handles draw OVER
+        // the body rather than into it. A screen-sized ring is inside a
+        // body's silhouette as soon as the body is zoomed up big, and in
+        // the plain Top layer the body hid it there -- a manipulator you
+        // cannot see is one you cannot grab.
+        object->SetZLayer(Graphic3d_ZLayerId_Topmost);
         aisContext->Display(object, AIS_Shaded, kNoSelectionMode, Standard_False);
-        // The handles wrap round the body they belong to; without a top
-        // layer they disappear into it from half the viewing angles.
-        aisContext->SetZLayer(object, Graphic3d_ZLayerId_Top);
         myHandles.push_back(object);
     };
 
     if (myMode == Mode::Rotate) {
+        const double radius = DevicePixels(RotateRingRadiusPixels());
         for (int axis = 0; axis < 3; ++axis) {
-            display(MakeRotateRingShape(GizmoAxis(axis, myPivot), myReach), kAxisColors[axis]);
+            display(MakeRotateRingShape(GizmoAxis(axis, gp::Origin()), radius),
+                    kAxisColors[axis]);
         }
         // All three or none: a partial set would leave one axis silently
         // un-rotatable, and the index a drag stores is the axis number.
@@ -305,8 +302,7 @@ void RotateScaleGizmoTool::BuildHandles()
             ClearHandles();
         }
     } else {
-        display(MakeScaleHandleShape(ScaleAxis(), myReach, myReach * kScaleCubeShare),
-                kScaleColor);
+        display(ScaleHandleShape(1.0), kScaleColor);
     }
 }
 
@@ -316,8 +312,7 @@ void RotateScaleGizmoTool::ResetHandles()
     if (aisContext.IsNull() || myMode != Mode::Scale || myHandles.empty()) {
         return;
     }
-    const TopoDS_Shape shape =
-        MakeScaleHandleShape(ScaleAxis(), myReach, myReach * kScaleCubeShare);
+    const TopoDS_Shape shape = ScaleHandleShape(1.0);
     if (shape.IsNull() || !TopoDS_Iterator(shape).More()) {
         return;
     }
@@ -361,84 +356,18 @@ void RotateScaleGizmoTool::Highlight(int theHandle)
     myContext.Redraw();
 }
 
-bool RotateScaleGizmoTool::RayThrough(const Graphic3d_Vec2i& thePos, gp_Lin& theRay) const
-{
-    const Handle(V3d_View) view = myContext.View();
-    if (view.IsNull()) {
-        return false;
-    }
-    try {
-        Standard_Real x = 0.0, y = 0.0, z = 0.0, vx = 0.0, vy = 0.0, vz = 0.0;
-        view->ConvertWithProj(thePos.x(), thePos.y(), x, y, z, vx, vy, vz);
-        theRay = gp_Lin(gp_Pnt(x, y, z), gp_Dir(vx, vy, vz));
-        return true;
-    } catch (const Standard_Failure&) {
-        return false;  // a degenerate projection direction, nothing to drag along
-    }
-}
-
 int RotateScaleGizmoTool::HandleUnder(const Graphic3d_Vec2i& thePos) const
 {
-    const Handle(V3d_View) view = myContext.View();
-    if (view.IsNull() || !myIsActive || myHandles.empty()) {
+    if (!myIsActive || myHandles.empty()) {
         return -1;
     }
-
-    const double radius = kPickRadiusPixels * DevicePixelRatio(myContext);
-
-    try {
-        if (myMode == Mode::Scale) {
-            // Only the outer half of the stalk, plus the cube on its end:
-            // the inner half runs through the body, where a click almost
-            // always means "pick this face".
-            const gp_Ax1 axis = ScaleAxis();
-            const gp_Vec along(axis.Direction());
-            const gp_Pnt from = axis.Location().Translated(along * (myReach * kScaleGrabFrom));
-            const gp_Pnt to   = axis.Location().Translated(along * myReach);
-
-            Standard_Integer fromX = 0, fromY = 0, toX = 0, toY = 0;
-            view->Convert(from.X(), from.Y(), from.Z(), fromX, fromY);
-            view->Convert(to.X(), to.Y(), to.Z(), toX, toY);
-            return DistanceToSegment2d(thePos.x(), thePos.y(), fromX, fromY, toX, toY) <= radius
-                       ? 0
-                       : -1;
-        }
-
-        // The nearest ring wins, so where two cross on screen the click
-        // goes to the one actually under the cursor rather than to
-        // whichever happens to be tested first.
-        int    winner = -1;
-        double best   = radius;
-        for (int axis = 0; axis < 3; ++axis) {
-            const std::vector<gp_Pnt> points =
-                SampleRing(GizmoAxis(axis, myPivot), myReach, kRingSamples);
-            if (points.size() < 3) {
-                continue;
-            }
-
-            std::vector<double> xs(points.size(), 0.0);
-            std::vector<double> ys(points.size(), 0.0);
-            for (std::size_t i = 0; i < points.size(); ++i) {
-                Standard_Integer px = 0, py = 0;
-                view->Convert(points[i].X(), points[i].Y(), points[i].Z(), px, py);
-                xs[i] = px;
-                ys[i] = py;
-            }
-
-            for (std::size_t i = 0; i < points.size(); ++i) {
-                const std::size_t next = (i + 1) % points.size();  // close the loop
-                const double distance = DistanceToSegment2d(thePos.x(), thePos.y(),
-                                                            xs[i], ys[i], xs[next], ys[next]);
-                if (distance < best) {
-                    best   = distance;
-                    winner = axis;
-                }
-            }
-        }
-        return winner;
-    } catch (const Standard_Failure&) {
-        return -1;
+    const GizmoScreen screen = Screen();
+    const double reach = Reach();
+    const double pick  = DevicePixels(GizmoPickRadiusPixels());
+    if (myMode == Mode::Scale) {
+        return PickScaleHandle(screen, ScaleAxis(), reach, thePos.x(), thePos.y(), pick) ? 0 : -1;
     }
+    return PickRotateRing(screen, myPivot, reach, thePos.x(), thePos.y(), pick);
 }
 
 bool RotateScaleGizmoTool::OnMousePress(const Graphic3d_Vec2i& thePos,
@@ -456,26 +385,25 @@ bool RotateScaleGizmoTool::OnMousePress(const Graphic3d_Vec2i& thePos,
     }
 
     gp_Lin ray;
-    if (!RayThrough(thePos, ray)) {
+    if (!Screen().RayThrough(thePos.x(), thePos.y(), ray)) {
         return false;
     }
 
     if (myMode == Mode::Rotate) {
-        double angle = 0.0;
-        if (!AngleOnPlane(GizmoAxis(handle, myPivot), ray, angle)) {
+        if (!myRingDrag.Begin(GizmoAxis(handle, myPivot), ray)) {
             // Edge-on. Refuse rather than start a drag whose angle would
             // swing by whole degrees for every pixel of mouse travel.
             ShowStatus(myContext, "Turn the view: that ring is edge-on.");
             return false;
         }
-        myLastAngle  = angle;
-        myTotalAngle = 0.0;
     } else {
-        if (!ClosestPointOnAxis(ScaleAxis(), ray, myDragStart)) {
+        // The rest length at THIS zoom: the handle is a fixed size on
+        // screen, so its length in model units is whatever the zoom makes
+        // it now, and the drag's factor is measured against that.
+        if (!myScaleDrag.Begin(ScaleAxis(), Reach(), ray)) {
             ShowStatus(myContext, "Turn the view: the scale handle is pointing at you.");
             return false;
         }
-        myFactor = 1.0;
     }
 
     myDragHandle = handle;
@@ -508,46 +436,30 @@ bool RotateScaleGizmoTool::OnMouseMove(const Graphic3d_Vec2i& thePos,
     }
 
     gp_Lin ray;
-    if (!RayThrough(thePos, ray)) {
+    if (!Screen().RayThrough(thePos.x(), thePos.y(), ray)) {
         return true;
     }
 
     if (myMode == Mode::Rotate) {
-        double angle = 0.0;
-        if (!AngleOnPlane(GizmoAxis(myDragHandle, myPivot), ray, angle)) {
-            // Orbited edge-on mid-drag. Keep the last good angle rather
-            // than jumping to a number the cursor never asked for.
-            return true;
-        }
-        // Accumulated from WRAPPED differences, so a drag can pass half a
-        // turn, or cross the frame's zero, without the total jumping sign.
-        myTotalAngle += WrapAngle(angle - myLastAngle);
-        myLastAngle = angle;
+        // Edge-on mid-drag keeps the last good angle rather than jumping
+        // to a number the cursor never asked for.
+        myRingDrag.Update(ray);
         ShowStatus(myContext, QString::fromStdString(
-                                  FormatValue(myTotalAngle * kRadToDeg, UnitKind::Angle)));
+                                  FormatValue(myRingDrag.TotalDegrees(), UnitKind::Angle)));
     } else {
-        gp_Pnt onAxis;
-        const gp_Ax1 axis = ScaleAxis();
-        if (!ClosestPointOnAxis(axis, ray, onAxis)) {
-            return true;
-        }
-        const double travel = DragDistanceAlongAxis(axis, myDragStart, onAxis);
-        double factor = 1.0;
-        if (!ScaleFactorFromDrag(myReach, travel, factor)) {
+        if (!myScaleDrag.Update(ray)) {
             // Dragged onto the pivot or past it. Hold the last good
             // factor: previewing a collapsed or inside-out body, and then
             // committing it on release, is the wrong solid nobody notices.
             ShowStatus(myContext, "A scale has to stay above zero -- drag back out.");
             return true;
         }
-        myFactor = factor;
 
         // The stalk GROWS with the drag rather than sliding out along
         // itself, so its base stays on the pivot the scale is about.
         const Handle(AIS_InteractiveContext) aisContext = myContext.AisContext();
         if (!aisContext.IsNull() && !myHandles.empty() && !myHandles.front().IsNull()) {
-            const TopoDS_Shape stretched = MakeScaleHandleShape(
-                axis, myReach * myFactor, myReach * kScaleCubeShare);
+            const TopoDS_Shape stretched = ScaleHandleShape(myScaleDrag.Factor());
             if (!stretched.IsNull() && TopoDS_Iterator(stretched).More()) {
                 myHandles.front()->SetShape(stretched);
                 aisContext->Redisplay(myHandles.front(), Standard_False);
@@ -555,7 +467,8 @@ bool RotateScaleGizmoTool::OnMouseMove(const Graphic3d_Vec2i& thePos,
         }
         ShowStatus(myContext,
                    QString("Scale %1x")
-                       .arg(QString::fromStdString(FormatValue(myFactor, UnitKind::Unitless))));
+                       .arg(QString::fromStdString(
+                           FormatValue(myScaleDrag.Factor(), UnitKind::Unitless))));
     }
 
     UpdatePreview();
@@ -597,7 +510,7 @@ std::shared_ptr<TransformFeature> RotateScaleGizmoTool::MakeFeature() const
     if (myMode == Mode::Rotate) {
         // DEGREES from here on: TransformFeature stores degrees, and the
         // single conversion back to radians is inside its Trsf().
-        const double degrees = myTotalAngle * kRadToDeg;
+        const double degrees = myRingDrag.TotalDegrees();
         if (myDragHandle == 0)      rx = degrees;
         else if (myDragHandle == 1) ry = degrees;
         else if (myDragHandle == 2) rz = degrees;
@@ -613,7 +526,7 @@ std::shared_ptr<TransformFeature> RotateScaleGizmoTool::MakeFeature() const
         // Already through ScaleFactorFromDrag's refusal, so this cannot
         // fail -- and if it ever did, the feature keeps its factor of one
         // and the drag commits nothing rather than something wrong.
-        feature->SetScale(myFactor);
+        feature->SetScale(myScaleDrag.Factor());
     }
     return feature;
 }
@@ -714,8 +627,8 @@ void RotateScaleGizmoTool::EndDrag(bool theApply)
     }
     myIsDragging = false;
 
-    const double degrees = myTotalAngle * kRadToDeg;
-    const double factor  = myFactor;
+    const double degrees = myRingDrag.TotalDegrees();
+    const double factor  = myScaleDrag.Factor();
 
     ClearPreview();
     ResetHandles();
@@ -729,12 +642,12 @@ void RotateScaleGizmoTool::EndDrag(bool theApply)
                                : std::fabs(factor - 1.0) >= MinimumScaleChange();
 
     if (theApply && worthCommitting) {
-        Commit();  // reads myTotalAngle / myFactor, still set
+        Commit();  // reads the drags, still set
         return;    // Commit() ends the tool; nothing below would be seen
     }
 
-    myTotalAngle = 0.0;
-    myFactor     = 1.0;
+    myRingDrag   = RingDrag();
+    myScaleDrag  = ScaleDrag();
     myDragHandle = -1;
     myContext.Redraw();
 }
@@ -761,8 +674,8 @@ void RotateScaleGizmoTool::Commit()
     myContext.document->SetActiveFeature(feature);
     myIsCommitting = false;
 
-    myTotalAngle = 0.0;
-    myFactor     = 1.0;
+    myRingDrag   = RingDrag();
+    myScaleDrag  = ScaleDrag();
     myDragHandle = -1;
 
     // A failed feature already carries its own name in the message,

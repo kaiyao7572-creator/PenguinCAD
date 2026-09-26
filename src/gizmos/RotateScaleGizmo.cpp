@@ -4,6 +4,7 @@
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepPrimAPI_MakeTorus.hxx>
 #include <BRep_Builder.hxx>
+#include <Graphic3d_TransformPers.hxx>
 #include <Standard_Failure.hxx>
 #include <TopoDS_Compound.hxx>
 #include <gp.hxx>
@@ -18,23 +19,35 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kTwoPi = 2.0 * kPi;
+constexpr double kRadToDeg = 180.0 / kPi;
 
-// A ring this much of the body's corner-to-corner size clears the body
-// itself (whose half-diagonal is 0.5 of it) with room to grab, without
-// flying off to where the user has to zoom out to find it.
-constexpr double kRingShare = 0.62;
-constexpr double kMinRing   = 4.0;   // mm, for a body too small to size one off
+// On-screen sizes, logical pixels. Fusion's move arrows are about a
+// hundred pixels long; a ring of this radius and a handle of this length
+// read as the same family at the same scale, big enough to aim at without
+// hunting and small enough to leave the body in view.
+constexpr double kRingRadiusPixels  = 90.0;
+constexpr double kScaleLengthPixels = 100.0;
+constexpr double kPickRadiusPixels  = 10.0;
 
 // Ring thickness, as a fraction of its radius. Thin enough to read as a
 // ring rather than a doughnut, fat enough to be visible at a glance.
 constexpr double kRingTubeShare = 0.022;
 constexpr double kMinRingTube   = 0.15;
 
-// The scale handle stands just outside where a ring would be, so the two
-// gizmos read as the same family at the same scale.
-constexpr double kScaleOffsetShare = 0.75;
-constexpr double kMinScaleOffset   = 5.0;
-constexpr double kScaleStalkShare  = 0.035;  // of the offset
+// The scale stalk's radius, as a share of the cube on its end -- NOT of
+// its length, which grows while it is dragged, and a stalk that fattened
+// as it stretched would look like a different handle by the end.
+constexpr double kScaleStalkShare = 0.28;
+
+// The scale handle is only grabbable along its outer half. The inner half
+// runs through the body, where a click means "pick this face" far more
+// often than it means "resize".
+constexpr double kScaleGrabFrom = 0.5;
+
+// Points round a ring for the hit test. At 64 the gap between samples is
+// under a tenth of the radius, so the straight segments between them are
+// well inside the pick radius of the true circle.
+constexpr int kRingSamples = 64;
 
 // How close to edge-on a ring may be before a drag on it is refused.
 // This is the cosine between the view ray and the ring's axis: at 0.02
@@ -56,6 +69,92 @@ constexpr double kMinScaleChange      = 1.0e-4;
 constexpr double kMinFactor = 1.0e-6;
 
 } // namespace
+
+// ---- the screen ----
+
+GizmoScreen::GizmoScreen(const Handle(Graphic3d_Camera)& theCamera, int theWidth, int theHeight)
+    : myCamera(theCamera), myWidth(theWidth), myHeight(theHeight)
+{
+}
+
+bool GizmoScreen::IsValid() const
+{
+    return !myCamera.IsNull() && myWidth > 0 && myHeight > 0;
+}
+
+bool GizmoScreen::Project(const gp_Pnt& thePoint, double& theX, double& theY) const
+{
+    if (!IsValid()) {
+        return false;
+    }
+    try {
+        // V3d_View::Convert's mapping, minus its rounding to whole pixels:
+        // the hit test measures distances in fractions of one.
+        const gp_Pnt ndc = myCamera->Project(thePoint);
+        theX = (ndc.X() + 1.0) * 0.5 * myWidth;
+        theY = myHeight - 1 - (ndc.Y() + 1.0) * 0.5 * myHeight;
+        return std::isfinite(theX) && std::isfinite(theY);
+    } catch (const Standard_Failure&) {
+        return false;
+    }
+}
+
+bool GizmoScreen::RayThrough(double theX, double theY, gp_Lin& theRay) const
+{
+    if (!IsValid()) {
+        return false;
+    }
+    try {
+        // V3d_View::ConvertWithProj's inverse of the mapping above: two
+        // depths through the same pixel give the line of sight.
+        const double ndcX = 2.0 * theX / myWidth - 1.0;
+        const double ndcY = 2.0 * (myHeight - 1 - theY) / myHeight - 1.0;
+        const gp_Pnt nearPoint = myCamera->UnProject(gp_Pnt(ndcX, ndcY, -1.0));
+        const gp_Pnt farPoint  = myCamera->UnProject(gp_Pnt(ndcX, ndcY, 1.0));
+        const gp_Vec direction(nearPoint, farPoint);
+        if (direction.Magnitude() <= gp::Resolution()) {
+            return false;
+        }
+        theRay = gp_Lin(nearPoint, gp_Dir(direction));
+        return true;
+    } catch (const Standard_Failure&) {
+        return false;  // a degenerate projection: nothing to drag along
+    }
+}
+
+double GizmoScreen::ModelPerPixel(const gp_Pnt& theAnchor) const
+{
+    if (!IsValid()) {
+        return 0.0;
+    }
+    try {
+        const Handle(Graphic3d_TransformPers) persistence =
+            new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, theAnchor);
+        const double scale = persistence->persistentScale(myCamera, myWidth, myHeight);
+        return std::isfinite(scale) && scale > 0.0 ? scale : 0.0;
+    } catch (const Standard_Failure&) {
+        return 0.0;
+    }
+}
+
+// ---- sizes ----
+
+double RotateRingRadiusPixels()
+{
+    return kRingRadiusPixels;
+}
+
+double ScaleHandleLengthPixels()
+{
+    return kScaleLengthPixels;
+}
+
+double GizmoPickRadiusPixels()
+{
+    return kPickRadiusPixels;
+}
+
+// ---- rotation ----
 
 gp_Ax1 GizmoAxis(int theIndex, const gp_Pnt& thePivot)
 {
@@ -124,11 +223,6 @@ double WrapAngle(double theAngleRadians)
     return wrapped - kPi;
 }
 
-double RotateRingRadius(double theBodySize)
-{
-    return std::max(kMinRing, kRingShare * theBodySize);
-}
-
 TopoDS_Shape MakeRotateRingShape(const gp_Ax1& theAxis, double theRadius)
 {
     TopoDS_Compound ring;
@@ -177,14 +271,85 @@ std::vector<gp_Pnt> SampleRing(const gp_Ax1& theAxis, double theRadius, int theC
     return points;
 }
 
+int PickRotateRing(const GizmoScreen& theScreen, const gp_Pnt& thePivot, double theRadius,
+                   double theX, double theY, double thePickPixels)
+{
+    if (!theScreen.IsValid() || !(theRadius > 0.0)) {
+        return -1;
+    }
+
+    int    winner = -1;
+    double best   = thePickPixels;
+    for (int axis = 0; axis < 3; ++axis) {
+        const std::vector<gp_Pnt> points =
+            SampleRing(GizmoAxis(axis, thePivot), theRadius, kRingSamples);
+        if (points.size() < 3) {
+            continue;
+        }
+
+        std::vector<double> xs(points.size(), 0.0);
+        std::vector<double> ys(points.size(), 0.0);
+        bool projected = true;
+        for (std::size_t i = 0; i < points.size() && projected; ++i) {
+            projected = theScreen.Project(points[i], xs[i], ys[i]);
+        }
+        if (!projected) {
+            continue;
+        }
+
+        for (std::size_t i = 0; i < points.size(); ++i) {
+            const std::size_t next = (i + 1) % points.size();  // close the loop
+            const double distance =
+                DistanceToSegment2d(theX, theY, xs[i], ys[i], xs[next], ys[next]);
+            if (distance < best) {
+                best   = distance;
+                winner = axis;
+            }
+        }
+    }
+    return winner;
+}
+
+bool RingDrag::Begin(const gp_Ax1& theAxis, const gp_Lin& thePressRay)
+{
+    myIsActive = false;
+    double angle = 0.0;
+    if (!AngleOnPlane(theAxis, thePressRay, angle)) {
+        return false;
+    }
+    myAxis     = theAxis;
+    myLast     = angle;
+    myTotal    = 0.0;
+    myIsActive = true;
+    return true;
+}
+
+bool RingDrag::Update(const gp_Lin& theRay)
+{
+    if (!myIsActive) {
+        return false;
+    }
+    double angle = 0.0;
+    if (!AngleOnPlane(myAxis, theRay, angle)) {
+        return false;
+    }
+    // Accumulated from WRAPPED differences, so a drag can pass half a
+    // turn, or cross the frame's zero, without the total jumping sign.
+    myTotal += WrapAngle(angle - myLast);
+    myLast = angle;
+    return true;
+}
+
+double RingDrag::TotalDegrees() const
+{
+    return myTotal * kRadToDeg;
+}
+
+// ---- uniform scale ----
+
 gp_Dir ScaleHandleDirection()
 {
     return gp_Dir(1.0, 1.0, 1.0);
-}
-
-double ScaleHandleOffset(double theBodySize)
-{
-    return std::max(kMinScaleOffset, kScaleOffsetShare * theBodySize);
 }
 
 TopoDS_Shape MakeScaleHandleShape(const gp_Ax1& theAxis, double theOffset, double theSize)
@@ -199,8 +364,7 @@ TopoDS_Shape MakeScaleHandleShape(const gp_Ax1& theAxis, double theOffset, doubl
 
     try {
         BRepPrimAPI_MakeCylinder stalk(gp_Ax2(theAxis.Location(), theAxis.Direction()),
-                                       std::max(0.05, theOffset * kScaleStalkShare),
-                                       theOffset);
+                                       theSize * kScaleStalkShare, theOffset);
         stalk.Build();
         if (!stalk.IsDone()) {
             return handle;
@@ -224,6 +388,23 @@ TopoDS_Shape MakeScaleHandleShape(const gp_Ax1& theAxis, double theOffset, doubl
     return handle;
 }
 
+bool PickScaleHandle(const GizmoScreen& theScreen, const gp_Ax1& theAxis, double theLength,
+                     double theX, double theY, double thePickPixels)
+{
+    if (!theScreen.IsValid() || !(theLength > 0.0)) {
+        return false;
+    }
+    const gp_Vec along(theAxis.Direction());
+    const gp_Pnt from = theAxis.Location().Translated(along * (theLength * kScaleGrabFrom));
+    const gp_Pnt to   = theAxis.Location().Translated(along * theLength);
+
+    double fromX = 0.0, fromY = 0.0, toX = 0.0, toY = 0.0;
+    if (!theScreen.Project(from, fromX, fromY) || !theScreen.Project(to, toX, toY)) {
+        return false;
+    }
+    return DistanceToSegment2d(theX, theY, fromX, fromY, toX, toY) <= thePickPixels;
+}
+
 bool ScaleFactorFromDrag(double theRestOffset, double theDragDistance, double& theFactor)
 {
     if (!(theRestOffset > 0.0) || !std::isfinite(theDragDistance)) {
@@ -234,6 +415,40 @@ bool ScaleFactorFromDrag(double theRestOffset, double theDragDistance, double& t
         return false;
     }
     theFactor = factor;
+    return true;
+}
+
+bool ScaleDrag::Begin(const gp_Ax1& theAxis, double theRestLength, const gp_Lin& thePressRay)
+{
+    myIsActive = false;
+    if (!(theRestLength > 0.0) || !ClosestPointOnAxis(theAxis, thePressRay, myStart)) {
+        return false;
+    }
+    myAxis       = theAxis;
+    myRestLength = theRestLength;
+    myFactor     = 1.0;
+    myIsActive   = true;
+    return true;
+}
+
+bool ScaleDrag::Update(const gp_Lin& theRay)
+{
+    if (!myIsActive) {
+        return false;
+    }
+    gp_Pnt onAxis;
+    if (!ClosestPointOnAxis(myAxis, theRay, onAxis)) {
+        return false;
+    }
+    // The tip moves by exactly as much as the cursor has along the
+    // handle, wherever on the handle the press landed -- so the cube
+    // stays under the hand that is dragging it.
+    const double travel = DragDistanceAlongAxis(myAxis, myStart, onAxis);
+    double factor = 1.0;
+    if (!ScaleFactorFromDrag(myRestLength, travel, factor)) {
+        return false;
+    }
+    myFactor = factor;
     return true;
 }
 
