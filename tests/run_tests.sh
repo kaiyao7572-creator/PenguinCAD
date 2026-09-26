@@ -281,6 +281,15 @@ build_view() {
     "$OUT/view_test"
 }
 
+# ---- inspect: what Measure, Model Properties and Section View report ----
+build_inspect() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" \
+        "$ROOT/tests/inspect_test.cpp" \
+        "$SRC/inspect/InspectGeometry.cpp" "$SRC/core/Units.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -o "$OUT/inspect_test" || return 1
+    "$OUT/inspect_test"
+}
+
 # ---- shortcuts: asks the real command registry, so it needs the app ----
 #
 # Qt fires neither action on a key bound twice. A scan of the source missed
@@ -321,6 +330,7 @@ run "Rotate/Scale: dragging the handles" build_rotscale_gizmo
 run "Document parameters: expressions drive the model" build_docparams
 run "Marking menu: which wedge the pointer is in" build_markingmenu
 run "View: standard views, cube clicks and Fit" build_view
+run "Inspect: measure, model properties and section" build_inspect
 run "Shortcuts: no key bound to two commands" check_shortcuts
 
 if [ "$failed" -eq 0 ]; then
