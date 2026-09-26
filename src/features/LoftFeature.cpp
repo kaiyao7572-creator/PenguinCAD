@@ -242,6 +242,12 @@ bool LoftFeature::ResolveSections(const ComputeContext&     theContext,
             theError = label + " is not a sketch";
             return false;
         }
+        // As in ResolveProfile: a section sketch that failed this rebuild
+        // holds geometry its own parameters no longer give.
+        if (!feature->LastError().empty()) {
+            theError = label + " failed (" + feature->LastError() + ")";
+            return false;
+        }
 
         try {
             TopoDS_Face face;

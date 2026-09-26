@@ -460,6 +460,11 @@ std::vector<int> SketchTool::Commit(const std::vector<SketchEntity>& theEntities
     // One undo step per curve, so Ctrl+Z peels a sketch back a curve at a
     // time instead of discarding the whole thing.
     myContext.document->PushUndoSnapshot();
+    // Only an error the addition CAUSED says it over-constrained the
+    // sketch. One already there -- a dimension whose expression no longer
+    // evaluates stops the solve altogether -- would otherwise be blamed on
+    // every constraint the user adds, and each would be deleted.
+    const std::string errorBefore = sketch->LastError();
     ids = sketch->AddEntities(theEntities);
 
     const std::size_t before = sketch->Constraints().size();
@@ -475,7 +480,7 @@ std::vector<int> SketchTool::Commit(const std::vector<SketchEntity>& theEntities
     // so it comes back out rather than staying broken -- the rule the
     // dimension tool already follows, now that typed input creates
     // dimensions too.
-    if (!sketch->LastError().empty()) {
+    if (!sketch->LastError().empty() && sketch->LastError() != errorBefore) {
         std::vector<int> doomed;
         const std::vector<SketchConstraint>& constraints = sketch->Constraints();
         for (std::size_t i = before; i < constraints.size(); ++i) {

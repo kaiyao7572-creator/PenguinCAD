@@ -1249,6 +1249,11 @@ private:
             Reset();
             return;
         }
+        // Only an error the addition CAUSED says it over-constrained the
+        // sketch. One already there -- a dimension whose expression no longer
+        // evaluates stops the solve altogether -- would otherwise be blamed on
+        // every constraint the user adds, and each would be deleted.
+        const std::string errorBefore = theSketch.LastError();
         const int added = theSketch.AddConstraint(myPending);
         SketchSelection::Instance().Clear();
         Reset();
@@ -1256,7 +1261,7 @@ private:
 
         // A value the geometry can't reach leaves the sketch stuck, so the
         // dimension comes straight back out rather than staying broken.
-        if (!theSketch.LastError().empty()) {
+        if (!theSketch.LastError().empty() && theSketch.LastError() != errorBefore) {
             theSketch.RemoveConstraint(added);
             EndEdit();
         }

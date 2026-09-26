@@ -279,6 +279,11 @@ public:
         SketchDisplay::Instance().Attach(theContext);
         theContext.document->PushUndoSnapshot();
 
+        // Only an error the addition CAUSED says it over-constrained the
+        // sketch. One already there -- a dimension whose expression no longer
+        // evaluates stops the solve altogether -- would otherwise be blamed on
+        // every constraint the user adds, and each would be deleted.
+        const std::string errorBefore = sketch->LastError();
         std::vector<int> added;
         for (const SketchConstraint& constraint : constraints) {
             if (sketch->HasConstraint(constraint)) {
@@ -295,7 +300,7 @@ public:
 
         // An addition the solver can't satisfy is an over-constrained
         // sketch; back it out rather than leaving the geometry stuck.
-        if (!sketch->LastError().empty()) {
+        if (!sketch->LastError().empty() && sketch->LastError() != errorBefore) {
             for (const int id : added) {
                 sketch->RemoveConstraint(id);
             }

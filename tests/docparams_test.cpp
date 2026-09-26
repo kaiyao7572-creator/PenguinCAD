@@ -364,6 +364,73 @@ int main()
               "and still 30 after rebuilding twice");
     }
 
+    std::cout << "-- what the review found --" << std::endl;
+    {
+        Document d;
+        check(AddLength(d, "plate_width", "40 mm"), "plate_width = 40 mm");
+        check(AddLength(d, "hole_dia", "plate_width / 4"), "hole_dia = plate_width / 4");
+        auto s = std::make_shared<SketchFeature>(SketchFeature::PlaneXY(), 0.0);
+        s->SetName("Sketch1");
+        const int c = s->AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(0.0, 0.0), 6.0));
+        SketchConstraint dia;
+        dia.type = SketchConstraintType::Diameter;
+        dia.a = SketchPointRef{c, SketchPointRole::Whole};
+        dia.value = 12.0;
+        const int diaId = s->AddConstraint(dia);
+        d.AddFeature(s);
+        auto e = std::make_shared<ExtrudeFeature>();
+        e->SetName("Extrude1");
+        e->SetSketchName("Sketch1");
+        e->SetDistance(10.0);
+        d.AddFeature(e);
+        check(Drive(d, "Sketch1", "d1", "hole_dia", error), "d1 = hole_dia");
+        checkVolume(d, kPi * 25.0 * 10.0, "a 10 mm hole, 10 deep");
+
+        // 1. A sketch dimension that stops evaluating fails what is built
+        //    on the sketch too -- not just the sketch.
+        check(d.SetUserParameterExpression("plate_width", "40 mmm", error),
+              "plate_width = \"40 mmm\" (a typo the table accepts as a broken row)");
+        const FeaturePtr ext = Find(d, "Extrude1");
+        std::cout << "        extrude says: " << ext->LastError() << std::endl;
+        check(!ext->LastError().empty(), "the extrude fails with the sketch");
+        check(VolumeOf(d.Shape()) < 1e-6, "and does NOT keep building the 10 mm hole");
+
+        // 2. A broken parameter is reported as broken, not as missing.
+        std::cout << "        sketch says: " << Find(d, "Sketch1")->LastError() << std::endl;
+        check(Find(d, "Sketch1")->LastError().find("has an error") != std::string::npos,
+              "hole_dia is reported as having an error, not as not existing");
+        check(Find(d, "Sketch1")->LastError().find("no parameter named") == std::string::npos,
+              "no \"there is no parameter named hole_dia\"");
+        check(d.SetUserParameterExpression("plate_width", "40 mm", error), "fix the typo");
+        checkVolume(d, kPi * 25.0 * 10.0, "and the hole comes back");
+
+        // 3. An edit that changes nothing is not an undo step: Redo survives.
+        check(Drive(d, "Extrude1", "Distance", "20", error), "Distance = 20");
+        d.Undo();
+        check(d.CanRedo(), "undo leaves a redo");
+        Parameter same = ParameterOf(Find(d, "Extrude1"), "Distance");
+        check(d.SetFeatureParameter(Find(d, "Extrude1"), same, error),
+              "re-committing the value it already has is accepted");
+        check(d.CanRedo(), "and does not throw the redo away");
+        d.Redo();
+        checkVolume(d, kPi * 25.0 * 20.0, "redo still restores Distance = 20");
+
+        // 4. A literal of the wrong kind is refused, not converted.
+        check(!Drive(d, "Extrude1", "Distance", "90 deg", error),
+              "90 deg is refused as an extrude distance");
+        std::cout << "        said: " << error << std::endl;
+
+        // 5. A deleted dimension's leftover expression does not pin the
+        //    parameter it read.
+        auto live = std::dynamic_pointer_cast<SketchFeature>(Find(d, "Sketch1"));
+        d.PushUndoSnapshot();
+        live = std::dynamic_pointer_cast<SketchFeature>(Find(d, "Sketch1"));
+        check(live->RemoveConstraint(diaId), "delete the d1 dimension");
+        d.Rebuild();
+        check(d.UsersOfUserParameter("hole_dia").empty(),
+              "hole_dia is used by nothing once the dimension it drove is gone");
+    }
+
     std::cout << std::endl;
     if (failures == 0) {
         std::cout << "ALL DOCUMENT PARAMETER TESTS PASSED" << std::endl;

@@ -701,6 +701,12 @@ bool SweepFeature::ResolvePath(const ComputeContext& theContext,
         theError = "'" + myPathSketchName + "' is not a sketch";
         return false;
     }
+    // As in ResolveProfile: a path sketch that failed this rebuild holds
+    // geometry its own parameters no longer give.
+    if (!feature->LastError().empty()) {
+        theError = "the path sketch failed (" + feature->LastError() + ")";
+        return false;
+    }
 
     std::vector<TopoDS_Wire> wires;
     try {

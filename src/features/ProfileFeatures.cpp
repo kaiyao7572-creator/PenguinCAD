@@ -112,6 +112,16 @@ bool ProfileFeature::ResolveProfile(const ComputeContext&     theContext,
         return false;
     }
 
+    // A sketch that failed in THIS rebuild -- a dimension whose expression
+    // no longer evaluates, a solve that did not converge -- still holds its
+    // last geometry. Building on it would be building on a number the model
+    // no longer gives, the one thing a parametric model must not do
+    // quietly; fail, and point at the sketch.
+    if (!feature->LastError().empty()) {
+        theError = "the sketch it is built on failed (" + feature->LastError() + ")";
+        return false;
+    }
+
     try {
         thePlane = provider->ProfilePlane();
         if (myProfiles.empty()) {

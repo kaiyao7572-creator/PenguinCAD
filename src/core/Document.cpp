@@ -444,8 +444,19 @@ std::vector<std::string> Document::UsersOfUserParameter(const std::string& theNa
         if (!feature) {
             continue;
         }
+        // Only expressions still driving something: a sketch dimension that
+        // was deleted leaves its expression behind (undo may bring the
+        // dimension back), and that must not pin the parameter forever.
+        const std::vector<Parameter> parameters = feature->Parameters();
         bool reads = false;
         for (const auto& entry : feature->Expressions()) {
+            const bool live = std::any_of(parameters.begin(), parameters.end(),
+                                          [&entry](const Parameter& theParameter) {
+                                              return theParameter.name == entry.first;
+                                          });
+            if (!live) {
+                continue;
+            }
             for (const std::string& name : ExpressionVariables(entry.second)) {
                 if (std::find(broken.begin(), broken.end(), name) != broken.end()) {
                     reads = true;
@@ -473,6 +484,9 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
     if (edited.type == Parameter::Type::Double) {
         expression = Trimmed(edited.expression);
         if (!expression.empty()) {
+            if (IsLiteralOfWrongKind(expression, edited.Kind(), theError)) {
+                return false;
+            }
             const ExpressionResult result = myParameters.EvaluateValue(expression, edited.Kind());
             if (!result.ok) {
                 theError = result.error;
@@ -486,6 +500,35 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
         if (!InRange(edited, edited.doubleValue, theError)) {
             return false;
         }
+    }
+
+    // An edit that changes nothing is not an edit. Every commit pushes an
+    // undo step, and an undo step clears Redo -- so pressing Enter in a row
+    // nobody touched used to throw the user's redo history away.
+    for (const Parameter& current : theFeature->EditableParameters()) {
+        if (current.name != edited.name || current.type != edited.type) {
+            continue;
+        }
+        bool same = false;
+        switch (edited.type) {
+            case Parameter::Type::Double:
+                same = SameValue(current.doubleValue, edited.doubleValue)
+                       && current.expression == expression;
+                break;
+            case Parameter::Type::Int:
+                same = current.intValue == edited.intValue;
+                break;
+            case Parameter::Type::Bool:
+                same = current.boolValue == edited.boolValue;
+                break;
+            case Parameter::Type::String:
+                same = current.stringValue == edited.stringValue;
+                break;
+        }
+        if (same) {
+            return true;
+        }
+        break;
     }
 
     Snapshot snapshot = TakeSnapshot();
