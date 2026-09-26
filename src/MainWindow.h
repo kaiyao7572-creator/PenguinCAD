@@ -54,6 +54,11 @@ private:
     void refreshRibbonTabs();
     void redisplayDocument();
 
+    // Draw every construction plane, axis and point the timeline has
+    // evaluated, the way Fusion shows them: translucent orange planes
+    // sized to the model, dashed axes, point markers.
+    void redisplayConstruction();
+
     // Turn OCCT's picking on for exactly the shape types the selection
     // filter allows, on every displayed body.
     void applySelectionFilters();
@@ -75,6 +80,9 @@ private:
     // its own. A single AIS_Shape for the whole document made "the model"
     // one anonymous thing the user could not act on part of.
     std::vector<Handle(AIS_InteractiveObject)> m_displayedBodies;
+
+    // Construction planes, axes and points: drawn, not pickable yet.
+    std::vector<Handle(AIS_InteractiveObject)> m_displayedConstruction;
 
     std::map<lcad::Command*, QAction*> m_commandActions;
     // Flyout buttons drive their primary command directly, so their

@@ -4,12 +4,25 @@
 
 #include "OcctViewport.h"
 #include "StepImport.h"
+#include "core/ConstructionGeometry.h"
 #include "io/ExportDialog.h"
 #include "ui/MarkingMenu.h"
 #include "core/Registration.h"
 #include "core/ShapeFeature.h"
 
+#include <AIS_Point.hxx>
 #include <AIS_Shape.hxx>
+#include <BRepBndLib.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+#include <Bnd_Box.hxx>
+#include <Geom_CartesianPoint.hxx>
+#include <Prs3d_LineAspect.hxx>
+#include <Prs3d_PointAspect.hxx>
+#include <Standard_Failure.hxx>
+#include <TopoDS.hxx>
+#include <TopoDS_Face.hxx>
+#include <gp_Pln.hxx>
 #include <StdSelect_BRepOwner.hxx>
 
 #include <QAction>
@@ -588,10 +601,99 @@ void MainWindow::redisplayDocument()
     }
 
     applySelectionFilters();
+    redisplayConstruction();
 
     Handle(V3d_View) view = m_viewport->View();
     if (!view.IsNull()) {
         view->Redraw();
+    }
+}
+
+void MainWindow::redisplayConstruction()
+{
+    Handle(AIS_InteractiveContext) context = m_viewport->Context();
+    if (context.IsNull()) {
+        return;
+    }
+    for (const Handle(AIS_InteractiveObject)& object : m_displayedConstruction) {
+        context->Remove(object, Standard_False);
+    }
+    m_displayedConstruction.clear();
+
+    // Fusion sizes a construction plane to the model it sits in, so it
+    // reads as a plane through the part rather than a speck beside it or a
+    // sheet swallowing the view.
+    double half = 25.0;
+    if (!m_document.Shape().IsNull()) {
+        Bnd_Box bounds;
+        BRepBndLib::Add(m_document.Shape(), bounds);
+        if (!bounds.IsVoid()) {
+            double x0, y0, z0, x1, y1, z1;
+            bounds.Get(x0, y0, z0, x1, y1, z1);
+            half = std::max(half, 0.6 * std::max({x1 - x0, y1 - y0, z1 - z0}));
+        }
+    }
+
+    const Quantity_Color orange(0.96, 0.66, 0.20, Quantity_TOC_sRGB);
+    const Quantity_Color edge(0.85, 0.50, 0.10, Quantity_TOC_sRGB);
+
+    // Decorations: displayed with selection mode -1, or the two-argument
+    // Display would make them steal clicks from the bodies behind them --
+    // the trap the origin axes fell into (docs/ARCHITECTURE.md).
+    const auto show = [&](const Handle(AIS_InteractiveObject)& theObject, int theMode) {
+        context->Display(theObject, theMode, -1, Standard_False);
+        m_displayedConstruction.push_back(theObject);
+    };
+
+    const std::size_t limit = std::min(m_document.RollbackIndex(), m_document.FeatureCount());
+    for (std::size_t i = 0; i < limit; ++i) {
+        const lcad::FeaturePtr& feature = m_document.Features()[i];
+        lcad::ConstructionGeometry* geometry =
+            feature ? lcad::AsConstructionGeometry(feature.get()) : nullptr;
+        // A failed or suppressed one has nothing current to show; its last
+        // result would be a plane the model no longer has.
+        if (geometry == nullptr || feature->IsSuppressed() || !feature->LastError().empty()) {
+            continue;
+        }
+        try {
+            gp_Ax3 plane;
+            gp_Ax1 axis;
+            gp_Pnt point;
+            if (geometry->AsPlane(plane)) {
+                const TopoDS_Face face =
+                    BRepBuilderAPI_MakeFace(gp_Pln(plane), -half, half, -half, half).Face();
+                Handle(AIS_Shape) sheet = new AIS_Shape(face);
+                // Colour BEFORE display: an AIS_Shape only has a shading
+                // aspect once a colour is set (docs/HANDOFF.md 1.2c).
+                sheet->SetColor(orange);
+                sheet->SetTransparency(0.75);
+                show(sheet, AIS_Shaded);
+
+                Handle(AIS_Shape) rim = new AIS_Shape(face);
+                rim->SetColor(edge);
+                rim->SetWidth(1.5);
+                show(rim, AIS_WireFrame);
+            } else if (geometry->AsAxis(axis)) {
+                const gp_Pnt a = axis.Location().Translated(gp_Vec(axis.Direction()) * -half);
+                const gp_Pnt b = axis.Location().Translated(gp_Vec(axis.Direction()) * half);
+                Handle(AIS_Shape) line = new AIS_Shape(BRepBuilderAPI_MakeEdge(a, b).Edge());
+                line->SetColor(edge);
+                line->SetWidth(2.0);
+                line->Attributes()->WireAspect()->SetTypeOfLine(Aspect_TOL_DASH);
+                show(line, AIS_WireFrame);
+            } else if (geometry->AsPoint(point)) {
+                Handle(AIS_Point) marker = new AIS_Point(new Geom_CartesianPoint(point));
+                // Big enough to find: at OCCT's default scale a point is a
+                // speck a user cannot tell from a grid crossing.
+                marker->SetMarker(Aspect_TOM_BALL);
+                marker->SetColor(edge);
+                marker->Attributes()->PointAspect()->SetScale(3.0);
+                show(marker, 0);
+            }
+        } catch (const Standard_Failure&) {
+            // A degenerate plane or a zero-length axis draws nothing
+            // rather than taking the redisplay down with it.
+        }
     }
 }
 
