@@ -29,7 +29,8 @@ than left standing as an accusation the code has already answered.
    `"solid.pattern.rectangular"`, `"solid.pattern.circular"`, `"solid.mirror"`
    in `src/features/PatternFeatures.*`. See 3.1.
 4. **STEP and OBJ export now exist** — `src/io/StepExport.*` and
-   `src/io/ObjExport.*`, commands `"export.step"` and `"export.obj"`. See 3.4.
+   `src/io/ObjExport.*`, reached through File > Export... (2026-09-26; the
+   `"export.step"`/`"export.obj"` commands are gone). See 3.4.
 5. **The test-suite description was wrong.** `tests/run_tests.sh` runs
    *fourteen* suites, not three. The criticism has been re-scoped to what is
    genuinely untested, which is still plenty. See 3.5.
@@ -161,6 +162,12 @@ happy path* — see below.
 
 ### 3.2 Parametrics are shallower than they look
 
+- **RESOLVED 2026-09-24/26:** the engine is wired in. `Document` owns the
+  table, every numeric feature parameter can be driven by an expression,
+  fields and dialogs take them, and MODIFY > Change Parameters exists — see
+  `docs/HANDOFF.md` §2 and §3.10 for what is still not Fusion's (model
+  parameter names, dimensional analysis). The paragraph below is kept as it
+  was written.
 - **The named-parameter engine exists and nothing uses it.**
   `src/core/Expression.{h,cpp}` and `src/core/ParameterTable.{h,cpp}` are
   written, careful and tested: `hole_dia = plate_width / 4` parses, resolves in
@@ -216,9 +223,8 @@ happy path* — see below.
   opaque lump on the timeline with no feature history, which is what import
   means anywhere, but worth stating.
 - No IGES, no Parasolid, no SAT, no DXF, no 3MF, no STL *import*.
-- The three exports are also scattered: STL hangs off the File menu while
-  STEP and OBJ are commands in a **Utilities** ribbon tab. Two places to look
-  for one idea.
+- ~~The three exports are also scattered.~~ Resolved 2026-09-26: one
+  File > Export... with a type list, as Fusion has.
 
 ### 3.5 Testing and robustness
 
@@ -313,12 +319,12 @@ wiring.
 1. **A native save/open format.** Nothing else on this list matters to a user
    who cannot keep the result. It is also the prerequisite for autosave,
    crash recovery and any notion of a project.
-2. **Wire the parameter engine in.** The hard part is written and tested and
+2. ~~**Wire the parameter engine in.**~~ Done 2026-09-24/26. The hard part is written and tested and
    is sitting there inert. `Document` needs to own a `ParameterTable`, feature
    `Parameter` slots need to hold expressions instead of doubles, and the
    Change Parameters dialog needs to exist. This is the largest capability
    currently available for the least new code.
-3. **Make construction geometry reachable** — draw it in the viewport, let
+3. **Make construction geometry reachable** — (drawn since 2026-09-26; the rest stands) draw it in the viewport, let
    `SketchPlanePicker` offer it, and let revolve/pattern/mirror name it. Eight
    commands already build it correctly and nothing can use it.
 4. **Tests for the constraint solver and the selection traps, and CI to run

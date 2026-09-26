@@ -736,7 +736,27 @@ cmake --build build -j$(nproc)  # must be green before you touch anything
 
 Read `docs/ARCHITECTURE.md` fully, then §1 of this file.
 
-### 7.1 Finished-sketch profiles pickable from the model view
+### 7.1 A native save/open format — the gap that matters most
+
+There is **no way to save a design**. STEP out is geometry only; the
+timeline, the sketches, the parameters — everything this project models —
+is gone when the app closes. `docs/FUSION360_COMPARISON.md` ranks it
+first ("nothing else on this list matters to a user who cannot keep the
+result"), and it is the prerequisite for autosave and crash recovery.
+
+A head start: every feature already reflects its numbers, strings and
+choices through `Parameters()`/`SetParameter()` (Combine and the patterns
+encode their body picks as strings for exactly this reason), expressions
+live on the Feature base, and the user parameters are one
+`ParameterTable`. What does not ride the reflection is sketch entities
+and constraints, profile picks (`ProfileRef`), and imported shapes
+(`ShapeFeature` — OCCT can write BREP text). Plan the format (versioned,
+human-readable, feature by TYPE NAME plus reflected parameters plus a
+per-type extra block), then write a round-trip test for every feature
+type before any UI: build → save → load → rebuild → same volume, same
+body names, same expressions.
+
+### 7.1b Finished-sketch profiles pickable from the model view
 
 Finish a sketch, click a region, press E: the most common Fusion gesture
 there is, and here it only works while the sketch is still open (§3.1).
