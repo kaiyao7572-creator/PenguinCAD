@@ -234,8 +234,8 @@ a sketch diameter → an extrude, 785.40 → 3141.59 mm³ by hand.
 Every numeric field takes arithmetic, and expressions where the document's
 parameters are passed: the properties panel, the Change Parameters
 dialog, and the dialogs of Box, Cylinder, Sphere, Cone, Torus, Extrude,
-Revolve, Press Pull, Fillet, Chamfer, Shell, Point, Rectangular and
-Circular Pattern and Sweep. An expression naming a missing parameter is
+Revolve, Press Pull, Fillet, Chamfer, Shell, Point, Offset Plane,
+Plane at Angle, Rectangular and Circular Pattern and Sweep. An expression naming a missing parameter is
 held red and greys OK out; a lone literal of the wrong kind (`2 in` in
 an angle field) is refused.
 

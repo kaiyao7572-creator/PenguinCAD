@@ -121,7 +121,8 @@ it — no third-party solver.
   as a model parameter, all editable in place, every edit undoable.
 - **Any numeric field takes an expression** over them — the properties panel
   and the dialogs of the primitives, Extrude, Revolve, Sweep, Press Pull,
-  Fillet, Chamfer, Shell, the patterns and Point — and a change to one
+  Fillet, Chamfer, Shell, the patterns, Point and the offset and angled
+  planes — and a change to one
   parameter rebuilds everything that reads it, sketch dimensions included.
   Fields also take plain arithmetic (`3 * 4`, `5 m - 1 m`, `1/2 in + 2 mm`).
 
