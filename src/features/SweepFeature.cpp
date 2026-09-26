@@ -667,7 +667,9 @@ bool SweepFeature::Compute(const ComputeContext& theContext,
             solids.push_back(solid);
         }
 
-        tool = MakeCompoundOf(solids);
+        if (!FuseProfileSolids(solids, tool, theError)) {
+            return false;
+        }
     } catch (const Standard_Failure& failure) {
         theError = OcctMessage(failure, "sweep failed");
         return false;

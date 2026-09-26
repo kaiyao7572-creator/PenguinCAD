@@ -44,6 +44,16 @@ std::vector<TopoDS_Shape> CollectSolids(const TopoDS_Shape& theShape);
 // compound otherwise, a null shape when the list is empty.
 TopoDS_Shape MakeCompoundOf(const std::vector<TopoDS_Shape>& theShapes);
 
+// The solids one feature built from several profiles, as Fusion makes them:
+// profiles that touch become ONE solid, with no seam where their regions
+// met, and profiles that do not stay separate solids -- so separate bodies.
+// A compound of touching prisms would list as two bodies sharing a face,
+// which one Fusion extrude never produces. False with theError when the
+// kernel cannot join them.
+bool FuseProfileSolids(const std::vector<TopoDS_Shape>& theSolids,
+                       TopoDS_Shape&                    theResult,
+                       std::string&                     theError);
+
 // Combine theTool with theBase according to theOperation. Returns false
 // with a readable theError on failure -- including "nothing to cut from"
 // when the timeline has no body yet, which is a user mistake rather than

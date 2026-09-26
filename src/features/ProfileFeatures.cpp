@@ -283,7 +283,9 @@ bool ExtrudeFeature::Compute(const ComputeContext& theContext,
             solids.push_back(prism.Shape());
         }
 
-        tool = MakeCompoundOf(solids);
+        if (!FuseProfileSolids(solids, tool, theError)) {
+            return false;
+        }
     } catch (const Standard_Failure& failure) {
         theError = OcctMessage(failure, "extrude failed");
         return false;
@@ -445,7 +447,9 @@ bool RevolveFeature::Compute(const ComputeContext& theContext,
             solids.push_back(revol.Shape());
         }
 
-        tool = MakeCompoundOf(solids);
+        if (!FuseProfileSolids(solids, tool, theError)) {
+            return false;
+        }
     } catch (const Standard_Failure& failure) {
         // Much the most common cause is an axis running through the
         // middle of the profile, which sweeps the shape through itself.

@@ -4,10 +4,12 @@
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepAlgoAPI_Fuse.hxx>
 #include <BRep_Builder.hxx>
+#include <ShapeUpgrade_UnifySameDomain.hxx>
 #include <Standard_Failure.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Iterator.hxx>
+#include <TopTools_ListOfShape.hxx>
 
 #include <algorithm>
 #include <cctype>
@@ -138,6 +140,46 @@ TopoDS_Shape MakeCompoundOf(const std::vector<TopoDS_Shape>& theShapes)
         }
     }
     return compound;
+}
+
+bool FuseProfileSolids(const std::vector<TopoDS_Shape>& theSolids,
+                       TopoDS_Shape&                    theResult,
+                       std::string&                     theError)
+{
+    if (theSolids.size() < 2) {
+        theResult = MakeCompoundOf(theSolids);
+        return true;
+    }
+    try {
+        TopTools_ListOfShape arguments;
+        TopTools_ListOfShape tools;
+        arguments.Append(theSolids.front());
+        for (std::size_t i = 1; i < theSolids.size(); ++i) {
+            tools.Append(theSolids[i]);
+        }
+        BRepAlgoAPI_Fuse fuse;
+        fuse.SetArguments(arguments);
+        fuse.SetTools(tools);
+        fuse.Build();
+        if (!fuse.IsDone()) {
+            theError = "the profiles could not be joined into one body";
+            return false;
+        }
+        // The fuse leaves the wall between two regions behind as a seam
+        // splitting what is one flat face into two; Fusion shows one face,
+        // and a user picking it for press/pull expects the whole of it.
+        ShapeUpgrade_UnifySameDomain unify(fuse.Shape(), Standard_True, Standard_True,
+                                           Standard_False);
+        unify.Build();
+        theResult = unify.Shape();
+    } catch (const Standard_Failure& failure) {
+        const Standard_CString message = failure.GetMessageString();
+        theError = (message != nullptr && message[0] != '\0')
+                       ? std::string(message)
+                       : std::string("the profiles could not be joined into one body");
+        return false;
+    }
+    return true;
 }
 
 bool ApplyBooleanOperation(BooleanOp           theOperation,

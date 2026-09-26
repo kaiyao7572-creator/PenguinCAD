@@ -160,6 +160,16 @@ int main()
     check(std::fabs(VolumeOf(pdoc.Shape()) - 12000.0) < 0.01,
           "no profile selected extrudes the whole sketch (ring + disc)");
 
+    // Fusion makes ONE body from an extrude of adjoining profiles. A
+    // compound of the ring prism and the disc prism listed as two bodies
+    // sharing a cylindrical face, with a seam through the top and bottom.
+    check(pdoc.Bodies().size() == 1, "ring + disc extrude as ONE body, as in Fusion");
+    if (!pdoc.Bodies().empty()) {
+        const std::size_t faces = pdoc.Bodies().front()->Faces().size();
+        std::cout << "  faces on it: " << faces << " (expect 6)" << std::endl;
+        check(faces == 6, "a plain 40 x 30 x 10 block: no seam where the regions met");
+    }
+
     regionExtrude->SetProfiles({discRef});
     pdoc.Rebuild();
     std::cout << "  disc only -> " << VolumeOf(pdoc.Shape()) << " (expect 785.398)" << std::endl;
@@ -171,6 +181,24 @@ int main()
     std::cout << "  ring only -> " << VolumeOf(pdoc.Shape()) << " (expect 11214.602)" << std::endl;
     check(std::fabs(VolumeOf(pdoc.Shape()) - kRingVolume) < 0.01,
           "selecting only the ring extrudes (1200 - pi * 25) * 10");
+
+    // Profiles that do NOT touch stay separate bodies, as they do in Fusion.
+    {
+        Document apart;
+        auto twoCircles = std::make_shared<SketchFeature>(SketchFeature::PlaneXY(), 0.0);
+        twoCircles->SetName("Sketch1");
+        twoCircles->AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(0.0, 0.0), 5.0));
+        twoCircles->AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(30.0, 0.0), 5.0));
+        apart.AddFeature(twoCircles);
+        auto both = std::make_shared<ExtrudeFeature>();
+        both->SetName("Extrude1");
+        both->SetSketchName("Sketch1");
+        both->SetDistance(10.0);
+        apart.AddFeature(both);
+        check(apart.Bodies().size() == 2, "two separate circles extrude as two bodies");
+        check(std::fabs(VolumeOf(apart.Shape()) - 2.0 * kDiscVolume) < 0.01,
+              "of pi * 25 * 10 each");
+    }
 
     // ---- 8. the profile choice survives undo ----
     //
