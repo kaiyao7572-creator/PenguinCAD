@@ -497,9 +497,6 @@ What is left:
   many degrees. Fusion checks units through the whole expression.
 - A user parameter's **unit is fixed** once added (the dialog cell is
   read-only; `Document::SetUserParameterUnit` exists).
-- **Offset Plane's** dialog field says "Distance" as Fusion's does while
-  the parameter is "Offset", so that dialog takes arithmetic only;
-  drive it from the properties panel.
 - Fusion's Favorites column and filter box are absent.
 
 ### 3.9 Never verified by anyone
