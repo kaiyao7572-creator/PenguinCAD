@@ -18,8 +18,11 @@
 #include <AIS_ViewCube.hxx>
 #include <Geom_CartesianPoint.hxx>
 #include <Graphic3d_ClipPlane.hxx>
+#include <Graphic3d_Texture2D.hxx>
+#include <Graphic3d_TextureParams.hxx>
 #include <Graphic3d_Vec2.hxx>
 #include <Graphic3d_ZLayerId.hxx>
+#include <Image_PixMap.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_PointAspect.hxx>
 #include <SelectMgr_EntityOwner.hxx>
@@ -957,16 +960,22 @@ public:
         const gp_Pln plane = SectionClipPlane(theAxis, theOffset, RemovesPositive());
         if (myPlane.IsNull()) {
             myPlane = new Graphic3d_ClipPlane(plane);
-            // Fill the cut with the body's own colour and a hatch, the way
-            // Fusion marks a section face, instead of leaving the part open
-            // like a hollow shell.
+            // Fill the cut with the body's own colour, instead of leaving
+            // the part open like a hollow shell.
             myPlane->SetCapping(Standard_True);
             myPlane->SetUseObjectMaterial(Standard_True);
-            myPlane->SetCappingHatch(Aspect_HS_DIAGONAL_45);
-            myPlane->SetCappingHatchOn();
         } else {
             myPlane->SetEquation(plane);
         }
+        // Hatch it the way Fusion marks a section face, with a TEXTURE of
+        // dark stripes modulating the body colour. OCCT's own capping
+        // hatch is a stipple that DISCARDS the pixels between its lines:
+        // a solid box cut at Z = 5 showed its inner walls and the grid
+        // through the cap and read as an open tray. Re-set on every apply
+        // so the stripe spacing follows the model's size.
+        const TopoDS_Shape model =
+            myContext.document != nullptr ? myContext.document->Shape() : TopoDS_Shape();
+        myPlane->SetCappingTexture(HatchTexture(SectionHatchSpacing(model)));
         myPlane->SetOn(Standard_True);
         myIsActive = true;
         if (theContext.document != nullptr) {
@@ -1010,6 +1019,40 @@ public:
 
 private:
     SectionController() = default;
+
+    // White with a dark diagonal stripe, repeated so the stripes are
+    // theSpacing apart in model units. Modulated, so it tints whatever
+    // colour the body is rather than painting over it.
+    Handle(Graphic3d_Texture2D) HatchTexture(double theSpacing)
+    {
+        constexpr int kSize = 64;
+        if (myHatch.IsNull()) {
+            Handle(Image_PixMap) image = new Image_PixMap();
+            if (image->InitZero(Image_Format_RGB, kSize, kSize)) {
+                for (int row = 0; row < kSize; ++row) {
+                    for (int col = 0; col < kSize; ++col) {
+                        // One stripe per tile, a quarter of it wide and
+                        // dark enough to read at 1:1 -- a sixth-wide stripe
+                        // at half brightness was barely visible on a
+                        // 20 mm part in the home view.
+                        const bool stripe = (row + col) % kSize < kSize / 4;
+                        const Standard_Byte value = stripe ? 90 : 255;
+                        Standard_Byte* pixel = image->ChangeRawValue(row, col);
+                        pixel[0] = pixel[1] = pixel[2] = value;
+                    }
+                }
+            }
+            myHatch = new Graphic3d_Texture2D(image);
+            myHatch->EnableModulate();
+            myHatch->EnableRepeat();
+            myHatch->GetParams()->SetFilter(Graphic3d_TOTF_BILINEAR);
+        }
+        // Texture coordinates on the cap are model units times the scale,
+        // and a tile holds one stripe.
+        const float scale = static_cast<float>(1.0 / theSpacing);
+        myHatch->GetParams()->SetScale(Graphic3d_Vec2(scale, scale));
+        return myHatch;
+    }
 
     bool RemovesPositive() const
     {
@@ -1062,6 +1105,7 @@ private:
 
     CommandContext              myContext;
     Handle(Graphic3d_ClipPlane) myPlane;
+    Handle(Graphic3d_Texture2D) myHatch;
     bool                        myIsActive = false;
     bool                        myHasSettings = false;
     SectionAxis                 myAxis = SectionAxis::Y;

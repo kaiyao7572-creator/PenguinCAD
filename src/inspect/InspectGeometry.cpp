@@ -301,6 +301,27 @@ bool SectionRemovesPositive(SectionAxis theAxis, const gp_Vec& theTowardEye)
     return along >= 0.0;
 }
 
+double SectionHatchSpacing(const TopoDS_Shape& theShape)
+{
+    constexpr double kFallback = 1.0;
+    if (theShape.IsNull()) {
+        return kFallback;
+    }
+    try {
+        Bnd_Box box;
+        BRepBndLib::AddOptimal(theShape, box, Standard_False, Standard_False);
+        if (box.IsVoid()) {
+            return kFallback;
+        }
+        Standard_Real xmin = 0.0, ymin = 0.0, zmin = 0.0, xmax = 0.0, ymax = 0.0, zmax = 0.0;
+        box.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+        const double largest = std::max({xmax - xmin, ymax - ymin, zmax - zmin});
+        return largest > 1.0e-6 ? largest / 10.0 : kFallback;
+    } catch (const Standard_Failure&) {
+        return kFallback;
+    }
+}
+
 std::string SectionPlaneName(SectionAxis theAxis)
 {
     switch (theAxis) {

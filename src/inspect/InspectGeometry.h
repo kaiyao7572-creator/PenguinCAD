@@ -112,6 +112,12 @@ bool SectionKeeps(const gp_Pln& theClipPlane, const gp_Pnt& thePoint);
 // the direction from the scene to the camera (V3d_View::Proj).
 bool SectionRemovesPositive(SectionAxis theAxis, const gp_Vec& theTowardEye);
 
+// How far apart, in mm, the hatch stripes on a section face are: a
+// tenth of the model's largest dimension, so a 20 mm part and a 2 m
+// one both show a readable hatch rather than a smear or one lone stripe.
+// 1 mm for an empty model.
+double SectionHatchSpacing(const TopoDS_Shape& theShape);
+
 // "YZ", "XZ", "XY" -- the plane's name, the way Fusion names origin planes.
 std::string SectionPlaneName(SectionAxis theAxis);
 

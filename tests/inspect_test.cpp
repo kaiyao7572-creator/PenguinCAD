@@ -276,6 +276,12 @@ static void testSection()
     check(!SectionRemovesPositive(SectionAxis::Y, towardEye), "home view: a Y cut removes -Y");
     check(SectionRemovesPositive(SectionAxis::Z, towardEye), "home view: a Z cut removes +Z");
 
+    // Hatch stripes a tenth of the largest dimension apart.
+    checkNear(SectionHatchSpacing(Cube()), 2.0, 1.0e-9, "20 mm cube: stripes 2 mm apart");
+    const TopoDS_Shape plate = BRepPrimAPI_MakeBox(gp_Pnt(-100, 0, 0), 400.0, 50.0, 2.0).Shape();
+    checkNear(SectionHatchSpacing(plate), 40.0, 1.0e-9, "400 x 50 x 2 plate: 400 / 10 = 40 mm");
+    checkNear(SectionHatchSpacing(TopoDS_Shape()), 1.0, 0.0, "an empty model still gets a spacing");
+
     checkText(SectionPlaneName(SectionAxis::Y), "XZ", "a Y cut is on the XZ plane");
     checkText(SectionAxisName(SectionAxis::X), "X", "and an X cut is measured along X");
 }
