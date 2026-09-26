@@ -2,12 +2,14 @@
 #include "gizmos/TransformFeature.h"
 
 #include "core/Body.h"
+#include "core/Units.h"
 
 #include "OcctViewport.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ListOfInteractive.hxx>
 #include <AIS_Shape.hxx>
+#include <Graphic3d_ZLayerId.hxx>
 #include <Standard_Failure.hxx>
 #include <V3d_View.hxx>
 #include <gp.hxx>
@@ -16,6 +18,7 @@
 #include <gp_XYZ.hxx>
 
 #include <memory>
+#include <vector>
 
 #include <QMainWindow>
 #include <QStatusBar>
@@ -28,11 +31,132 @@ namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kRadToDeg = 180.0 / kPi;
 
+// AIS_Manipulator's size, in LOGICAL pixels, drawn zoom-persistent. Its
+// arrows come out at about 0.8 of this -- a hundred-odd pixels, which is
+// what Fusion's move arrows measure -- and its rings just outside them.
+// Sized off the body instead (AdjustSize), a 20mm box got a gizmo ten
+// pixels across at the default zoom, buried inside the box it was
+// supposed to be moving.
+constexpr double kManipulatorPixels = 125.0;
+
 void ShowStatus(const CommandContext& theContext, const QString& theText)
 {
     if (QMainWindow* window = qobject_cast<QMainWindow*>(theContext.parent)) {
         window->statusBar()->showMessage(theText);
     }
+}
+
+// What one drag of the manipulator asked for, as the numbers a
+// TransformFeature stores. ONE function for the live readout and the
+// commit, so the figure the status bar shows while dragging is the figure
+// that lands on the timeline. False for a mode this tool never enables.
+bool DecomposeDrag(const gp_Trsf& theTrsf, AIS_ManipulatorMode theMode, int theAxis,
+                   double& theTx, double& theTy, double& theTz,
+                   double& theRx, double& theRy, double& theRz)
+{
+    theTx = theTy = theTz = theRx = theRy = theRz = 0.0;
+    if (theAxis < 0 || theAxis > 2) {
+        return false;
+    }
+    try {
+        // The planar squares between two arrows drag in their plane: a
+        // translation all the same, and the manipulator has already moved
+        // the body on screen by the time we get here, so refusing it would
+        // leave the picture saying one thing and the model another.
+        if (theMode == AIS_MM_Translation || theMode == AIS_MM_TranslationPlane) {
+            const gp_XYZ delta = theTrsf.TranslationPart();
+            theTx = delta.X();
+            theTy = delta.Y();
+            theTz = delta.Z();
+            return true;
+        }
+        if (theMode == AIS_MM_Rotation) {
+            gp_XYZ axis;
+            Standard_Real angle = 0.0;
+            if (theTrsf.GetRotation(axis, angle)) {
+                // GetRotation()'s axis can point either way along the
+                // ring's true axis; fold that into the angle's sign so the
+                // stored value always means "about +X/+Y/+Z", which is
+                // what Parameters() promises the properties panel.
+                const double signedAngle = (axis.Coord(theAxis + 1) < 0.0) ? -angle : angle;
+                const double degrees = signedAngle * kRadToDeg;
+                if (theAxis == 0)      theRx = degrees;
+                else if (theAxis == 1) theRy = degrees;
+                else                   theRz = degrees;
+            }
+            return true;
+        }
+    } catch (const Standard_Failure&) {
+        return false;
+    }
+    return false;  // scaling is disabled; nothing else should reach here
+}
+
+// The live readout under a drag, Fusion's distance/angle box as this
+// app's status bar shows it (RotateScaleGizmoTool does the same).
+QString DragReadout(AIS_ManipulatorMode theMode, int theAxis,
+                    double theTx, double theTy, double theTz,
+                    double theRx, double theRy, double theRz)
+{
+    static const char* const kAxisNames[3] = {"X", "Y", "Z"};
+    const auto length = [](double theValue) {
+        return QString::fromStdString(FormatValue(theValue, UnitKind::Length));
+    };
+    if (theMode == AIS_MM_Rotation) {
+        const double degrees = theAxis == 0 ? theRx : theAxis == 1 ? theRy : theRz;
+        return QString("Rotate %1  %2")
+            .arg(kAxisNames[theAxis])
+            .arg(QString::fromStdString(FormatValue(degrees, UnitKind::Angle)));
+    }
+    if (theMode == AIS_MM_Translation) {
+        const double distance = theAxis == 0 ? theTx : theAxis == 1 ? theTy : theTz;
+        return QString("Move %1  %2").arg(kAxisNames[theAxis]).arg(length(distance));
+    }
+    return QString("Move  X %1  Y %2  Z %3").arg(length(theTx), length(theTy), length(theTz));
+}
+
+double DevicePixelRatio(const CommandContext& theContext)
+{
+    if (theContext.parent != nullptr) {
+        const double ratio = theContext.parent->devicePixelRatioF();
+        if (ratio > 0.0) {
+            return ratio;
+        }
+    }
+    return 1.0;
+}
+
+// The displayed AIS object for the body theRef names, resolved by the
+// same volume-and-centre rule the committed TransformFeature resolves its
+// target by -- so the gizmo sits on exactly the body the next drag will
+// move. Null when nothing matches, or two things match equally well.
+Handle(AIS_Shape) FindDisplayedBodyFor(const Handle(AIS_InteractiveContext)& theContext,
+                                       const Document*                       theDocument,
+                                       const CombineBodyRef&                 theRef)
+{
+    Handle(AIS_Shape) result;
+    if (theContext.IsNull() || theDocument == nullptr || theRef.IsNull()) {
+        return result;
+    }
+
+    std::vector<TopoDS_Shape> shapes;
+    for (const BodyPtr& body : theDocument->Bodies()) {
+        shapes.push_back(body ? body->Shape() : TopoDS_Shape());
+    }
+    std::size_t index = 0;
+    if (FindBodyForRef(shapes, theRef, index) != BodyMatch::Found || shapes[index].IsNull()) {
+        return result;
+    }
+
+    AIS_ListOfInteractive displayed;
+    theContext->DisplayedObjects(displayed);
+    for (AIS_ListOfInteractive::Iterator it(displayed); it.More(); it.Next()) {
+        Handle(AIS_Shape) shape = Handle(AIS_Shape)::DownCast(it.Value());
+        if (!shape.IsNull() && shape->Shape().IsSame(shapes[index])) {
+            return shape;
+        }
+    }
+    return result;
 }
 
 // Re-find a body's AIS object after a rebuild swapped it out from under
@@ -171,7 +295,21 @@ void MoveGizmoTool::OnDocumentChanged(Document& theDocument)
     }
 
     const Handle(AIS_InteractiveContext) aisContext = myContext.AisContext();
-    const Handle(AIS_Shape) body = FindDisplayedBody(aisContext, myContext.document);
+    // Follow the body that was being moved, not the first body on screen:
+    // with two bodies, re-attaching to "any body" jumped the gizmo onto the
+    // OTHER one the moment a drag committed, and the next drag moved that.
+    // Our own commit is followed to where the drag put the body; any other
+    // rebuild must leave it where it was, and if it has gone (undone away,
+    // deleted, edited out of recognition) the gizmo detaches rather than
+    // guess. A body with no volume has no signature to follow, so it falls
+    // back to the old rule -- its move acts on the whole model anyway.
+    Handle(AIS_Shape) body;
+    if (!myTargetRef.IsNull()) {
+        body = FindDisplayedBodyFor(aisContext, myContext.document,
+                                    myIsCommitting ? myFollowRef : myTargetRef);
+    } else {
+        body = FindDisplayedBody(aisContext, myContext.document);
+    }
     if (body.IsNull()) {
         // The body vanished from under us (undone away, deleted...): stop
         // rather than sit attached to nothing.
@@ -203,12 +341,27 @@ void MoveGizmoTool::AttachTo(const Handle(AIS_InteractiveObject)& theObject)
         // style, instead of needing a separate "select the arrow" click
         // before a drag can start.
         myManipulator->SetModeActivationOnDetection(Standard_True);
+        // A fixed size on SCREEN, as Fusion's is: in zoom-persistent mode
+        // one unit of Size() is one framebuffer pixel at every zoom, so
+        // the logical size is scaled by the device ratio here -- handed
+        // the logical number, a 2x display would halve the gizmo.
+        myManipulator->SetZoomPersistence(Standard_True);
+        myManipulator->SetSize(
+            static_cast<Standard_ShortReal>(kManipulatorPixels * DevicePixelRatio(myContext)));
+        // Topmost has a depth buffer of its own, so the gizmo draws OVER
+        // the body it sits in the middle of. In the default layer the body
+        // hid all but a few pixels of it, and a zoom-persistent gizmo is
+        // wholly inside any body zoomed up bigger than it. It also makes
+        // the handles win the pick against the body's own faces.
+        myManipulator->SetZLayer(Graphic3d_ZLayerId_Topmost);
     } else {
         myManipulator->Detach();
     }
 
+    // Position only: AdjustSize would size it off the body's bounding box,
+    // in model units, undoing the fixed screen size above.
     AIS_Manipulator::OptionsForAttach options;
-    options.SetAdjustPosition(Standard_True).SetAdjustSize(Standard_True).SetEnableModes(Standard_True);
+    options.SetAdjustPosition(Standard_True).SetAdjustSize(Standard_False).SetEnableModes(Standard_True);
     myManipulator->Attach(theObject, options);
 
     // Resolved here rather than at commit time: by then our own drag has
@@ -227,10 +380,21 @@ void MoveGizmoTool::AttachTo(const Handle(AIS_InteractiveObject)& theObject)
 
 void MoveGizmoTool::Detach()
 {
-    if (!myManipulator.IsNull()) {
-        myManipulator->Detach();  // removes itself from the AIS context too
-        myManipulator.Nullify();
+    if (myManipulator.IsNull()) {
+        return;
     }
+    // Removed through OUR context, not left to Detach(). Detach() finds
+    // the context through the object it is attached to, and after an undo
+    // or a delete MainWindow has already removed that body's AIS_Shape --
+    // which clears its context -- so Detach() quietly removed nothing and
+    // the arrows stayed on screen, orphaned, where the body used to be,
+    // still lighting up under the cursor with no tool behind them.
+    const Handle(AIS_InteractiveContext) aisContext = myContext.AisContext();
+    if (!aisContext.IsNull() && myManipulator->HasInteractiveContext()) {
+        aisContext->Remove(myManipulator, Standard_False);
+    }
+    myManipulator->Detach();
+    myManipulator.Nullify();
 }
 
 bool MoveGizmoTool::OnMousePress(const Graphic3d_Vec2i& thePos,
@@ -286,6 +450,11 @@ bool MoveGizmoTool::OnMouseMove(const Graphic3d_Vec2i& thePos,
     if (!view.IsNull() && !myManipulator.IsNull()) {
         myLastTrsf = myManipulator->Transform(thePos.x(), thePos.y(), view);
         myDidTransform = true;
+
+        double tx = 0.0, ty = 0.0, tz = 0.0, rx = 0.0, ry = 0.0, rz = 0.0;
+        if (DecomposeDrag(myLastTrsf, myDragMode, myDragAxis, tx, ty, tz, rx, ry, rz)) {
+            ShowStatus(myContext, DragReadout(myDragMode, myDragAxis, tx, ty, tz, rx, ry, rz));
+        }
     }
     return true;
 }
@@ -347,34 +516,9 @@ void MoveGizmoTool::CommitTransform(const gp_Trsf& theTrsf)
     double tx = 0.0, ty = 0.0, tz = 0.0;
     double rx = 0.0, ry = 0.0, rz = 0.0;
 
-    try {
-        if (myDragMode == AIS_MM_Translation) {
-            const gp_XYZ delta = theTrsf.TranslationPart();
-            tx = delta.X();
-            ty = delta.Y();
-            tz = delta.Z();
-        } else if (myDragMode == AIS_MM_Rotation) {
-            gp_XYZ axis;
-            Standard_Real angle = 0.0;
-            if (theTrsf.GetRotation(axis, angle)) {
-                // GetRotation()'s axis can point either way along the
-                // ring's true axis; fold that into the angle's sign so the
-                // stored value always means "about +X/+Y/+Z", which is
-                // what Parameters() promises the properties panel.
-                const double signedAngle =
-                    (axis.Coord(myDragAxis + 1) < 0.0) ? -angle : angle;
-                const double degrees = signedAngle * kRadToDeg;
-                if (myDragAxis == 0)      rx = degrees;
-                else if (myDragAxis == 1) ry = degrees;
-                else                      rz = degrees;
-            }
-        } else {
-            return;  // scaling is disabled; nothing else should reach here
-        }
-    } catch (const Standard_Failure&) {
+    if (!DecomposeDrag(theTrsf, myDragMode, myDragAxis, tx, ty, tz, rx, ry, rz)) {
         return;
     }
-
     if (tx == 0.0 && ty == 0.0 && tz == 0.0 && rx == 0.0 && ry == 0.0 && rz == 0.0) {
         return;  // a click that never actually moved the handle
     }
@@ -382,9 +526,18 @@ void MoveGizmoTool::CommitTransform(const gp_Trsf& theTrsf)
     auto feature = std::make_shared<TransformFeature>(tx, ty, tz, rx, ry, rz, myDragPivot);
     feature->SetTarget(myTargetRef);  // a null ref still means "everything"
     feature->SetName(myContext.document->MakeUniqueName("Move"));
-    myContext.document->AddFeature(feature);  // rebuilds, snapshots undo, redisplays
+
+    // Where the body will be once the feature has run: the same signature,
+    // carried by the feature's own transform, so the gizmo can find it
+    // again among bodies the rebuild has just renumbered.
+    myFollowRef = myTargetRef;
+    myFollowRef.centre = myFollowRef.centre.Transformed(feature->Trsf());
+
     // OnDocumentChanged(), fired synchronously by AddFeature()'s rebuild,
     // re-attaches us to the new AIS_Shape MainWindow just displayed.
+    myIsCommitting = true;
+    myContext.document->AddFeature(feature);  // rebuilds, snapshots undo, redisplays
+    myIsCommitting = false;
 }
 
 } // namespace lcad

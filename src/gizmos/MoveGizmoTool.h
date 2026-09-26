@@ -89,6 +89,12 @@ private:
     // body, and every body at once as soon as Combine or a pattern has
     // made a second.
     CombineBodyRef myTargetRef;
+
+    // Set across our own AddFeature, with the signature the target will
+    // have once the committed transform has run: the rebuild that commit
+    // triggers is how the gizmo learns where the body went.
+    bool           myIsCommitting = false;
+    CombineBodyRef myFollowRef;
 };
 
 } // namespace lcad
