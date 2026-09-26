@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QStringList>
 
@@ -110,6 +111,18 @@ QString ExportDesign(QWidget* theParent, const Document& theDocument)
             format = &Formats().front();
         }
         path += format->suffixes.front();
+
+        // The dialog asked about overwriting the name as TYPED, before the
+        // extension went on; "part" did not exist, "part.obj" may well be
+        // the user's other model. Ask again about the file actually written.
+        if (QFileInfo::exists(path)
+            && QMessageBox::question(theParent, "Export",
+                                     QFileInfo(path).fileName()
+                                         + " already exists. Do you want to replace it?",
+                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                   != QMessageBox::Yes) {
+            return QString();
+        }
     }
     theLastFilter = format->filter;
 
