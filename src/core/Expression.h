@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/Units.h"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -92,6 +94,16 @@ bool IsExpressionIdentifier(const std::string& theText);
 // "pi"; a parameter may not take one of these or it would shadow
 // something and never be readable again.
 bool IsReservedExpressionName(const std::string& theName);
+
+// True, with theError saying so, when the whole of theText is one literal
+// of the WRONG kind for a field of theKind: "2 in" typed where an angle
+// goes, "90 deg" where a length goes, any unit where a count goes. The
+// evaluator converts every unit to internal units and does no dimension
+// analysis, so without this "2 in" in an angle field would quietly be 50.8
+// degrees. Only a lone literal is judged -- "10 mm * sin(30 deg)" mixes
+// kinds legitimately, and telling those apart needs real dimensional
+// analysis this engine does not have.
+bool IsLiteralOfWrongKind(const std::string& theText, UnitKind theKind, std::string& theError);
 
 // Every reserved word, for a dialog that wants to list what it can offer.
 const std::vector<std::string>& ReservedExpressionNames();

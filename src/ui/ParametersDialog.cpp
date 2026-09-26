@@ -777,20 +777,13 @@ void ParametersDialog::CommitModelParameter(const std::string& theFeatureName, i
         return;
     }
 
-    // A plain value -- "25", "25 mm", "1/2 in" -- makes the parameter a
-    // plain number again, even if an expression drove it until now.
-    // Anything else is an expression, and the document decides whether it
-    // evaluates.
-    const ParsedValue parsed = ParseValue(text, edited.Kind());
-    if (parsed.ok) {
-        if (edited.expression.empty() && parsed.value == edited.doubleValue) {
-            return;   // "20" over "20 mm": the same number, not worth an undo step
-        }
-        edited.doubleValue = parsed.value;
-        edited.expression.clear();
-    } else {
-        edited.expression = text;
-    }
+    // Everything goes to the document as an expression, and the document
+    // decides: one that names no parameter -- "25", "1/2 in", "5 m - 1 m" --
+    // is stored as the number it gives, one that names a parameter stays
+    // an expression, and an edit that changes nothing is not an undo step.
+    // Units.h's own reader is NOT a shortcut for the first case: it reads
+    // "5 m - 1 m" as a compound measurement and adds the parts.
+    edited.expression = text;
 
     std::string error;
     if (!m_document->SetFeatureParameter(feature, edited, error)) {

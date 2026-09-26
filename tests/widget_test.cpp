@@ -156,6 +156,61 @@ int main(int argc, char** argv)
         check(std::fabs(bounded.Value() - 100.0) < 1e-9, "arithmetic on numbers still clamps");
     }
 
+    std::cout << "-- what the review found: arithmetic after a unit, and kinds --" << std::endl;
+    {
+        UnitLineEdit length(UnitKind::Length);
+        length.SetValue(10.0);
+        typeInto(length, "5 m - 1 m");
+        check(std::fabs(length.Value() - 4000.0) < 1e-9,
+              "\"5 m - 1 m\" is 4000 mm, not 6000 (Units.h reads it as a compound and adds)");
+        typeInto(length, "2 in - 1 mm");
+        check(std::fabs(length.Value() - 49.8) < 1e-9, "\"2 in - 1 mm\" is 49.8");
+        typeInto(length, "1 ft - 6 in");
+        check(std::fabs(length.Value() - 152.4) < 1e-9, "\"1 ft - 6 in\" is 152.4, not 18 in");
+        const double before = length.Value();
+        typeInto(length, "1/0");
+        check(std::fabs(length.Value() - before) < 1e-12, "\"1/0\" is refused, not 1 mm");
+        typeInto(length, "90deg");
+        check(std::fabs(length.Value() - before) < 1e-12, "an angle typed into a length field is refused");
+        typeInto(length, "1 rad");
+        check(std::fabs(length.Value() - before) < 1e-12, "so is a radian");
+
+        UnitLineEdit angle(UnitKind::Angle);
+        angle.SetValue(360.0);
+        typeInto(angle, "2 in");
+        check(std::fabs(angle.Value() - 360.0) < 1e-12, "\"2 in\" in an angle field is refused, not 50.8 deg");
+        typeInto(angle, "10mm");
+        check(std::fabs(angle.Value() - 360.0) < 1e-12, "so is \"10mm\"");
+        typeInto(angle, "90 deg / 2");
+        check(std::fabs(angle.Value() - 45.0) < 1e-12, "an angle expression still works");
+
+        UnitLineEdit count(UnitKind::Unitless);
+        count.SetValue(3.0);
+        typeInto(count, "2 in");
+        check(std::fabs(count.Value() - 3.0) < 1e-12, "a length in a count field is refused");
+    }
+
+    std::cout << "-- Enter on untouched text is not an edit --" << std::endl;
+    {
+        UnitLineEdit precise(UnitKind::Length);
+        precise.SetValue(10.123456);
+        QSignalSpy edits(&precise, &UnitLineEdit::ValueChanged);
+        emit precise.editingFinished();   // Enter, nothing typed
+        check(std::fabs(precise.Value() - 10.123456) < 1e-12,
+              "the value is not rounded to the four decimals it shows");
+        check(edits.count() == 0, "and nothing is committed");
+
+        ParameterTable table;
+        std::string error;
+        table.Add("w", "5 mm", error);
+        precise.SetParameterTable(&table);
+        const QString shown = precise.text();
+        typeInto(precise, "nope * 2");
+        check(!precise.IsAcceptable(), "a bad expression holds the field red");
+        typeInto(precise, shown);
+        check(precise.IsAcceptable(), "typing it back to what it showed clears that");
+    }
+
     std::cout << (failures == 0 ? "\nALL WIDGET TESTS PASSED\n" : "\nFAILURES\n");
     return failures == 0 ? 0 : 1;
 }

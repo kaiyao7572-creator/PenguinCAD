@@ -93,6 +93,10 @@ private:
     // it does not evaluate against the table (or, without one, at all).
     bool EvaluateText(const std::string& theText, double& theValue, std::string& theError) const;
 
+    // EvaluateText, refusing first a lone literal of the wrong kind -- "2 in"
+    // in an angle field -- which the evaluator would happily convert.
+    bool Read(const std::string& theText, double& theValue, std::string& theError) const;
+
     UnitKind   myKind = UnitKind::Length;
     LengthUnit myLengthUnit = LengthUnit::Millimeter;
     AngleUnit  myAngleUnit = AngleUnit::Degree;
@@ -100,6 +104,9 @@ private:
     const ParameterTable* myTable = nullptr;
     std::string myExpression;
     bool myIsAcceptable = true;
+    // The text Reformat last put in the field: finishing an edit that left
+    // it exactly so is not an edit.
+    QString myShownText;
     QString myProblem;
 
     double myValue = 0.0;

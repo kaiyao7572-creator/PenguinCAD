@@ -241,6 +241,15 @@ int main()
     expectError("2 x", "x");                 // only a KNOWN unit joins across a space
     expectError("40 mm2", "mm2");            // and all of it must be the unit
     expectError("2' 3", "3");                // spaced inches must say so
+    // Two holes the review found in the literal reader: Units.h skips a
+    // zero denominator, and strtod stops quietly at a second dot.
+    expectError("1/0 in", "division by zero");
+    expectError("1/0in", "division by zero");
+    expectError("3/00 mm", "division by zero");
+    expectError("2' 3.5.1\"", "not a number");
+    expectError("2ft 3.5.1in", "not a number");
+    expectError("1'6.2.3", "not a number");
+    expectValue("1/10 in", 2.54);            // a zero IN the denominator is fine
     check(!IsUnitlessExpression("40 mm"), "\"40 mm\" is a length, space or no space");
 
     // Which expressions a field's own unit may be applied to -- the

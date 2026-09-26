@@ -4,6 +4,7 @@
 #include "core/ParameterTable.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <QPalette>
 
@@ -82,18 +83,22 @@ bool UnitLineEdit::EvaluateText(const std::string& theText, double& theValue,
     return result.ok;
 }
 
+bool UnitLineEdit::Read(const std::string& theText, double& theValue, std::string& theError) const
+{
+    if (IsLiteralOfWrongKind(theText, myKind, theError)) {
+        return false;
+    }
+    return EvaluateText(theText, theValue, theError);
+}
+
 void UnitLineEdit::onTextEdited(const QString& theText)
 {
     // Only tint while typing -- reformatting mid-keystroke would fight the
     // user for the cursor.
     const std::string typed = theText.trimmed().toStdString();
-    bool readable = typed.empty()
-                    || ParseValue(typed, myKind, myLengthUnit, myAngleUnit).ok;
     std::string error;
-    if (!readable) {
-        double value = 0.0;
-        readable = EvaluateText(typed, value, error);
-    }
+    double value = 0.0;
+    const bool readable = typed.empty() || Read(typed, value, error);
     ApplyValidityStyling(readable);
     // Live, so a dialog's OK comes back the moment the text is fixed rather
     // than only once the field loses focus.
@@ -102,60 +107,72 @@ void UnitLineEdit::onTextEdited(const QString& theText)
 
 void UnitLineEdit::onEditingFinished()
 {
-    const std::string typed = text().trimmed().toStdString();
-    const ParsedValue parsed = ParseValue(typed, myKind, myLengthUnit, myAngleUnit);
+    // Enter or a focus change on text nobody touched is not an edit. Read
+    // back, the shown text would also round the value to the four decimals
+    // it displays -- and every commit is an undo step that clears Redo.
+    if (text() == myShownText) {
+        // Typed back to what it was: whatever was held red is gone.
+        ApplyValidityStyling(true);
+        SetAcceptable(true);
+        return;
+    }
 
+    const std::string typed = text().trimmed().toStdString();
+    const bool names = !ExpressionVariables(typed).empty();
+
+    // The evaluator decides the number, always. Units.h's own reader is
+    // only right for a single literal: it takes "5 m - 1 m" for a compound
+    // measurement like 1'6" and ADDS the parts, 6000 mm where 4000 was
+    // meant.
     double value = 0.0;
-    std::string expression;
-    if (parsed.ok) {
-        // The field adopts a unit the moment one is typed into it.
-        if (parsed.hasExplicitUnit) {
-            myLengthUnit = parsed.lengthUnit;
-            myAngleUnit = parsed.angleUnit;
-        }
-        value = parsed.value;
-        if (myHasRange) {
-            value = std::clamp(value, myMinimum, myMaximum);
-        }
-    } else {
-        std::string error;
-        const bool names = !ExpressionVariables(typed).empty();
-        if (!EvaluateText(typed, value, error)) {
-            if (myTable != nullptr && names) {
-                // An expression that names a parameter is worth more than
-                // a number to retype: hold it, red, with the reason in the
-                // tooltip, and leave the value alone until it is fixed.
-                ApplyValidityStyling(false);
-                SetAcceptable(false, QString::fromStdString(error));
-                return;
-            }
-            // Unreadable input reverts rather than silently becoming zero
-            // -- a wrong dimension is worse than a rejected keystroke.
-            ApplyValidityStyling(true);
-            SetAcceptable(true);
-            Reformat();
+    std::string error;
+    if (!Read(typed, value, error)) {
+        if (myTable != nullptr && names) {
+            // An expression that names a parameter is worth more than a
+            // number to retype: hold it, red, with the reason in the
+            // tooltip, and leave the value alone until it is fixed.
+            ApplyValidityStyling(false);
+            SetAcceptable(false, QString::fromStdString(error));
             return;
         }
-        if (names) {
-            // Clamping would leave the field showing an expression that
-            // does not give the number it holds -- a lie that outlives the
-            // edit. Refuse it instead, as a rebuild would.
-            if (myHasRange && (value < myMinimum || value > myMaximum)) {
-                ApplyValidityStyling(false);
-                SetAcceptable(false, QString("Must be between %1 and %2, not %3")
-                                         .arg(QString::fromStdString(FormatValue(
-                                             myMinimum, myKind, myLengthUnit, myAngleUnit)))
-                                         .arg(QString::fromStdString(FormatValue(
-                                             myMaximum, myKind, myLengthUnit, myAngleUnit)))
-                                         .arg(QString::fromStdString(FormatValue(
-                                             value, myKind, myLengthUnit, myAngleUnit))));
-                return;
-            }
-            expression = typed;
-        } else if (myHasRange) {
-            // Arithmetic on numbers is a typed number by another route.
-            value = std::clamp(value, myMinimum, myMaximum);
+        // Unreadable input reverts rather than silently becoming zero --
+        // a wrong dimension is worse than a rejected keystroke.
+        ApplyValidityStyling(true);
+        SetAcceptable(true);
+        Reformat();
+        return;
+    }
+
+    // The field adopts a unit the moment one is typed into it -- but only
+    // when what was typed is that one literal, which is when Units.h and
+    // the evaluator agree on the number.
+    const ParsedValue parsed = ParseValue(typed, myKind, myLengthUnit, myAngleUnit);
+    if (!names && parsed.ok && parsed.hasExplicitUnit
+        && std::fabs(parsed.value - value) <= 1.0e-9 * std::max(1.0, std::fabs(value))) {
+        myLengthUnit = parsed.lengthUnit;
+        myAngleUnit = parsed.angleUnit;
+    }
+
+    std::string expression;
+    if (names) {
+        // Clamping would leave the field showing an expression that does
+        // not give the number it holds -- a lie that outlives the edit.
+        // Refuse it instead, as a rebuild would.
+        if (myHasRange && (value < myMinimum || value > myMaximum)) {
+            ApplyValidityStyling(false);
+            SetAcceptable(false, QString("Must be between %1 and %2, not %3")
+                                     .arg(QString::fromStdString(
+                                         FormatValue(myMinimum, myKind, myLengthUnit, myAngleUnit)))
+                                     .arg(QString::fromStdString(
+                                         FormatValue(myMaximum, myKind, myLengthUnit, myAngleUnit)))
+                                     .arg(QString::fromStdString(
+                                         FormatValue(value, myKind, myLengthUnit, myAngleUnit))));
+            return;
         }
+        expression = typed;
+    } else if (myHasRange) {
+        // A number, however it was written, clamps like a typed one.
+        value = std::clamp(value, myMinimum, myMaximum);
     }
 
     const bool changed = (value != myValue) || (expression != myExpression);
@@ -181,6 +198,7 @@ void UnitLineEdit::Reformat()
         setText(shown);
         blockSignals(blocked);
     }
+    myShownText = shown;
     RefreshToolTip();
 }
 

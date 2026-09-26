@@ -267,7 +267,23 @@ ExpressionResult ParameterTable::EvaluateValue(const std::string& theText, UnitK
                                                LengthUnit theLengthUnit,
                                                AngleUnit  theAngleUnit) const
 {
-    return EvaluateValueWith(theText, theKind, theLengthUnit, theAngleUnit, Lookup());
+    ExpressionResult result = EvaluateValueWith(theText, theKind, theLengthUnit, theAngleUnit,
+                                                Lookup());
+    if (!result.ok) {
+        // Lookup() answers only for rows that resolved, so a row that exists
+        // but is broken reaches the evaluator as a name it has never heard
+        // of. Say what is really wrong, the way Resolve() does for rows --
+        // "there is no parameter named hole_dia" sends the user looking for
+        // a parameter that is sitting right there in the table.
+        for (const std::string& name : ExpressionVariables(theText)) {
+            const UserParameter* row = Find(name);
+            if (row != nullptr && !row->isValid) {
+                result.error = Quoted(name) + " has an error: " + row->error;
+                break;
+            }
+        }
+    }
+    return result;
 }
 
 ExpressionResult ParameterTable::EvaluateValueWith(const std::string& theText, UnitKind theKind,

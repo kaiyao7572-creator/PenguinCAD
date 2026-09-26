@@ -220,6 +220,13 @@ bool TakeNumber(const std::string& theText, std::size_t& thePos, Token& theToken
         if (scan > thePos + 1
             && ((scan < n && IsUnitChar(Byte(theText[scan])))
                 || SpacedUnitEnd(theText, scan) != std::string::npos)) {
+            // Units.h reads "1/0in" as a contented inch -- it skips a zero
+            // denominator -- so the evaluator has to catch it here, the one
+            // place a fraction is handed over whole instead of divided.
+            if (theText.find_first_not_of('0', thePos + 1) >= scan) {
+                theError = "division by zero in \"" + theText.substr(start, scan - start) + "\"";
+                return false;
+            }
             thePos = scan;
         }
     }
@@ -252,9 +259,17 @@ bool TakeNumber(const std::string& theText, std::size_t& thePos, Token& theToken
         }
         if (inches < n && std::isdigit(Byte(theText[inches])) != 0) {
             std::size_t digitsEnd = inches;
+            std::size_t inchDots = 0;
             while (digitsEnd < n
                    && (std::isdigit(Byte(theText[digitsEnd])) != 0 || theText[digitsEnd] == '.')) {
+                inchDots += theText[digitsEnd] == '.' ? 1 : 0;
                 ++digitsEnd;
+            }
+            // The same typo rule as any other number: strtod would read
+            // "3.5.1" as 3.5 and drop the rest without a word.
+            if (inchDots > 1) {
+                theError = "\"" + theText.substr(inches, digitsEnd - inches) + "\" is not a number";
+                return false;
             }
             std::size_t unitEnd = digitsEnd;
             while (unitEnd < n && IsUnitChar(Byte(theText[unitEnd]))) {
@@ -739,6 +754,29 @@ std::vector<std::string> ExpressionVariables(const std::string& theText)
         }
     }
     return names;
+}
+
+bool IsLiteralOfWrongKind(const std::string& theText, UnitKind theKind, std::string& theError)
+{
+    if (ParseValue(theText, theKind).ok) {
+        return false;
+    }
+    const ParsedValue asLength = ParseValue(theText, UnitKind::Length);
+    const ParsedValue asAngle = ParseValue(theText, UnitKind::Angle);
+    const char* what = nullptr;
+    if (theKind != UnitKind::Length && asLength.ok && asLength.hasExplicitUnit) {
+        what = "a length";
+    } else if (theKind != UnitKind::Angle && asAngle.ok && asAngle.hasExplicitUnit) {
+        what = "an angle";
+    }
+    if (what == nullptr) {
+        return false;
+    }
+    const char* wanted = theKind == UnitKind::Angle    ? "an angle"
+                         : theKind == UnitKind::Length ? "a length"
+                                                       : "a plain number";
+    theError = "\"" + theText + "\" is " + what + ", and this needs " + wanted;
+    return true;
 }
 
 bool IsUnitlessExpression(const std::string& theText)
