@@ -376,18 +376,34 @@ void ArmDialog(int theDelay, const QString& theAction)
 // too. Mnemonic ampersands are ignored.
 bool TriggerMenu(MainWindow* theWindow, const QString& thePath)
 {
-    const QString menuName = thePath.section('>', 0, 0).trimmed();
-    const QString itemName = thePath.section('>', 1).trimmed();
-    for (QAction* top : theWindow->menuBar()->actions()) {
-        if (top->text().remove('&').trimmed() != menuName || top->menu() == nullptr) {
-            continue;
-        }
-        for (QAction* item : top->menu()->actions()) {
-            if (item->text().remove('&').simplified() == itemName) {
-                item->trigger();
-                return true;
+    // "File > Open Recent > part.pcad" walks down through submenus.
+    QStringList steps = thePath.split('>');
+    for (QString& step : steps) {
+        step = step.trimmed();
+    }
+    QList<QAction*> actions = theWindow->menuBar()->actions();
+    for (int depth = 0; depth < steps.size(); ++depth) {
+        QAction* found = nullptr;
+        for (QAction* action : actions) {
+            if (action->text().remove('&').simplified() == steps.at(depth)) {
+                found = action;
+                break;
             }
         }
+        if (found == nullptr) {
+            return false;
+        }
+        if (depth + 1 == steps.size()) {
+            found->trigger();
+            return true;
+        }
+        if (found->menu() == nullptr) {
+            return false;
+        }
+        // What a real click on the menu title sends first: a menu that
+        // fills itself as it opens (Open Recent) does so here.
+        emit found->menu()->aboutToShow();
+        actions = found->menu()->actions();
     }
     return false;
 }
@@ -473,9 +489,13 @@ double VolumeOf(const TopoDS_Shape& theShape)
 void DumpDesign(MainWindow* theWindow)
 {
     Document& document = theWindow->Document();
+    // The title as the window manager was handed it, with Qt's [*] already
+    // turned into an asterisk or nothing -- windowTitle() still has the [*].
+    const QString title = theWindow->windowHandle() != nullptr ? theWindow->windowHandle()->title()
+                                                               : theWindow->windowTitle();
     std::cout << "  design: file \"" << theWindow->DesignFile().toStdString() << "\""
               << (theWindow->isWindowModified() ? ", modified" : ", saved") << ", title \""
-              << theWindow->windowTitle().toStdString() << "\", units "
+              << title.toStdString() << "\", units "
               << SymbolOf(DefaultLengthUnit()) << std::endl;
     for (std::size_t i = 0; i < document.FeatureCount(); ++i) {
         const FeaturePtr& feature = document.Features()[i];

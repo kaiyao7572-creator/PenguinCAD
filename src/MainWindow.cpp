@@ -1183,6 +1183,9 @@ void MainWindow::rememberRecentFile(const QString& thePath)
         files.removeLast();
     }
     settings.setValue(kRecentFilesKey, files);
+    // Queued: this runs inside the triggered() of an Open Recent entry,
+    // and rebuilding the menu now would delete that action mid-signal.
+    QMetaObject::invokeMethod(this, &MainWindow::rebuildRecentMenu, Qt::QueuedConnection);
 }
 
 void MainWindow::rebuildRecentMenu()
@@ -1207,7 +1210,8 @@ void MainWindow::rebuildRecentMenu()
         return;
     }
     m_recentMenu->addSeparator();
-    connect(m_recentMenu->addAction("Clear Recent"), &QAction::triggered, this, []() {
+    connect(m_recentMenu->addAction("Clear Recent"), &QAction::triggered, this, [this]() {
         Settings().remove(kRecentFilesKey);
+        QMetaObject::invokeMethod(this, &MainWindow::rebuildRecentMenu, Qt::QueuedConnection);
     });
 }
