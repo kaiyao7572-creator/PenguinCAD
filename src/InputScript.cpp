@@ -2,8 +2,11 @@
 
 #include "MainWindow.h"
 #include "OcctViewport.h"
+#include "core/Units.h"
 #include "ui/MarkingMenu.h"
 
+#include <BRepGProp.hxx>
+#include <GProp_GProps.hxx>
 #include <V3d_View.hxx>
 
 #include <QCoreApplication>
@@ -454,6 +457,51 @@ Qt::KeyboardModifiers ParseModifiers(const QStringList& theParts, int theFrom)
     return modifiers;
 }
 
+double VolumeOf(const TopoDS_Shape& theShape)
+{
+    if (theShape.IsNull()) {
+        return 0.0;
+    }
+    GProp_GProps props;
+    BRepGProp::VolumeProperties(theShape, props);
+    return props.Mass();
+}
+
+// `design`: what a reopened design has to match, printed so a script can
+// compare before and after a save without eyes -- the file, whether it has
+// unsaved changes, the timeline, the bodies and the user parameters.
+void DumpDesign(MainWindow* theWindow)
+{
+    Document& document = theWindow->Document();
+    std::cout << "  design: file \"" << theWindow->DesignFile().toStdString() << "\""
+              << (theWindow->isWindowModified() ? ", modified" : ", saved") << ", title \""
+              << theWindow->windowTitle().toStdString() << "\", units "
+              << SymbolOf(DefaultLengthUnit()) << std::endl;
+    for (std::size_t i = 0; i < document.FeatureCount(); ++i) {
+        const FeaturePtr& feature = document.Features()[i];
+        std::cout << "  design: feature " << i << " " << feature->TypeName() << " \""
+                  << feature->Name() << "\"" << (feature->IsSuppressed() ? " (suppressed)" : "")
+                  << (i >= document.RollbackIndex() ? " (rolled back)" : "");
+        for (const Parameter& parameter : feature->EditableParameters()) {
+            if (!parameter.expression.empty()) {
+                std::cout << " " << parameter.name << "=" << parameter.expression << " ("
+                          << parameter.Number() << ")";
+            }
+        }
+        std::cout << (feature->LastError().empty() ? "" : "  ERROR " + feature->LastError())
+                  << std::endl;
+    }
+    for (const BodyPtr& body : document.Bodies()) {
+        std::cout << "  design: body \"" << body->Name() << "\" volume " << VolumeOf(body->Shape())
+                  << (body->IsVisible() ? "" : " (hidden)") << std::endl;
+    }
+    for (const UserParameter& row : document.UserParameters().Parameters()) {
+        std::cout << "  design: parameter " << row.name << " = " << row.expression << " -> "
+                  << row.DisplayText() << std::endl;
+    }
+    std::cout << "  design: total volume " << VolumeOf(document.Shape()) << std::endl;
+}
+
 void TakeShot(MainWindow* theWindow, const QString& thePath)
 {
     theWindow->grab().save(thePath);
@@ -609,6 +657,26 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
                 std::cout << "  menu: [NO SUCH ITEM]" << std::endl;
             }
             Settle(120);
+            continue;
+        }
+
+        if ((verb == "save" || verb == "open") && parts.size() >= 2) {
+            // The path is the rest of the line, spaces and all. File > Save
+            // As and File > Open go through the desktop's own chooser, which
+            // a script cannot type into; these take the same road after it.
+            // `open` still asks about unsaved changes -- arm the answer.
+            const QString path = line.section(QRegularExpression("\\s+"), 1);
+            QString error;
+            const bool ok = verb == "save" ? theWindow->SaveDesignFile(path, &error)
+                                           : theWindow->OpenDesignFile(path, &error);
+            std::cout << "  " << verb.toStdString() << " " << path.toStdString()
+                      << (ok ? "" : "  [FAILED] " + error.simplified().toStdString()) << std::endl;
+            Settle(200);
+            continue;
+        }
+
+        if (verb == "design") {
+            DumpDesign(theWindow);
             continue;
         }
 

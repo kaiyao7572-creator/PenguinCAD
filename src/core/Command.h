@@ -70,7 +70,7 @@ public:
     // in this project yet).
     virtual std::string Icon() const { return std::string(); }
 
-    // Keyboard shortcut in Qt sequence syntax, e.g. "E" or "Ctrl+Shift+S".
+    // Keyboard shortcut in Qt sequence syntax, e.g. "E" or "Ctrl+Return".
     virtual std::string Shortcut() const { return std::string(); }
 
     // Grey the button out when this returns false. Re-queried whenever

@@ -4,6 +4,7 @@
 #include "core/Document.h"
 #include "ui/MarkingMenu.h"
 
+#include <QByteArray>
 #include <QMainWindow>
 #include <QString>
 
@@ -15,6 +16,8 @@
 
 class OcctViewport;
 class QAction;
+class QCloseEvent;
+class QMenu;
 namespace lcad { class MarkingMenuController; }
 class QToolButton;
 class QTabWidget;
@@ -38,10 +41,30 @@ public:
     bool RunCommandById(const QString& theId);
     OcctViewport* Viewport() const { return m_viewport; }
 
+    // ---- the design's own file (.pcad) ----
+    //
+    // File > Open and File > Save without their dialogs, for the command
+    // line ("penguincad part.pcad") and --script. Open asks about unsaved
+    // changes first, exactly as the menu does. Both return false when the
+    // file could not be read or written, or the user cancelled; with
+    // theError given the message goes there instead of into a message box,
+    // so a script is never left parked in front of one.
+    bool OpenDesignFile(const QString& thePath, QString* theError = nullptr);
+    bool SaveDesignFile(const QString& thePath, QString* theError = nullptr);
+
+    // Empty until the design has been saved or was opened from a file.
+    const QString& DesignFile() const { return m_designFile; }
+
     // lcad::DocumentObserver
     void OnDocumentChanged(lcad::Document& theDocument) override;
 
+protected:
+    // Closing with unsaved changes asks first, and Cancel keeps the window.
+    void closeEvent(QCloseEvent* theEvent) override;
+
 private slots:
+    void onNewDesign();
+    void onOpenDesign();
     void onOpenStep();
     void onExport();
     void onUndo();
@@ -69,6 +92,33 @@ private:
     void readViewportSelection();
 
     lcad::CommandContext makeContext();
+
+    // Save, or Save As for a design that has never been saved. False when
+    // the user cancelled the dialog or the write failed.
+    bool saveDesign();
+    bool saveDesignAs();
+
+    // Ask Save / Don't Save / Cancel when the design has unsaved changes.
+    // True when it is fine to throw the design away now.
+    bool maybeSaveChanges();
+
+    // End whatever is editing the current design -- a tool mid-pick, an
+    // open sketch, a selection -- before another design replaces it: they
+    // all hold names and picks that would point into the wrong model.
+    void leaveEditingModes();
+
+    // The design as it would be saved right now. Unsaved changes are the
+    // difference between this and what the file holds, which catches every
+    // kind of edit -- in-place sketch changes, renames, a hidden body, the
+    // default unit -- and knows an undo back to the saved state is clean.
+    QByteArray currentDesignText() const;
+    void markSaved();
+    void refreshModified();
+    void refreshTitle();
+
+    // File > Open Recent, newest first, kept in QSettings.
+    void rememberRecentFile(const QString& thePath);
+    void rebuildRecentMenu();
 
     // What Fusion's marking menu holds right now, clockwise from the top:
     // Undo and Redo either side, or Cancel and OK while a tool is running.
@@ -108,4 +158,8 @@ private:
 
     // The right button over the canvas: click, flick or hold.
     std::unique_ptr<lcad::MarkingMenuController> m_markingMenu;
+
+    QString    m_designFile;     // absolute path, empty until saved or opened
+    QByteArray m_savedText;      // currentDesignText() as of the last save/open/new
+    QMenu*     m_recentMenu = nullptr;
 };

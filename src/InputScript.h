@@ -25,6 +25,13 @@ class QString;
 //                           the ring has grabbed the pointer
 //   menu <Menu> > <Item>    trigger a menu-bar item by its text, e.g.
 //                           "menu File > Export..." or "menu Edit > Undo"
+//   save <path>             File > Save As to that path, without the dialog
+//   open <path>             File > Open of that path, without the dialog;
+//                           it asks about unsaved changes, so arm an answer
+//                           ("arm 900 click Don't Save") before it
+//   design                  print the file, saved/modified, title, units,
+//                           the timeline with its expressions, the bodies
+//                           with their volumes, and the user parameters
 //   arm <ms> accept|cancel  answer the next modal dialog after <ms>. Arm
 //                           this BEFORE the `run` that opens the dialog:
 //                           the script loop parks inside the dialog's own

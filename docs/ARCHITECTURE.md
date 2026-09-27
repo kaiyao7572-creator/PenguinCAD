@@ -279,7 +279,7 @@ class Command {
   virtual std::string Group() const = 0;    // ribbon tab name
   virtual std::string Description() const;  // tooltip
   virtual std::string Icon() const;         // ONE emoji, e.g. "📦"
-  virtual std::string Shortcut() const;     // "E", "Ctrl+Shift+S"
+  virtual std::string Shortcut() const;     // "E", "Ctrl+Return"
   virtual bool IsEnabled(const CommandContext&) const;
   virtual bool IsCheckable() const;         // for toggles
   virtual bool IsChecked(const CommandContext&) const;

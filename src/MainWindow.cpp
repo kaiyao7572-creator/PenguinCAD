@@ -5,7 +5,10 @@
 #include "OcctViewport.h"
 #include "StepImport.h"
 #include "core/ConstructionGeometry.h"
+#include "core/ProfileSelection.h"
+#include "core/Units.h"
 #include "io/ExportDialog.h"
+#include "io/NativeFormat.h"
 #include "ui/MarkingMenu.h"
 #include "ui/MarkingMenuController.h"
 #include "core/Registration.h"
@@ -28,7 +31,11 @@
 #include <StdSelect_BRepOwner.hxx>
 
 #include <QAction>
+#include <QCloseEvent>
+#include <QDir>
+#include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -38,7 +45,9 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPalette>
+#include <QPushButton>
 #include <QScrollArea>
+#include <QSettings>
 #include <QStatusBar>
 #include <QTimer>
 #include <QTabWidget>
@@ -160,8 +169,11 @@ MainWindow::MainWindow(QWidget* parent)
     lcad::InstallModelProfilePicker(makeContext());
 
     resize(1400, 900);
-    setWindowTitle("PenguinCAD");
     statusBar()->showMessage("Ready");
+
+    // A new window is an untitled design with nothing to save yet.
+    markSaved();
+    refreshTitle();
 
     // Button states depend on things that appear after this constructor
     // runs -- the OCCT view is created lazily on first paint, and tools
@@ -478,9 +490,37 @@ void MainWindow::buildMenus()
 {
     QMenu* fileMenu = menuBar()->addMenu("&File");
 
-    QAction* openAction = fileMenu->addAction("&Open STEP...");
-    openAction->setShortcut(QKeySequence::Open);
-    connect(openAction, &QAction::triggered, this, &MainWindow::onOpenStep);
+    // The desktop's keys, not Fusion's defaults, where the two differ:
+    // Ctrl+Shift+S is Save As in every other Linux app. Application-wide,
+    // like the ribbon's, so they work while the 3D view has the focus.
+    // main.cpp's --check-shortcuts lists the same four keys.
+    const auto fileAction = [this, fileMenu](const QString& theText, const QKeySequence& theKey,
+                                             auto theSlot) {
+        QAction* action = fileMenu->addAction(theText);
+        action->setShortcut(theKey);
+        action->setShortcutContext(Qt::ApplicationShortcut);
+        connect(action, &QAction::triggered, this, theSlot);
+        return action;
+    };
+    fileAction("&New Design", QKeySequence(Qt::CTRL | Qt::Key_N), [this]() { onNewDesign(); });
+    fileAction("&Open...", QKeySequence(Qt::CTRL | Qt::Key_O), [this]() { onOpenDesign(); });
+
+    m_recentMenu = fileMenu->addMenu("Open &Recent");
+    // Rebuilt as it opens, so a file deleted since, or a list another
+    // window grew, is shown as it is now.
+    connect(m_recentMenu, &QMenu::aboutToShow, this, &MainWindow::rebuildRecentMenu);
+    rebuildRecentMenu();
+
+    fileMenu->addSeparator();
+    fileAction("&Save", QKeySequence(Qt::CTRL | Qt::Key_S), [this]() { saveDesign(); });
+    fileAction("Save &As...", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S),
+               [this]() { saveDesignAs(); });
+
+    fileMenu->addSeparator();
+    // A STEP file is geometry with no recipe, so it joins the open design
+    // as one imported body rather than being opened as a design of its own.
+    QAction* importAction = fileMenu->addAction("&Import STEP...");
+    connect(importAction, &QAction::triggered, this, &MainWindow::onOpenStep);
 
     // One Export for every format, as in Fusion's File menu; the type is
     // picked inside the dialog.
@@ -528,6 +568,9 @@ void MainWindow::runCommand(Command* theCommand)
     CommandContext context = makeContext();
     theCommand->Execute(context);
     refreshCommandStates();
+    // Not every command changes the document through a rebuild: View >
+    // Units changes what the design saves without the model noticing.
+    refreshModified();
 }
 
 void MainWindow::refreshCommandStates()
@@ -570,6 +613,7 @@ void MainWindow::OnDocumentChanged(lcad::Document& /*theDocument*/)
 {
     redisplayDocument();
     refreshCommandStates();
+    refreshModified();
 
     const std::vector<std::string>& errors = m_document.Errors();
     if (!errors.empty()) {
@@ -876,4 +920,294 @@ void MainWindow::onUndo()
 void MainWindow::onRedo()
 {
     m_document.Redo();
+}
+
+// ---- the design's own file ----
+
+namespace {
+
+constexpr int kMaxRecentFiles = 10;
+const char* const kRecentFilesKey = "recentFiles";
+
+QSettings Settings()
+{
+    return QSettings(QStringLiteral("PenguinCAD"), QStringLiteral("PenguinCAD"));
+}
+
+QString DesignNameOf(const QString& theFile)
+{
+    return theFile.isEmpty() ? QStringLiteral("Untitled") : QFileInfo(theFile).completeBaseName();
+}
+
+} // namespace
+
+QByteArray MainWindow::currentDesignText() const
+{
+    lcad::DesignExtras extras;
+    extras.units = lcad::DefaultLengthUnit();
+    QByteArray text;
+    std::string error;
+    if (!lcad::WriteNativeText(m_document, extras, text, error)) {
+        // A design this version cannot write is never "saved": an empty
+        // text differs from anything a real save recorded.
+        return QByteArray();
+    }
+    return text;
+}
+
+void MainWindow::markSaved()
+{
+    m_savedText = currentDesignText();
+    m_document.SetModified(false);
+    setWindowModified(false);
+}
+
+void MainWindow::refreshModified()
+{
+    const bool modified = m_savedText.isEmpty() || currentDesignText() != m_savedText;
+    m_document.SetModified(modified);
+    setWindowModified(modified);
+}
+
+void MainWindow::refreshTitle()
+{
+    // Qt's [*] turns into an asterisk while isWindowModified(), the way a
+    // desktop title shows unsaved work.
+    setWindowTitle(QStringLiteral("%1[*] — PenguinCAD").arg(DesignNameOf(m_designFile)));
+}
+
+void MainWindow::closeEvent(QCloseEvent* theEvent)
+{
+    if (maybeSaveChanges()) {
+        theEvent->accept();
+    } else {
+        theEvent->ignore();
+    }
+}
+
+bool MainWindow::maybeSaveChanges()
+{
+    refreshModified();
+    if (!isWindowModified()) {
+        return true;
+    }
+    QMessageBox box(QMessageBox::Warning, QStringLiteral("PenguinCAD"),
+                    QStringLiteral("Save changes to \"%1\"?").arg(DesignNameOf(m_designFile)),
+                    QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, this);
+    box.setInformativeText(QStringLiteral("Your changes will be lost if you don't save them."));
+    box.button(QMessageBox::Discard)->setText(QStringLiteral("Don't Save"));
+    box.setDefaultButton(QMessageBox::Save);
+    switch (box.exec()) {
+        case QMessageBox::Save:    return saveDesign();
+        case QMessageBox::Discard: return true;
+        default:                   return false;
+    }
+}
+
+void MainWindow::leaveEditingModes()
+{
+    // Escape until no tool holds the mouse: some take two (the first drops
+    // the curve being drawn, the second the tool itself).
+    for (int i = 0; i < 4 && m_viewport->ExclusiveInteraction() != nullptr; ++i) {
+        m_viewport->ExclusiveInteraction()->OnKeyPress(Qt::Key_Escape, Qt::NoModifier);
+    }
+    CommandContext context = makeContext();
+    Command* finish = CommandRegistry::Instance().Find("sketch.finish");
+    if (finish != nullptr && finish->IsEnabled(context)) {
+        finish->Execute(context);
+    }
+    lcad::GeometrySelection::Instance().Clear();
+    lcad::ProfileSelection::Instance().Clear();
+    Handle(AIS_InteractiveContext) ais = m_viewport->Context();
+    if (!ais.IsNull()) {
+        ais->ClearSelected(Standard_False);
+    }
+}
+
+void MainWindow::onNewDesign()
+{
+    if (!maybeSaveChanges()) {
+        return;
+    }
+    leaveEditingModes();
+    std::string error;
+    m_document.ReplaceDesign(lcad::Document::DesignState(), error);   // an empty design: cannot fail
+    lcad::SetDefaultLengthUnit(lcad::LengthUnit::Millimeter);
+    m_designFile.clear();
+    m_document.SetName(DesignNameOf(m_designFile).toStdString());
+    markSaved();
+    refreshTitle();
+    RunCommandById("view.isometric");
+    statusBar()->showMessage("New design");
+}
+
+void MainWindow::onOpenDesign()
+{
+    const QString start = m_designFile.isEmpty() ? QDir::homePath() : QFileInfo(m_designFile).absolutePath();
+    const QString path = QFileDialog::getOpenFileName(
+        this, "Open", start, "PenguinCAD Designs (*.pcad);;All Files (*)");
+    if (!path.isEmpty()) {
+        OpenDesignFile(path);
+    }
+}
+
+bool MainWindow::OpenDesignFile(const QString& thePath, QString* theError)
+{
+    const QString name = QFileInfo(thePath).fileName();
+    const auto fail = [this, theError, &name](const std::string& theWhy) {
+        const QString message = "Could not open " + name + ":\n" + QString::fromStdString(theWhy);
+        if (theError != nullptr) {
+            *theError = message;
+        } else {
+            QMessageBox::warning(this, "Open Failed", message);
+        }
+        return false;
+    };
+
+    // Read and check the whole file BEFORE asking about unsaved changes: a
+    // file that turns out to be broken should say so, not first make the
+    // user decide the fate of the design they have open.
+    QFile file(thePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return fail(file.errorString().toStdString());
+    }
+    const QByteArray text = file.readAll();
+    lcad::Document::DesignState design;
+    lcad::DesignExtras extras;
+    std::string error;
+    if (!lcad::ReadNativeText(text, design, extras, error)) {
+        return fail(error);
+    }
+
+    if (!maybeSaveChanges()) {
+        if (theError != nullptr) {
+            *theError = "cancelled";
+        }
+        return false;
+    }
+    leaveEditingModes();
+    if (!m_document.ReplaceDesign(std::move(design), error)) {
+        return fail(error);
+    }
+
+    // The unit the design was made in, not the one the last design left.
+    lcad::SetDefaultLengthUnit(extras.units);
+    m_designFile = QFileInfo(thePath).absoluteFilePath();
+    m_document.SetName(DesignNameOf(m_designFile).toStdString());
+    markSaved();
+    refreshTitle();
+    rememberRecentFile(m_designFile);
+    RunCommandById("view.fit_all");
+
+    // A feature that failed to rebuild is part of the design as saved, and
+    // the timeline shows it red; the status bar says how many.
+    const std::size_t failed = m_document.Errors().size();
+    statusBar()->showMessage(failed == 0 ? "Opened " + m_designFile
+                                         : QString("Opened %1 -- %2 feature(s) failed to rebuild: %3")
+                                               .arg(m_designFile)
+                                               .arg(static_cast<int>(failed))
+                                               .arg(QString::fromStdString(m_document.Errors().front())));
+    return true;
+}
+
+bool MainWindow::saveDesign()
+{
+    if (m_designFile.isEmpty()) {
+        return saveDesignAs();
+    }
+    return SaveDesignFile(m_designFile);
+}
+
+bool MainWindow::saveDesignAs()
+{
+    const QString start = m_designFile.isEmpty()
+                              ? QDir::home().filePath(DesignNameOf(m_designFile) + ".pcad")
+                              : m_designFile;
+    QString path = QFileDialog::getSaveFileName(this, "Save As", start,
+                                                "PenguinCAD Designs (*.pcad)");
+    if (path.isEmpty()) {
+        return false;
+    }
+    // The desktop's file chooser does not add the extension, and a design
+    // saved as "bracket" would not show up in the next Open dialog. Adding
+    // it after the chooser means the chooser never asked about replacing
+    // THAT name, so ask here.
+    if (QFileInfo(path).suffix().compare(lcad::kNativeFileSuffix, Qt::CaseInsensitive) != 0) {
+        path += '.';
+        path += lcad::kNativeFileSuffix;
+        if (QFileInfo::exists(path)
+            && QMessageBox::question(this, "Save As",
+                                     QFileInfo(path).fileName()
+                                         + " already exists.\nDo you want to replace it?",
+                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                   != QMessageBox::Yes) {
+            return false;
+        }
+    }
+    return SaveDesignFile(path);
+}
+
+bool MainWindow::SaveDesignFile(const QString& thePath, QString* theError)
+{
+    lcad::DesignExtras extras;
+    extras.units = lcad::DefaultLengthUnit();
+    std::string error;
+    if (!lcad::SaveNativeFile(thePath, m_document, extras, error)) {
+        const QString message =
+            "Could not save " + QFileInfo(thePath).fileName() + ":\n" + QString::fromStdString(error);
+        if (theError != nullptr) {
+            *theError = message;
+        } else {
+            QMessageBox::warning(this, "Save Failed", message);
+        }
+        return false;
+    }
+    m_designFile = QFileInfo(thePath).absoluteFilePath();
+    // Named before markSaved: SetName notifies, and the observer compares
+    // against the saved text.
+    m_document.SetName(DesignNameOf(m_designFile).toStdString());
+    markSaved();
+    refreshTitle();
+    rememberRecentFile(m_designFile);
+    statusBar()->showMessage("Saved " + m_designFile);
+    return true;
+}
+
+void MainWindow::rememberRecentFile(const QString& thePath)
+{
+    QSettings settings = Settings();
+    QStringList files = settings.value(kRecentFilesKey).toStringList();
+    files.removeAll(thePath);
+    files.prepend(thePath);
+    while (files.size() > kMaxRecentFiles) {
+        files.removeLast();
+    }
+    settings.setValue(kRecentFilesKey, files);
+}
+
+void MainWindow::rebuildRecentMenu()
+{
+    if (m_recentMenu == nullptr) {
+        return;
+    }
+    m_recentMenu->clear();
+    const QStringList files = Settings().value(kRecentFilesKey).toStringList();
+    for (const QString& path : files) {
+        // "&" doubled, or "R&D.pcad" would underline the D and lose the &.
+        QAction* action = m_recentMenu->addAction(QFileInfo(path).fileName().replace('&', "&&"));
+        action->setToolTip(path);
+        action->setStatusTip(path);
+        // Kept in the list but greyed: a file on a drive that is not
+        // plugged in right now is still a file the user will want back.
+        action->setEnabled(QFileInfo::exists(path));
+        connect(action, &QAction::triggered, this, [this, path]() { OpenDesignFile(path); });
+    }
+    if (files.isEmpty()) {
+        m_recentMenu->addAction("No Recent Designs")->setEnabled(false);
+        return;
+    }
+    m_recentMenu->addSeparator();
+    connect(m_recentMenu->addAction("Clear Recent"), &QAction::triggered, this, []() {
+        Settings().remove(kRecentFilesKey);
+    });
 }

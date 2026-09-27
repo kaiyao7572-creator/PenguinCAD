@@ -108,7 +108,8 @@ public:
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kCreateSection; }
     std::string Icon() const override { return "📐"; }  // triangular ruler
-    std::string Shortcut() const override { return "Ctrl+Shift+S"; }
+    // No key, as in Fusion: Ctrl+Shift+S was one here until File > Save As
+    // needed the key every other desktop app gives it.
 
     std::string Description() const override
     {

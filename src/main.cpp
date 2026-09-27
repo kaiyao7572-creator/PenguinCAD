@@ -5,6 +5,7 @@
 #include "core/Registration.h"
 
 #include <QApplication>
+#include <QDir>
 #include <QKeySequence>
 #include <QGuiApplication>
 #include <QIcon>
@@ -12,12 +13,14 @@
 #include <QPixmap>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QSettings>
 #include <QStringList>
 #include <QStyleFactory>
 #include <QStyleHints>
 #include <QTimer>
 
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <map>
 
@@ -78,6 +81,38 @@ void ApplySystemColorScheme(QApplication& theApp)
     theApp.setPalette(palette);
 }
 
+// The design named on the command line -- "penguincad part.pcad", which is
+// also how a file manager hands one over. Flags, and the values the flags
+// that take one are given, are not it.
+QString DesignArgument(const QStringList& theArguments)
+{
+    static const QStringList takesValue = {"--script", "--screenshot", "--screenshot-delay",
+                                           "--screenshot-tab", "--run-command"};
+    for (int i = 1; i < theArguments.size(); ++i) {
+        const QString& argument = theArguments.at(i);
+        if (takesValue.contains(argument)) {
+            ++i;
+        } else if (!argument.startsWith("--")) {
+            return argument;
+        }
+    }
+    return QString();
+}
+
+// Run theAction once the 3D viewer exists. It is created on the window's
+// first paint, and a design opened before then would be displayed into
+// nothing and never framed.
+void WhenViewerIsUp(MainWindow& theWindow, std::function<void()> theAction, int theTriesLeft = 100)
+{
+    if (!theWindow.Viewport()->View().IsNull() || theTriesLeft <= 0) {
+        theAction();
+        return;
+    }
+    QTimer::singleShot(50, &theWindow, [&theWindow, theAction, theTriesLeft]() {
+        WhenViewerIsUp(theWindow, theAction, theTriesLeft - 1);
+    });
+}
+
 } // namespace
 
 // --check-shortcuts: register every command, with no window, and fail if
@@ -113,9 +148,18 @@ int CheckShortcuts()
         }
     }
 
-    // The window's own menu actions share the same keyboard.
+    // The window's own menu actions share the same keyboard. The File
+    // menu's four are spelled out in MainWindow::buildMenus.
+    const std::pair<const char*, QKeySequence> fileKeys[] = {
+        {"File > New Design", QKeySequence(Qt::CTRL | Qt::Key_N)},
+        {"File > Open", QKeySequence(Qt::CTRL | Qt::Key_O)},
+        {"File > Save", QKeySequence(Qt::CTRL | Qt::Key_S)},
+        {"File > Save As", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S)},
+    };
+    for (const auto& entry : fileKeys) {
+        bound[entry.second.toString(QKeySequence::PortableText)] << entry.first;
+    }
     const std::pair<const char*, QKeySequence::StandardKey> menuKeys[] = {
-        {"File > Open", QKeySequence::Open},
         {"File > Quit", QKeySequence::Quit},
         {"Edit > Undo", QKeySequence::Undo},
         {"Edit > Redo", QKeySequence::Redo},
@@ -173,14 +217,27 @@ int main(int argc, char* argv[])
 
     ApplySystemColorScheme(app);
 
+    const QStringList args = app.arguments();
+
+    // A scripted run saves and opens scratch designs; they belong in a
+    // throwaway settings file, not in the user's File > Open Recent.
+    if (args.contains("--script")) {
+        QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope,
+                           QDir::temp().filePath("penguincad-script-settings"));
+    }
+
     MainWindow window;
     window.show();
+
+    const QString design = DesignArgument(args);
+    if (!design.isEmpty()) {
+        WhenViewerIsUp(window, [&window, design]() { window.OpenDesignFile(design); });
+    }
 
     // Developer aid: --screenshot <path> grabs the window (and the 3D view
     // separately, since the viewport is a native child window Qt's grab
     // can't see into) then exits. Lets UI work be checked without a human
     // driving the app, which matters on headless/CI boxes.
-    const QStringList args = app.arguments();
 
     // --script replays synthetic input so interactive behaviour can be
     // exercised and screenshotted without a human driving the mouse.
