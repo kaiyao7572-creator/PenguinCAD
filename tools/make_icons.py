@@ -789,11 +789,7 @@ def eye(cx, cy, w=12.5, h=7.2):
 
 @icon('sketch.constraints.visible')
 def _():
-    s = eye(14, 12)
-    s += '<rect x="18.5" y="18.5" width="11" height="11" rx="1.6" fill="%s" stroke="%s" stroke-width="1.1"/>' % (LIGHT, INK)
-    s += line([(21, 26.8), (27, 26.8)], stroke=INK, w=1.5, cap='butt')
-    s += line([(24, 26.8), (24, 21)], stroke=INK, w=1.5, cap='butt')
-    return s
+    return eye(14, 12) + constraint_badge(18.5, 18.5)
 
 
 @icon('sketch.visible')
@@ -1157,13 +1153,25 @@ def _():
     return s
 
 
+def constraint_badge(x, y, a=11):
+    """The small square a sketch shows beside a constrained curve, here
+    carrying Perpendicular's mark."""
+    s = '<rect x="%s" y="%s" width="%s" height="%s" rx="1.6" fill="%s" stroke="%s" stroke-width="1.1"/>' % (
+        f(x), f(y), f(a), f(a), LIGHT, INK)
+    s += line([(x + 2.5, y + a - 2.2), (x + a - 2.5, y + a - 2.2)], stroke=INK, w=1.5, cap='butt')
+    return s + line([(x + a / 2, y + a - 2.2), (x + a / 2, y + 2.5)], stroke=INK, w=1.5, cap='butt')
+
+
 @icon('sketch.dimension.clear')
 def _():
-    s = line([(5, 26), (5, 13)], w=1.2) + line([(23, 26), (23, 13)], w=1.2)
-    s += arrow(13, 17, 5.4, 17, w=1.4, size=4, double=False) + arrow(15, 17, 22.6, 17, w=1.4, size=4)
-    s += circle(24, 8.5, 6, stroke=None, fill=RED)
-    s += line([(21.4, 5.9), (26.6, 11.1)], stroke='#FFFFFF', w=1.8)
-    s += line([(26.6, 5.9), (21.4, 11.1)], stroke='#FFFFFF', w=1.8)
+    # Every constraint and every dimension goes: one of each, and the red
+    # mark Fusion puts on a delete.
+    s = line([(4, 13), (4, 4)], w=1.2) + line([(22, 13), (22, 4)], w=1.2)
+    s += arrow(13, 8.5, 4.4, 8.5, w=1.4, size=4) + arrow(13, 8.5, 21.6, 8.5, w=1.4, size=4)
+    s += constraint_badge(3.5, 16.5)
+    s += circle(23, 22.5, 6.2, stroke=None, fill=RED)
+    s += line([(20.3, 19.8), (25.7, 25.2)], stroke='#FFFFFF', w=1.8)
+    s += line([(25.7, 19.8), (20.3, 25.2)], stroke='#FFFFFF', w=1.8)
     return s
 
 
