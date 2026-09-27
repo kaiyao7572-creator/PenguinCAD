@@ -273,6 +273,13 @@ build_markingmenu() {
     "$OUT/markingmenu_test"
 }
 
+# ---- marking gestures: a right click vs a flick vs a hold, no window needed ----
+build_markinggesture() {
+    g++ -std=c++17 -Wall -Wextra -I"$SRC" \
+        "$ROOT/tests/markinggesture_test.cpp" -o "$OUT/markinggesture_test" || return 1
+    "$OUT/markinggesture_test"
+}
+
 # ---- view: standard views, view cube clicks and what Fit frames ----
 build_view() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" \
@@ -329,6 +336,7 @@ run "Transform: a gizmo drag moves the picked body" build_transform
 run "Rotate/Scale: dragging the handles" build_rotscale_gizmo
 run "Document parameters: expressions drive the model" build_docparams
 run "Marking menu: which wedge the pointer is in" build_markingmenu
+run "Marking menu: a right click, a flick or a hold" build_markinggesture
 run "View: standard views, cube clicks and Fit" build_view
 run "Inspect: measure, model properties and section" build_inspect
 run "Shortcuts: no key bound to two commands" check_shortcuts
