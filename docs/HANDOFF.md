@@ -182,6 +182,11 @@ ribbon; groups can be **contextual** (the Sketch tab only exists while a
 sketch is open). `ProfileProvider` is the seam letting Extrude consume a
 Sketch without either knowing the other's types.
 
+**Saving** (`src/io/NativeFormat.*`, `docs/FILE_FORMAT.md`) — a design
+is a `.pcad` file: the timeline, sketches, user parameters and names, as
+JSON, rebuilt on opening through the features' own setters. File > New
+Design / Open / Open Recent / Save / Save As, with unsaved-changes prompts.
+
 **Critical invariant:** features reference each other **by name**, never
 by pointer. Undo restores the timeline from *clones*, so pointers go
 stale. A test asserts this.
@@ -776,25 +781,32 @@ cmake --build build -j$(nproc)  # must be green before you touch anything
 
 Read `docs/ARCHITECTURE.md` fully, then §1 of this file.
 
-### 7.1 A native save/open format — the gap that matters most
+### ~~7.1 A native save/open format~~ — done 2026-09-27
 
-There is **no way to save a design**. STEP out is geometry only; the
-timeline, the sketches, the parameters — everything this project models —
-is gone when the app closes. `docs/FUSION360_COMPARISON.md` ranks it
-first ("nothing else on this list matters to a user who cannot keep the
-result"), and it is the prerequisite for autosave and crash recovery.
+Designs save as `.pcad` (indented JSON; `docs/FILE_FORMAT.md` is the
+reference, `src/io/NativeFormat.*` the code). File > New Design (Ctrl+N),
+Open... (Ctrl+O), Open Recent, Save (Ctrl+S) and Save As... (Ctrl+Shift+S,
+which Create Sketch gave up); `penguincad part.pcad` opens one. The title is
+`name* — PenguinCAD` while there are unsaved changes, and New, Open and
+closing the window ask Save / Don't Save / Cancel. STEP moved to File >
+Import STEP....
 
-A head start: every feature already reflects its numbers, strings and
-choices through `Parameters()`/`SetParameter()` (Combine and the patterns
-encode their body picks as strings for exactly this reason), expressions
-live on the Feature base, and the user parameters are one
-`ParameterTable`. What does not ride the reflection is sketch entities
-and constraints, profile picks (`ProfileRef`), and imported shapes
-(`ShapeFeature` — OCCT can write BREP text). Plan the format (versioned,
-human-readable, feature by TYPE NAME plus reflected parameters plus a
-per-type extra block), then write a round-trip test for every feature
-type before any UI: build → save → load → rebuild → same volume, same
-body names, same expressions.
+`tests/saveopen_test.cpp` round-trips all 23 feature types (same volume,
+body names, expressions, d# names, user parameters; save -> open -> save
+byte-identical) and checks the refusals. Driven on screen with the harness:
+a user parameter, a sketched rectangle, an extrude by the parameter and a
+fillet, saved, New, reopened -- same timeline, parameter and volume
+(3822.04 mm³) -- plus Ctrl+S, the Save As chooser, Open Recent, and each
+prompt's Cancel and Don't Save.
+
+What is left:
+- No autosave or crash recovery yet; this format is what they will write.
+- The camera is not saved (the format has room for it); opening fits the view.
+- An edit that makes a body grow a lot renames it (§3.9's open item), and a
+  saved file records the new name -- so undoing such an edit back to the
+  saved state still shows unsaved changes, because the name really changed.
+- A design saved by this version with a feature a later version renames or
+  removes needs that version to keep reading the old type name.
 
 ### ~~7.1b, 7.2, 7.4~~ — done 2026-09-27
 

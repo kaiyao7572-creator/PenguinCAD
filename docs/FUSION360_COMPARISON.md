@@ -42,8 +42,8 @@ misses what is wired into a feature's parameters. **Read the headers.**
 
 Everything else below still stands, and re-verification turned up two things
 the first pass missed: construction geometry is unreachable (3.1) and the move
-gizmo silently moves every body (3.3). The largest gap is unchanged — there is
-still no way to save a design.
+gizmo silently moves every body (3.3). The largest gap -- no way to save a
+design -- was closed on 2026-09-27 (`.pcad`, `docs/FILE_FORMAT.md`).
 
 ---
 
@@ -116,8 +116,9 @@ happy path* — see below.
 
 ### 3.1 Feature coverage gaps that block basic real-world use
 
-- **There is no way to save a design.** No native document format, no
-  `File > Save`, no `File > Open` of anything the app itself wrote. The File
+- ~~**There is no way to save a design.**~~ Done 2026-09-27: `.pcad` files
+  and File > New Design / Open / Open Recent / Save / Save As. Was: no native
+  document format, no `File > Save`, no `File > Open` of anything the app itself wrote. The File
   menu is `Open STEP…`, `Export STL…`, `Quit` and nothing else. A design
   exists only while the process is running. Everything else in this section is
   a smaller problem than this one, because every other gap costs you a feature
@@ -271,9 +272,9 @@ happy path* — see below.
   stops a future change from silently breaking sketch rendering the way the
   "readable numbers" and "dimension that reads like a dimension" commits imply
   had already happened at least twice.
-- No stated crash-recovery or autosave story — and with no save format, no
-  possible one. Undo is a full timeline clone per edit: fine at hobby-project
-  scale, unclear how it behaves on a document with hundreds of features
+- No stated crash-recovery or autosave story. The save format exists now
+  (2026-09-27), so one is possible; none is written yet. Undo is a full
+  timeline clone per edit: fine at hobby-project scale, unclear how it behaves on a document with hundreds of features
   (Fusion has had its own well-known timeline-performance problems at scale,
   so this isn't hypothetical).
 
@@ -316,8 +317,8 @@ half-answered and come back below — the selection traps that test was also
 meant to cover still have nothing, and named parameters got an engine with no
 wiring.
 
-1. **A native save/open format.** Nothing else on this list matters to a user
-   who cannot keep the result. It is also the prerequisite for autosave,
+1. ~~**A native save/open format.**~~ Done 2026-09-27. Nothing else on this
+   list matters to a user who cannot keep the result. It is also the prerequisite for autosave,
    crash recovery and any notion of a project.
 2. ~~**Wire the parameter engine in.**~~ Done 2026-09-24/26. The hard part is written and tested and
    is sitting there inert. `Document` needs to own a `ParameterTable`, feature

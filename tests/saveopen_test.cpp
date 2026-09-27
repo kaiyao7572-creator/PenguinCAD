@@ -661,8 +661,16 @@ int main()
         check(move->SetScale(1.5), "the move scales 1.5x");
         move->SetName("Move1");
         saved.AddFeature(move);
+        // No body picked: the whole model moves, and the empty pick has to
+        // come back empty rather than as a pick of nothing.
+        auto moveAll = std::make_shared<TransformFeature>(-3.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        moveAll->SetName("Move2");
+        saved.AddFeature(moveAll);
         Document opened;
         RoundTrip(saved, opened, "move");
+        const auto* reopenedAll = dynamic_cast<const TransformFeature*>(Find(opened, "Move2").get());
+        check(reopenedAll != nullptr && reopenedAll->Target().IsNull(),
+              "a move of the whole model reopens as one");
     }
 
     // ---- 11. construction geometry, and a sketch on an angled plane ----

@@ -338,6 +338,34 @@ gp_Lin ray(gp_Pnt(x, y, z), gp_Dir(vx, vy, vz));
 // intersect ray with your sketch plane
 ```
 
+### `io/NativeFormat.h` — saving and opening a design
+
+A design is saved as a `.pcad` file: indented JSON holding the recipe --
+timeline, sketches, user parameters, names -- never the evaluated result.
+**`docs/FILE_FORMAT.md` is the reference.** What it asks of a feature:
+
+- Everything a feature needs to rebuild must be either a reflected
+  `Parameter` or in its `extra` block. A reflected row is saved and read back
+  through `SetParameter` with no extra work, which is one more reason to
+  reflect every input.
+- A **new Feature class needs a row** in `Formats()` in
+  `src/io/NativeFormat.cpp`, under a stable type name. A class without one
+  refuses the save by name rather than be dropped from the file; the row is
+  matched on the exact class, so a subclass never passes as its base.
+  `tests/saveopen_test.cpp` fails if a known type was not round-tripped --
+  add yours to it (build, save, open, rebuild, compare, save again: the
+  same bytes).
+- Opening builds each feature the way its command does and calls
+  `Document::ReplaceDesign`, which validates the whole design first, then
+  swaps it in, rebuilds once and clears undo. A refused file leaves the
+  open design untouched.
+
+The window (`MainWindow`) owns the file: New / Open / Open Recent / Save /
+Save As, the `name[*] — PenguinCAD` title, and the Save / Don't Save /
+Cancel question. It decides "unsaved changes" by comparing the design as it
+would be written now against what was last saved, so an edit made in place
+(a sketch tool, a rename in the browser) needs no dirty flag of its own.
+
 ## Where things are shown
 
 The **browser** lists what the design CONTAINS — Origin, Bodies,
@@ -429,6 +457,7 @@ it done.
 penguincad --screenshot out.png [--screenshot-delay 2500] [--screenshot-tab Solid]
 penguincad --run-command sketch.create --screenshot out.png
 penguincad --script path/to/script.txt
+penguincad part.pcad [--script ...]    # open a design first
 ```
 
 `--screenshot` writes two files: `out.png` (the Qt UI — ribbon, panels,
@@ -464,12 +493,26 @@ Beyond that list, verified this session:
 ```
 hotkey F6                      # a real shortcut, through Qt's shortcut map
 menu File > Export...          # a menu-bar item by its text
+menu File > Open Recent > part.pcad   # ... and down through submenus
+save /tmp/part.pcad            # File > Save As to a path, no file chooser
+arm 900 click Don't Save       # (open asks about unsaved changes first)
+open /tmp/part.pcad            # File > Open of a path, no file chooser
+design                         # print file, saved/modified, title, units,
+                               # timeline + expressions, bodies + volumes,
+                               # user parameters
 arm 900 type Distance = plate_t * 2   # type into a modal dialog's field
 arm 900 click OK               # press a dialog button by its text
 arm 900 cell plate_t / Expression = 10 mm   # edit a tree cell
 arm 900 dump                   # print fields, tree rows, labels, buttons
 arm 900 shot dialog.png        # photograph the open dialog
 ```
+
+The desktop's file chooser (the xdg portal) is another process a script
+cannot type into, which is what `save` and `open` are for. To drive the Save
+As dialog itself, run with `QT_QPA_PLATFORMTHEME=generic`: Qt then shows its
+own chooser, which `arm 1200 type File name: = part` and `arm 1700 click
+Save` reach. A scripted run keeps File > Open Recent in a temporary settings
+file, not the user's.
 
 `key` goes straight to the GL window and **bypasses the shortcut map**;
 use `hotkey` to prove a binding. Qt also ignores every shortcut while no
@@ -507,6 +550,7 @@ window grab is about `-crop 1400x56+0+1770`.
 ./tests/run_tests.sh
 ```
 
-Covers unit parsing, the unit-aware input widget, and a
-sketch -> extrude -> edit -> undo pipeline against real OCCT volumes. Add
-to these when you add model-level behaviour.
+Covers unit parsing, the unit-aware input widget, a
+sketch -> extrude -> edit -> undo pipeline against real OCCT volumes, and a
+save -> open -> save round trip of every feature type. Add to these when you
+add model-level behaviour.
