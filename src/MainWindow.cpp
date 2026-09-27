@@ -772,7 +772,10 @@ void MainWindow::onOpenStep()
     // Imports join the timeline like any other feature.
     auto feature = std::make_shared<lcad::ShapeFeature>(shape, "Import");
     m_document.AddFeature(feature);
-    m_viewport->FitAll();
+    // Fit All as the View command does it -- framing the part. The
+    // viewport's own FitAll frames the 360 mm origin axes too, which left
+    // an imported part a speck in the middle of the view.
+    RunCommandById("view.fit_all");
     statusBar()->showMessage("Loaded " + path);
 }
 
