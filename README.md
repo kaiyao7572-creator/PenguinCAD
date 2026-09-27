@@ -158,10 +158,14 @@ it — no third-party solver.
 
 Left-click to select, Ctrl+click to add. Left-drag rubber-band selects —
 left-to-right encloses only, drawn solid blue; right-to-left crosses, drawn
-dashed green. Right-drag orbits, middle-drag pans, scroll zooms at the cursor.
-A right **click** opens Fusion's marking menu: Repeat, Press Pull, Redo, Hole,
-Sketch, Move/Copy, Undo, Delete around the cursor (Cancel and OK while a tool
-is running; Hole and Delete are shown but not available yet).
+dashed green. Navigation is Fusion's: middle-drag pans, Shift+middle-drag
+orbits, the wheel zooms at the cursor. The right button is the marking menu:
+a right **click** opens the ring (Repeat, Press Pull, Redo, Hole, Sketch,
+Move/Copy, Undo, Delete; Cancel and OK while a tool is running; Hole and
+Delete are shown but not available yet), a right **flick** toward a wedge runs
+it without the ring, and a right **hold** opens the ring and the release
+picks. After a sketch is finished its regions stay pickable: hover to light
+one, click it, press E.
 
 ### Files
 

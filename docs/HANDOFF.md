@@ -429,12 +429,13 @@ Move/Copy, Undo, Delete, clockwise from the top as Autodesk's reference
 lists them; Cancel and OK replace Undo and Redo while a tool runs. Hole
 and Delete are greyed in their places (the commands do not exist yet).
 
+**Gestures done 2026-09-27**, after the user chose Fusion's navigation:
+middle-drag pans, Shift+middle-drag orbits, a right flick runs a wedge
+without the ring, a right hold opens it and the release picks. Verified
+on screen (a flick up re-ran Box, a flick left undid it; a hold then a
+release on Undo took 16000 to 8000 mm³).
+
 Left to do:
-- **Gestures.** In Fusion a right-button press-drag-release in a
-  direction runs that wedge without the menu appearing. Here a right
-  DRAG orbits, because this app has always orbited on right-drag and
-  Fusion's own orbit is Shift+middle. **Changing the orbit binding is
-  the user's call — ask before touching it.**
 - The second-level Sketch ring (hover Sketch for Line, Rectangle...).
 - The overflow menu below the ring (Fusion: Pan, Zoom, Orbit, Isolate,
   context commands for what is under the cursor).
@@ -485,6 +486,15 @@ What is left:
   inert, and a folder that does nothing is worse than a missing one.
 
 ### 3.10 Parameters — what is not Fusion yet
+
+**Done 2026-09-27:** every numeric parameter of every feature has a
+document-wide model name (d1, d2 ...; a sketch's labels are renumbered
+when two sketches would share one), user and model parameters resolve
+together before the timeline (loops caught, "d11 -> d11"), expressions
+and user parameters can read model parameters, Change Parameters shows
+and renames them, and units are checked through every expression (a
+length cannot drive a count or an angle; "10 mm + 5 deg" is an error).
+The first two bullets below are therefore fixed and kept for the record.
 
 - **Model parameters have no names except sketch dimensions.** Fusion
   names every feature dimension (`d1`, `d2`, ...) and lets expressions
@@ -776,29 +786,23 @@ per-type extra block), then write a round-trip test for every feature
 type before any UI: build → save → load → rebuild → same volume, same
 body names, same expressions.
 
-### 7.1b Finished-sketch profiles pickable from the model view
+### ~~7.1b, 7.2, 7.4~~ — done 2026-09-27
 
-Finish a sketch, click a region, press E: the most common Fusion gesture
-there is, and here it only works while the sketch is still open (§3.1).
-Plan it first — it crosses SketchDisplay, SketchSelection, MainWindow's
-viewport selection and the Extrude command.
-
-### 7.2 Model parameter names and dimensional analysis (§3.10)
-
-Give every feature dimension a `d#` name that survives undo and rename,
-let expressions read them, and check units through an expression so a
-length cannot drive an angle or a count. Both are core work in
-`Document` / `ParameterTable` / `Expression`, headless-testable.
+Finished-sketch profiles are pickable from the model view; every feature
+dimension has a d# name expressions can read and Change Parameters can
+rename; units are checked through every expression; Fusion's navigation
+and marking-menu gestures are in (see §3.6 and §3.10, and
+docs/ARCHITECTURE.md). Each verified on screen with numbers.
 
 ### 7.3 Construction geometry pickable
 
 It is drawn now; make a construction plane something `sketch.create` can
 be clicked onto, the way the origin planes are.
 
-### 7.4 Marking menu, second pass (§3.6)
+### 7.4 Marking menu, what is left (§3.6)
 
-The Sketch sub-ring, the overflow menu, and Delete. Ask the user about
-the orbit binding before implementing gestures.
+The Sketch sub-ring, the overflow menu below the ring, and Hole and
+Delete themselves.
 
 ### 7.5 The loose ends §3.9 still lists
 

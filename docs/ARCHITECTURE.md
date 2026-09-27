@@ -381,9 +381,20 @@ how the origin axis lines ended up stealing clicks from bodies.
 
 `OcctViewport` already handles: left-click select, left-drag rubber-band
 box select (left-to-right = enclose-only, right-to-left = crossing,
-colored blue/green respectively), Ctrl+click multi-select, right-drag
-orbit, middle-drag pan, cursor-anchored scroll zoom, an XY ground grid,
-and red/green/blue origin axis lines.
+colored blue/green respectively), Ctrl+click multi-select, Fusion's
+navigation (middle-drag pan, Shift+middle-drag orbit, cursor-anchored
+scroll zoom), an XY ground grid, and red/green/blue origin axis lines.
+The RIGHT button belongs to the marking menu alone: a click opens the
+ring, a flick past 25 px runs the wedge it points at without the ring, a
+350 ms hold opens the ring under the button and the release picks
+(`ui/MarkingMenuGesture.h` classifies, tested headless). Tools that let
+navigation pass through must pass middle and Shift+middle, and let a
+right drag reach the viewport.
+
+Finished sketches' profiles are pickable from the model view
+(`sketch/ModelProfilePicker`, a permanent background interaction): hover
+lights a region, a click fills `core/ProfileSelection`, which Extrude and
+Revolve read. A body in front of the sketch plane still wins the click.
 
 ## House style
 
