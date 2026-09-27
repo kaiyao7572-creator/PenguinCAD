@@ -3,9 +3,12 @@
 #include "OcctViewport.h"
 #include "core/Command.h"
 #include "core/Registration.h"
+#include "ui/CommandIcon.h"
 
 #include <QApplication>
 #include <QDir>
+#include <QFile>
+#include <QImage>
 #include <QKeySequence>
 #include <QGuiApplication>
 #include <QIcon>
@@ -14,6 +17,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSettings>
+#include <QSet>
 #include <QStringList>
 #include <QStyleFactory>
 #include <QStyleHints>
@@ -186,6 +190,120 @@ int CheckShortcuts()
     return 1;
 }
 
+namespace {
+
+// Nothing drawn at all: the plugin read the file but found no shapes in it.
+bool IsBlank(const QImage& theImage)
+{
+    for (int y = 0; y < theImage.height(); ++y) {
+        for (int x = 0; x < theImage.width(); ++x) {
+            if (qAlpha(theImage.pixel(x, y)) > 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Ink in the outermost pixel ring. The house style keeps two units of
+// margin, so this only happens when a shape runs off its 32 x 32 box --
+// and the renderer then cuts it straight off.
+bool TouchesEdge(const QImage& theImage)
+{
+    const int last = theImage.width() - 1;
+    for (int i = 0; i <= last; ++i) {
+        for (const QPoint& p : {QPoint(i, 0), QPoint(i, last), QPoint(0, i), QPoint(last, i)}) {
+            if (qAlpha(theImage.pixel(p)) > 96) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+// --check-icons: every registered command must name a bundled SVG after its
+// own id, and that SVG must draw at each size the ribbon and the menus ask
+// for, on both palettes. Without this a command whose icon went missing --
+// renamed, or left out of resources/icons.qrc -- quietly falls back to its
+// bare label and nobody notices until they look at the ribbon.
+int CheckIcons()
+{
+    lcad::CommandRegistry& registry = lcad::CommandRegistry::Instance();
+    lcad::RegisterAllCommands(registry);
+
+    int commands = 0;
+    int failures = 0;
+    QSet<QString> used;
+    const auto fail = [&failures](const std::string& theId, const std::string& theWhy) {
+        std::cout << "  FAIL  " << theId << ": " << theWhy << std::endl;
+        ++failures;
+    };
+    for (const std::string& group : registry.Groups()) {
+        for (lcad::Command* command : registry.InGroup(group)) {
+            ++commands;
+            const std::string& id = command->Id();
+            const std::string icon = command->Icon();
+            const std::string expected = ":/icons/" + id + ".svg";
+            if (!lcad::IsIconResource(icon)) {
+                fail(id, "no bundled icon, only the text \"" + icon + "\"");
+                continue;
+            }
+            if (icon != expected) {
+                fail(id, "icon is " + icon + ", but icons are named after their command: "
+                             + expected);
+                continue;
+            }
+            const QString resource = QString::fromStdString(icon);
+            used.insert(resource);
+            QFile file(resource);
+            if (!file.open(QIODevice::ReadOnly)) {
+                fail(id, icon + " is missing -- is it listed in resources/icons.qrc?");
+                continue;
+            }
+            const bool followsPalette = file.readAll().contains("currentColor");
+
+            for (const int size : {16, 24, 32}) {
+                const QImage light = lcad::RenderCommandIcon(resource, size, false);
+                const QImage dark = lcad::RenderCommandIcon(resource, size, true);
+                if (light.isNull() || dark.isNull()) {
+                    fail(id, "does not render at " + std::to_string(size)
+                                 + " px -- is Qt's SVG image plugin (libqsvg) installed?");
+                    break;
+                }
+                if (IsBlank(light)) {
+                    fail(id, "renders blank at " + std::to_string(size) + " px");
+                    break;
+                }
+                if (size == 32 && TouchesEdge(light)) {
+                    fail(id, "runs off the edge of its 32 x 32 box");
+                }
+                // currentColor lines take the root's colour, which is what a
+                // dark palette swaps. Without it they stay black on dark grey.
+                if (size == 32 && followsPalette && light == dark) {
+                    fail(id, "strokes in currentColor but its root has no color=\"#2B3A48\", "
+                             "so its lines stay dark on a dark palette");
+                }
+            }
+        }
+    }
+
+    // Harmless, but usually a command that was renamed without its picture.
+    for (const QString& name : QDir(":/icons").entryList(QDir::Files)) {
+        if (!used.contains(":/icons/" + name)) {
+            std::cout << "  NOTE  " << name.toStdString() << " belongs to no command" << std::endl;
+        }
+    }
+
+    std::cout << "  " << commands << " commands, " << used.size() << " icons" << std::endl;
+    if (failures == 0) {
+        std::cout << "  PASS  every command has an icon that draws" << std::endl;
+        return 0;
+    }
+    return 1;
+}
+
 int main(int argc, char* argv[])
 {
     // OCCT's window integration on Linux (Xw_Window) needs an X11 window
@@ -213,6 +331,9 @@ int main(int argc, char* argv[])
 
     if (app.arguments().contains("--check-shortcuts")) {
         return CheckShortcuts();
+    }
+    if (app.arguments().contains("--check-icons")) {
+        return CheckIcons();
     }
 
     ApplySystemColorScheme(app);

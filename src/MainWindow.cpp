@@ -9,6 +9,7 @@
 #include "core/Units.h"
 #include "io/ExportDialog.h"
 #include "io/NativeFormat.h"
+#include "ui/CommandIcon.h"
 #include "ui/MarkingMenu.h"
 #include "ui/MarkingMenuController.h"
 #include "core/Registration.h"
@@ -123,6 +124,18 @@ std::vector<CommandFamily> GroupIntoFamilies(const std::vector<Command*>& theCom
         }
     }
     return families;
+}
+
+// The text fallback for a command without a bundled icon: whatever it
+// gave as its icon on a line above the label, the way the ribbon looked
+// before it had pictures. A resource that failed to load shows the label
+// alone rather than its own path.
+QString IconTextAbove(const std::string& theIcon, const QString& theLabel)
+{
+    if (theIcon.empty() || lcad::IsIconResource(theIcon)) {
+        return theLabel;
+    }
+    return QString::fromStdString(theIcon) + "\n" + theLabel;
 }
 
 } // namespace
@@ -279,6 +292,9 @@ void MainWindow::buildRibbon()
                 button->setAutoRaise(true);
                 button->setFixedWidth(96);
                 button->setMinimumHeight(74);
+                // Fusion's ribbon draws its tools at 32 px; the menus mirror
+                // the same actions at the style's small size.
+                button->setIconSize(QSize(32, 32));
                 QFont buttonFont = button->font();
                 buttonFont.setPointSizeF(buttonFont.pointSizeF() * 0.76);
                 button->setFont(buttonFont);
@@ -304,9 +320,14 @@ void MainWindow::buildRibbon()
                     // re-syncs the button's text from itself whenever its
                     // enabled state changes, which would overwrite the
                     // family label with the variant's own name.
-                    const QString icon = QString::fromStdString(primary->Icon());
                     const QString label = QString::fromStdString(family.label);
-                    button->setText(icon.isEmpty() ? label : (icon + "\n" + label));
+                    const QIcon icon = lcad::CommandIcon(primary->Icon(), palette());
+                    if (!icon.isNull()) {
+                        button->setIcon(icon);
+                        button->setText(label);
+                    } else {
+                        button->setText(IconTextAbove(primary->Icon(), label));
+                    }
                     button->setToolTip(QString::fromStdString(primary->Description()));
                     connect(button, &QToolButton::clicked, this,
                             [this, primary]() { runCommand(primary); });
@@ -464,9 +485,11 @@ void MainWindow::refreshRibbonTabs()
 QAction* MainWindow::makeCommandAction(lcad::Command* theCommand)
 {
     const QString title = WrapButtonLabel(QString::fromStdString(theCommand->Title()), 9);
-    const QString icon = QString::fromStdString(theCommand->Icon());
+    const QIcon icon = lcad::CommandIcon(theCommand->Icon(), palette());
 
-    QAction* action = new QAction(icon.isEmpty() ? title : (icon + "\n" + title), this);
+    QAction* action = new QAction(icon.isNull() ? IconTextAbove(theCommand->Icon(), title) : title,
+                                  this);
+    action->setIcon(icon);
     action->setToolTip(QString::fromStdString(theCommand->Description()));
     action->setStatusTip(QString::fromStdString(theCommand->Description()));
     action->setCheckable(theCommand->IsCheckable());

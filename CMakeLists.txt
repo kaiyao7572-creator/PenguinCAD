@@ -16,7 +16,11 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets OpenGLWidgets)
 file(GLOB_RECURSE PENGUINCAD_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 file(GLOB_RECURSE PENGUINCAD_HEADERS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
 
-add_executable(penguincad ${PENGUINCAD_SOURCES} ${PENGUINCAD_HEADERS})
+# The toolbar icons, compiled in by AUTORCC. The .qrc names every file, so
+# a new SVG goes in there as well as in resources/icons/ (tools/make_icons.py
+# writes both).
+add_executable(penguincad ${PENGUINCAD_SOURCES} ${PENGUINCAD_HEADERS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/icons.qrc)
 
 target_include_directories(penguincad PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

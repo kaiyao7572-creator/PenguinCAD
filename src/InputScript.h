@@ -63,6 +63,11 @@ class QString;
 //                           press, several moves, release. "middle" pans,
 //                           "middle shift" orbits, and "right" is a marking-
 //                           menu gesture toward (x2, y2)
+//   ribbon shot <path>      photograph the whole ribbon tab in front, the
+//                           buttons scrolled out of sight included
+//   ribbon menu <Label>     drop down the flyout of the button with that
+//                           label; `popup shot` then photographs it, and
+//   ribbon close            closes it again
 //   trail dump|shot <path>  what the gesture trail points at, or a picture
 //                           of it, while a right drag is held
 //   key <Name>              Escape, Return, Delete, or a single character,

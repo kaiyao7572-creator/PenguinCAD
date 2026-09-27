@@ -32,6 +32,9 @@
 #include <QMenuBar>
 #include <QPointer>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QTabWidget>
+#include <QToolButton>
 #include <QMouseEvent>
 #include <QImage>
 #include <QPixmap>
@@ -522,6 +525,32 @@ void DumpDesign(MainWindow* theWindow)
     std::cout << "  design: total volume " << VolumeOf(document.Shape()) << std::endl;
 }
 
+// The page of the ribbon tab in front: the row of sections inside the tab's
+// scroll area. Most of a tab sits scrolled out of sight behind the docks,
+// so a window grab shows a third of it at best.
+QWidget* CurrentRibbonPage(MainWindow* theWindow)
+{
+    QTabWidget* ribbon = theWindow->Ribbon();
+    auto* scroll = ribbon != nullptr ? qobject_cast<QScrollArea*>(ribbon->currentWidget()) : nullptr;
+    return scroll != nullptr ? scroll->widget() : nullptr;
+}
+
+// The flyout button on the tab in front whose label (its last line, below
+// any text icon) says theLabel.
+QToolButton* RibbonFlyout(MainWindow* theWindow, const QString& theLabel)
+{
+    QWidget* page = CurrentRibbonPage(theWindow);
+    if (page == nullptr) {
+        return nullptr;
+    }
+    for (QToolButton* button : page->findChildren<QToolButton*>()) {
+        if (button->menu() != nullptr && button->text().section('\n', -1).trimmed() == theLabel) {
+            return button;
+        }
+    }
+    return nullptr;
+}
+
 void TakeShot(MainWindow* theWindow, const QString& thePath)
 {
     theWindow->grab().save(thePath);
@@ -641,6 +670,36 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
                           << std::endl;
             }
             Settle(120);
+            continue;
+        }
+
+        if (verb == "ribbon" && parts.size() >= 2) {
+            const QString what = parts.at(1).toLower();
+            const QString rest = line.section(QRegularExpression("\\s+"), 2).trimmed();
+            QWidget* page = CurrentRibbonPage(theWindow);
+            if (page == nullptr) {
+                std::cout << "  ribbon: no tab is showing" << std::endl;
+            } else if (what == "shot" && !rest.isEmpty()) {
+                page->grab().save(rest);
+                std::cout << "  ribbon shot " << page->width() << "x" << page->height() << " -> "
+                          << rest.toStdString() << std::endl;
+            } else if (what == "menu") {
+                // popup() rather than the button's own showMenu(), which
+                // runs the menu modally and would park the script inside it.
+                // Opened, it is an ordinary popup: `popup shot` sees it.
+                QToolButton* button = RibbonFlyout(theWindow, rest);
+                if (button == nullptr) {
+                    std::cout << "  ribbon: no flyout \"" << rest.toStdString() << "\"" << std::endl;
+                } else {
+                    button->menu()->popup(button->mapToGlobal(QPoint(0, button->height())));
+                    std::cout << "  ribbon menu " << rest.toStdString() << std::endl;
+                }
+            } else if (what == "close") {
+                if (QWidget* popup = QApplication::activePopupWidget()) {
+                    popup->close();
+                }
+            }
+            Settle(200);
             continue;
         }
 

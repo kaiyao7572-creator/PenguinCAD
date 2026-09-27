@@ -40,6 +40,9 @@ public:
     // interactive flows can be exercised without a human clicking.
     bool RunCommandById(const QString& theId);
     OcctViewport* Viewport() const { return m_viewport; }
+    // The ribbon itself, so the script harness can photograph a whole tab
+    // and drop down a flyout the way a click on its arrow would.
+    QTabWidget* Ribbon() const { return m_ribbon; }
 
     // ---- the design's own file (.pcad) ----
     //

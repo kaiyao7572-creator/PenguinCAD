@@ -341,17 +341,36 @@ build_saveopen() {
 # own --check-shortcuts, which registers everything with no window. It
 # says so loudly rather than pass quietly when the app is missing or older
 # than the source it would be checking.
-check_shortcuts() {
+#
+# The icons are compiled into the app too, so an SVG edited since the last
+# build makes it just as stale as a source file does.
+app_is_current() {
     local app="$ROOT/build/penguincad"
     if [ ! -x "$app" ]; then
         echo "  SKIPPED: build/penguincad does not exist -- run cmake --build build first"
-        return 0
+        return 1
     fi
-    if [ -n "$(find "$SRC" \( -name '*.cpp' -o -name '*.h' \) -newer "$app" | head -1)" ]; then
-        echo "  SKIPPED: build/penguincad is older than src/ -- rebuild, or this checks old code"
-        return 0
+    if [ -n "$(find "$SRC" "$ROOT/resources" \( -name '*.cpp' -o -name '*.h' -o -name '*.svg' \
+               -o -name '*.qrc' \) -newer "$app" | head -1)" ]; then
+        echo "  SKIPPED: build/penguincad is older than src/ or resources/ -- rebuild, or this checks old code"
+        return 1
     fi
-    QT_QPA_PLATFORM=offscreen "$app" --check-shortcuts
+    return 0
+}
+
+check_shortcuts() {
+    app_is_current || return 0
+    QT_QPA_PLATFORM=offscreen "$ROOT/build/penguincad" --check-shortcuts
+}
+
+# ---- icons: every command's SVG is bundled and draws ----
+#
+# Also the app's own check, for the same reason: it asks the registry which
+# commands exist and loads each icon through the resource system and the
+# SVG plugin exactly as the ribbon does.
+check_icons() {
+    app_is_current || return 0
+    QT_QPA_PLATFORM=offscreen "$ROOT/build/penguincad" --check-icons
 }
 
 run "Units: parsing and formatting" build_units
@@ -379,6 +398,7 @@ run "View: standard views, cube clicks and Fit" build_view
 run "Inspect: measure, model properties and section" build_inspect
 run "Save/open: every feature type through a .pcad file and back" build_saveopen
 run "Shortcuts: no key bound to two commands" check_shortcuts
+run "Icons: every command has a bundled icon that draws" check_icons
 
 if [ "$failed" -eq 0 ]; then
     echo "All test suites passed."
