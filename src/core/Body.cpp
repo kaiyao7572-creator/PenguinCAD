@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 
 namespace lcad {
@@ -335,6 +336,27 @@ void BodyTable::Clear()
 {
     myBodies.clear();
     myNextIndex = 1;
+}
+
+void BodyTable::AdoptNames(const std::vector<BodyState>& theStates, int theNextIndex)
+{
+    if (theStates.size() != myBodies.size()) {
+        myNextIndex = std::max(myNextIndex, theNextIndex);
+        return;
+    }
+    int next = std::max(theNextIndex, 1);
+    for (std::size_t i = 0; i < myBodies.size(); ++i) {
+        const std::string& name = theStates[i].name;
+        myBodies[i]->SetName(name);
+        myBodies[i]->SetVisible(theStates[i].visible);
+        // A hand-edited file whose counter lags its own names must not have
+        // the next new body called the same as one already there.
+        if (name.size() > 4 && name.compare(0, 4, "Body") == 0
+            && name.find_first_not_of("0123456789", 4) == std::string::npos) {
+            next = std::max(next, std::atoi(name.c_str() + 4) + 1);
+        }
+    }
+    myNextIndex = next;
 }
 
 } // namespace lcad

@@ -141,6 +141,13 @@ public:
     static double Residual(const std::vector<SketchEntity>&     theEntities,
                            const std::vector<SketchConstraint>& theConstraints);
 
+    // Whether the entities already satisfy the constraints as closely as a
+    // solve would leave them: the same bar Solve converges to. A sketch
+    // that passes needs no solve, and gets none -- solving it anyway would
+    // still write every entity back, re-normalising arcs by the last digit.
+    static bool IsSatisfied(const std::vector<SketchEntity>&     theEntities,
+                            const std::vector<SketchConstraint>& theConstraints);
+
     // Value a freshly created dimension should take: measures the current
     // geometry so adding a dimension never moves anything by itself.
     static bool MeasureDimension(const std::vector<SketchEntity>& theEntities,

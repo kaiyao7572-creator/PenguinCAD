@@ -310,6 +310,30 @@ build_inspect() {
     "$OUT/inspect_test"
 }
 
+# ---- save/open: every feature type through a .pcad file and back ----
+#
+# Links every feature the format has a row for, since the test builds one
+# of each; Qt6Core carries the JSON.
+build_saveopen() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/saveopen_test.cpp" "$SRC/io/NativeFormat.cpp" \
+        "$SRC/core/Document.cpp" "$SRC/core/Body.cpp" "$SRC/core/Entity.cpp" \
+        "$SRC/core/Expression.cpp" "$SRC/core/ParameterTable.cpp" "$SRC/core/Units.cpp" \
+        "$SRC/core/GeometryRef.cpp" "$SRC/core/ProfileProvider.cpp" "$SRC/core/Origin.cpp" \
+        "$SRC/core/ConstructionGeometry.cpp" "$SRC/core/ShapeFeature.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" \
+        "$SRC/features/ProfileFeatures.cpp" "$SRC/features/PrimitiveFeatures.cpp" \
+        "$SRC/features/ModifyFeatures.cpp" "$SRC/features/FeatureUtils.cpp" \
+        "$SRC/features/CombineFeature.cpp" "$SRC/features/PatternFeatures.cpp" \
+        "$SRC/features/PressPullFeature.cpp" "$SRC/features/SweepFeature.cpp" \
+        "$SRC/features/LoftFeature.cpp" "$SRC/features/ConstructionFeatures.cpp" \
+        "$SRC/gizmos/TransformFeature.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/saveopen_test" || return 1
+    "$OUT/saveopen_test"
+}
+
 # ---- shortcuts: asks the real command registry, so it needs the app ----
 #
 # Qt fires neither action on a key bound twice. A scan of the source missed
@@ -353,6 +377,7 @@ run "Marking menu: which wedge the pointer is in" build_markingmenu
 run "Marking menu: a right click, a flick or a hold" build_markinggesture
 run "View: standard views, cube clicks and Fit" build_view
 run "Inspect: measure, model properties and section" build_inspect
+run "Save/open: every feature type through a .pcad file and back" build_saveopen
 run "Shortcuts: no key bound to two commands" check_shortcuts
 
 if [ "$failed" -eq 0 ]; then

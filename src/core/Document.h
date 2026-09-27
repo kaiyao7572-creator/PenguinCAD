@@ -188,6 +188,38 @@ public:
 
     void Clear();
 
+    // ---- a whole design at once: File > New and File > Open ----
+
+    // Everything that makes up a design, as a file hands it over. The
+    // features are built and configured but not yet evaluated.
+    struct DesignState
+    {
+        std::vector<FeaturePtr>    features;      // timeline order
+        std::vector<UserParameter> parameters;    // Change Parameters order
+        std::size_t                rollbackIndex = npos;
+        std::vector<BodyState>     bodies;        // Bodies() order
+        int                        nextBodyIndex = 1;
+    };
+
+    // Replace the whole design with theState and rebuild it ONCE, however
+    // long the timeline is -- adding a hundred features one AddFeature at a
+    // time would rebuild the model a hundred times.
+    //
+    // Everything a file could get wrong is checked before anything is
+    // touched: a user parameter that is malformed or forms a loop, a model
+    // parameter name two things claim. On refusal theError says why and
+    // this document is exactly as it was.
+    //
+    // Undo history goes: undoing into the design that was open before is
+    // not an edit of this one. The bodies take theState's names, in order,
+    // when the rebuild produced as many as it lists; a design that rebuilds
+    // differently from when it was saved keeps fresh names instead.
+    bool ReplaceDesign(DesignState theState, std::string& theError);
+
+    // Where body numbering carries on from. Saved with a design, so a name
+    // freed by a deletion is still never handed out again after a reopen.
+    int NextBodyIndex() const { return myBodies.NextIndex(); }
+
     // Generate a unique feature name like "Extrude1", "Extrude2".
     std::string MakeUniqueName(const std::string& theBaseName) const;
 
@@ -210,6 +242,10 @@ private:
         std::vector<FeaturePtr> timeline;
         ParameterTable          parameters;
     };
+
+    // Rebuild without telling the observers, for a caller with more to do
+    // before they look -- ReplaceDesign names the bodies first.
+    void Evaluate();
 
     std::vector<FeaturePtr> CloneTimeline() const;
     Snapshot TakeSnapshot() const;

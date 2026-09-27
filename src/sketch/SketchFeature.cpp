@@ -514,6 +514,68 @@ bool SketchFeature::HasConstraint(const SketchConstraint& theConstraint) const
     return false;
 }
 
+bool SketchFeature::Restore(const gp_Ax3&                 thePlanePosition,
+                            std::vector<SketchEntity>     theEntities,
+                            std::vector<SketchConstraint> theConstraints,
+                            int                           theNextEntityId,
+                            int                           theNextConstraintId,
+                            int                           theNextDimension,
+                            std::string&                  theError)
+{
+    if (!thePlanePosition.Direct()) {
+        // Every 2D-to-3D mapping here assumes Y = normal x X; a mirrored
+        // frame would draw every curve reflected.
+        theError = "the sketch plane is a left-handed frame";
+        return false;
+    }
+
+    const auto checkIds = [&theError](const std::vector<int>& theIds, int theNext,
+                                      const char* theWhat) {
+        std::vector<int> sorted = theIds;
+        std::sort(sorted.begin(), sorted.end());
+        for (std::size_t i = 0; i < sorted.size(); ++i) {
+            if (sorted[i] <= 0 || (i > 0 && sorted[i] == sorted[i - 1])) {
+                theError = std::string(theWhat) + " id " + std::to_string(sorted[i])
+                           + (sorted[i] <= 0 ? " is not positive" : " is used twice");
+                return false;
+            }
+        }
+        if (!sorted.empty() && theNext <= sorted.back()) {
+            theError = std::string("the next ") + theWhat + " id (" + std::to_string(theNext)
+                       + ") is not past the ones in use";
+            return false;
+        }
+        return true;
+    };
+
+    std::vector<int> entityIds;
+    for (const SketchEntity& entity : theEntities) {
+        entityIds.push_back(entity.id);
+    }
+    std::vector<int> constraintIds;
+    for (const SketchConstraint& constraint : theConstraints) {
+        constraintIds.push_back(constraint.id);
+    }
+    if (!checkIds(entityIds, theNextEntityId, "curve")
+        || !checkIds(constraintIds, theNextConstraintId, "constraint")) {
+        return false;
+    }
+    if (theNextDimension < 1) {
+        theError = "the next dimension number is not positive";
+        return false;
+    }
+
+    myPlanePosition = thePlanePosition;
+    myEntities = std::move(theEntities);
+    myConstraints = std::move(theConstraints);
+    myNextEntityId = theNextEntityId;
+    myNextConstraintId = theNextConstraintId;
+    myNextDimension = theNextDimension;
+    mySolverError.clear();
+    myNeedsSolve = !myConstraints.empty() && !SketchSolver::IsSatisfied(myEntities, myConstraints);
+    return true;
+}
+
 bool SketchFeature::Solve(std::string& theError)
 {
     const SketchSolver::Result result = SketchSolver::Solve(myEntities, myConstraints);

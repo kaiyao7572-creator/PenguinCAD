@@ -105,6 +105,14 @@ using BodyPtr = std::shared_ptr<Body>;
 // compound is a single body.
 std::vector<TopoDS_Shape> SplitIntoBodies(const TopoDS_Shape& theShape);
 
+// A body's name and light-bulb, which a saved design carries so it
+// reopens with the names the user knows it by.
+struct BodyState
+{
+    std::string name;
+    bool        visible = true;
+};
+
 // The bodies of a document, with names that survive a rebuild.
 //
 // The whole timeline is re-evaluated on every edit, so the shapes are new
@@ -126,6 +134,16 @@ public:
     Body* Find(const std::string& theName) const;
 
     void Clear();
+
+    int NextIndex() const { return myNextIndex; }
+
+    // Name the bodies of a design read back from a file, in order, and go
+    // on numbering from theNextIndex. Only when there are exactly as many
+    // bodies as theStates lists: a design that rebuilt differently from
+    // when it was saved has no body that is safely "the second one", so it
+    // keeps the fresh names Update gave it -- and still never counts below
+    // theNextIndex, so a name the file had retired stays retired.
+    void AdoptNames(const std::vector<BodyState>& theStates, int theNextIndex);
 
 private:
     std::vector<BodyPtr> myBodies;

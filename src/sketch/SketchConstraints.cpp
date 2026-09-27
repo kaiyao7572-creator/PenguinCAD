@@ -819,6 +819,12 @@ double SketchSolver::Residual(const std::vector<SketchEntity>&     theEntities,
     return MaxAbsolute(residuals);
 }
 
+bool SketchSolver::IsSatisfied(const std::vector<SketchEntity>&     theEntities,
+                               const std::vector<SketchConstraint>& theConstraints)
+{
+    return Residual(theEntities, theConstraints) <= kConvergence;
+}
+
 SketchSolver::Result SketchSolver::Solve(std::vector<SketchEntity>&           theEntities,
                                          const std::vector<SketchConstraint>& theConstraints)
 {

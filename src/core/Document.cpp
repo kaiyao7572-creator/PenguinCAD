@@ -223,6 +223,12 @@ void Document::SetRollbackIndex(std::size_t theIndex)
 
 void Document::Rebuild()
 {
+    Evaluate();
+    NotifyChanged();
+}
+
+void Document::Evaluate()
+{
     myErrors.clear();
 
     // Every parameter, user and model alike, is resolved BEFORE the
@@ -296,7 +302,6 @@ void Document::Rebuild()
     // Before the observers run, not after: the browser and the viewport
     // both read Bodies() the moment they are told the document changed.
     myBodies.Update(myShape);
-    NotifyChanged();
 }
 
 void Document::SetActiveFeature(const FeaturePtr& theFeature)
@@ -857,6 +862,66 @@ void Document::Clear()
     myBodies.Clear();
     myIsModified = false;
     Rebuild();
+}
+
+bool Document::ReplaceDesign(DesignState theState, std::string& theError)
+{
+    // The user parameters go through the table's own Add, the path the
+    // Change Parameters dialog takes, so a name the dialog would refuse or
+    // a loop it would refuse is refused here too.
+    ParameterTable parameters;
+    for (const UserParameter& row : theState.parameters) {
+        std::string error;
+        if (!parameters.Add(row, error)) {
+            theError = "user parameter \"" + row.name + "\": " + error;
+            return false;
+        }
+    }
+
+    // Every parameter name, user and model, is one namespace an expression
+    // reads from. Two rows answering to one name would make "d3 * 2" mean
+    // whichever the evaluator met first, so a design claiming that is not
+    // one this app could have written.
+    std::vector<std::pair<std::string, std::string>> names;   // name, who
+    for (const UserParameter& row : parameters.Parameters()) {
+        names.emplace_back(row.name, "the user parameter " + row.name);
+    }
+    for (const FeaturePtr& feature : theState.features) {
+        if (!feature) {
+            theError = "an empty timeline entry";
+            return false;
+        }
+        for (const auto& entry : feature->ModelNames()) {
+            names.emplace_back(entry.second, feature->Name() + "'s " + entry.first);
+        }
+    }
+    for (std::size_t i = 0; i < names.size(); ++i) {
+        for (std::size_t j = i + 1; j < names.size(); ++j) {
+            if (SameNameNoCase(names[i].first, names[j].first)) {
+                theError = "\"" + names[j].first + "\" is both " + names[i].second + " and "
+                           + names[j].second;
+                return false;
+            }
+        }
+    }
+
+    // Accepted: nothing below can fail. The active feature is dropped
+    // through SetActiveFeature so the properties panel lets go of it.
+    SetActiveFeature(nullptr);
+    myFeatures = std::move(theState.features);
+    myParameters = std::move(parameters);
+    myRollbackIndex = theState.rollbackIndex;
+    myErrors.clear();
+    myShape = TopoDS_Shape();
+    myBodies.Clear();
+    myUndoStack.clear();
+    myRedoStack.clear();
+    myIsModified = false;
+
+    Evaluate();
+    myBodies.AdoptNames(theState.bodies, theState.nextBodyIndex);
+    NotifyChanged();
+    return true;
 }
 
 std::string Document::MakeUniqueName(const std::string& theBaseName) const

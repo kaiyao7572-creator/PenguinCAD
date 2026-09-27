@@ -178,6 +178,41 @@ public:
     bool IsVisible() const { return myIsVisible; }
     void SetVisible(bool theValue) { myIsVisible = theValue; }
 
+    // ---- saving and reopening ----
+
+    // Where numbering carries on from. A saved file keeps these rather than
+    // recomputing them from the ids in use: numbering never rewinds, so a
+    // deleted curve's id -- which a profile reference may still name -- is
+    // never handed to a new one after a reopen either.
+    int NextEntityId() const { return myNextEntityId; }
+    int NextConstraintId() const { return myNextConstraintId; }
+    int NextDimension() const { return myNextDimension; }
+
+    // Put a saved sketch back exactly: its plane as stored, bit for bit
+    // (SetPlanePosition re-derives the axes, and a plane that moved by the
+    // last digit on every reopen would change the file each time), and its
+    // curves and constraints with their ids and labels -- AddEntity and
+    // AddConstraint would renumber them, and constraints and profile
+    // references name curves by id.
+    //
+    // The curves are the sketch's definition rather than a cache: the solver
+    // only ever moves them the least it can from where they were, so there
+    // is nothing else to rebuild them from. What is not trusted is that they
+    // satisfy the constraints -- a sketch that does not is solved on the next
+    // rebuild, and one that does is left untouched, so reopening never nudges
+    // a finished sketch.
+    //
+    // False, changing nothing, when thePlanePosition is left-handed, an id
+    // is not positive or appears twice, or a counter does not lie past
+    // every id in use.
+    bool Restore(const gp_Ax3&                 thePlanePosition,
+                 std::vector<SketchEntity>     theEntities,
+                 std::vector<SketchConstraint> theConstraints,
+                 int                           theNextEntityId,
+                 int                           theNextConstraintId,
+                 int                           theNextDimension,
+                 std::string&                  theError);
+
 private:
     gp_Ax3                        myPlanePosition;
     double                        myOffset    = 0.0;
