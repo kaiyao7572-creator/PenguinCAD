@@ -445,6 +445,27 @@ int SketchFeature::AddConstraint(const SketchConstraint& theConstraint)
     return constraint.id;
 }
 
+bool SketchFeature::RenameParameter(const std::string& theOldName, const std::string& theNewName)
+{
+    SketchConstraint* target = nullptr;
+    for (SketchConstraint& constraint : myConstraints) {
+        if (!constraint.IsDimension()) {
+            continue;
+        }
+        if (constraint.label == theNewName) {
+            return false;   // two dimensions answering to one name
+        }
+        if (constraint.label == theOldName) {
+            target = &constraint;
+        }
+    }
+    if (target == nullptr) {
+        return false;
+    }
+    target->label = theNewName;
+    return true;
+}
+
 bool SketchFeature::RemoveConstraint(int theId)
 {
     const auto found = std::find_if(myConstraints.begin(), myConstraints.end(),

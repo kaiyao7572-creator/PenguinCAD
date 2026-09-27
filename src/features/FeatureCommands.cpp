@@ -199,7 +199,7 @@ void ApplyPlacement(const std::vector<DialogField>& theFields,
 // feature parameter it sets -- ApplyFieldExpressions matches them by name.
 const ParameterTable* ParametersOf(const CommandContext& theContext)
 {
-    return theContext.document != nullptr ? &theContext.document->UserParameters() : nullptr;
+    return theContext.document != nullptr ? &theContext.document->EvaluationTable() : nullptr;
 }
 
 // Adds the feature and reports what the rebuild made of it. A feature

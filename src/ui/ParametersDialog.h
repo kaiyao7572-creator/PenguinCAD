@@ -66,6 +66,10 @@ private:
     void CommitModelParameter(const std::string& theFeatureName, int theFeatureIndex,
                               const std::string& theParameterName, const QString& theText);
 
+    // A model parameter's Name cell: rename d3 to "wall", as Fusion allows.
+    void CommitModelName(const std::string& theFeatureName, int theFeatureIndex,
+                         const std::string& theParameterName, const QString& theText);
+
     // The "+" button: a small modal "Add User Parameter" dialog that stays
     // open, showing why, when the document refuses what was typed.
     void AddUserParameter();

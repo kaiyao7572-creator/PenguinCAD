@@ -97,6 +97,21 @@ public:
     // the table's own rule, see core/ParameterTable.h.
     const ParameterTable& UserParameters() const { return myParameters; }
 
+    // What an expression is evaluated against: the user parameters PLUS one
+    // row per model parameter (d1, d2 ... -- every numeric parameter of
+    // every feature), resolved together before the timeline runs, as
+    // Fusion does. So a field can take "d3 * 2", a user parameter can read
+    // a feature's dimension, and a loop through either is caught. Rebuilt
+    // on every Rebuild; the object itself lives as long as the document,
+    // so a field may hold a pointer to it.
+    const ParameterTable& EvaluationTable() const { return myResolved; }
+
+    // Rename a model parameter (Fusion lets you call d3 "wall"), rewriting
+    // every expression that read it. Undoable. Refused for a name a user
+    // parameter or another model parameter already has.
+    bool RenameModelParameter(const FeaturePtr& theFeature, const std::string& theParameter,
+                              const std::string& theNewName, std::string& theError);
+
     bool AddUserParameter(const UserParameter& theParameter, std::string& theError);
     bool SetUserParameterExpression(const std::string& theName,
                                     const std::string& theExpression,
@@ -212,8 +227,32 @@ private:
     // when one does not evaluate or the feature refuses what it gives.
     bool ApplyExpressions(Feature& theFeature, std::string& theError) const;
 
+    // Give every numeric parameter without a model name the next free d#.
+    // A sketch dimension keeps its own label unless another feature has it,
+    // in which case the sketch renames it -- the label and the model name
+    // must never disagree.
+    void AssignModelNames();
+
+    // The evaluation table's rows: the user parameters, then one row per
+    // model parameter -- its expression if driven, else its exact value.
+    // theOverride... substitutes one parameter's expression, which is how
+    // an edit is tried against the whole design before it is accepted.
+    std::vector<UserParameter> EvaluationRows(const Feature*      theOverrideFeature = nullptr,
+                                              const std::string&  theOverrideParameter = {},
+                                              const std::string&  theOverrideExpression = {}) const;
+
+    // Rebuild myResolved and hand each user row its result.
+    void ResolveParameters();
+
+    // A user or model parameter already called theName (without case), and
+    // a phrase saying which, for refusing a clash.
+    bool IsParameterNameTaken(const std::string& theName, std::string& theWho,
+                              const Feature* theIgnoredFeature = nullptr,
+                              const std::string& theIgnoredParameter = {}) const;
+
     std::vector<FeaturePtr>        myFeatures;
     ParameterTable                 myParameters;
+    ParameterTable                 myResolved;
     std::vector<std::string>       myErrors;
     TopoDS_Shape                   myShape;
     BodyTable                      myBodies;

@@ -123,22 +123,6 @@ QString NeighbourKey(const QTreeWidgetItem* theItem)
     return KeyOf(parent);
 }
 
-// Sketch dimensions carry Fusion's own model-parameter names (d1, d2...),
-// which is what the Name column is for; "Distance" on an extrude is a
-// description, not a name anything can refer to.
-bool IsDimensionLabel(const std::string& theName)
-{
-    if (theName.size() < 2 || theName[0] != 'd') {
-        return false;
-    }
-    for (std::size_t i = 1; i < theName.size(); ++i) {
-        if (std::isdigit(static_cast<unsigned char>(theName[i])) == 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 QString ModelUnitSymbol(UnitKind theKind)
 {
     switch (theKind) {
@@ -583,15 +567,16 @@ void ParametersDialog::Refresh()
                 row->setData(kParameterColumn, kFeatureIndexRole, static_cast<int>(i));
 
                 row->setText(kParameterColumn, QString::fromStdString(parameter.name));
-                if (IsDimensionLabel(parameter.name)) {
-                    row->setText(kNameColumn, QString::fromStdString(parameter.name));
-                }
+                // Every model parameter has a name an expression can read --
+                // d1, d2 ... until the user renames it, as in Fusion.
+                row->setText(kNameColumn, QString::fromStdString(feature->ModelNameOf(parameter.name)));
                 row->setText(kUnitColumn, ModelUnitSymbol(kind));
                 row->setText(kExpressionColumn, QString::fromStdString(ShownExpression(parameter)));
                 row->setText(kValueColumn,
                              QString::fromStdString(FormatValue(parameter.Number(), kind)));
 
                 row->setFlags(row->flags() | Qt::ItemIsEditable);
+                row->setData(kNameColumn, kEditableRole, true);
                 row->setData(kExpressionColumn, kEditableRole, true);
 
                 if (KeyOf(row) == selected) {
@@ -670,6 +655,11 @@ void ParametersDialog::OnItemChanged(QTreeWidgetItem* theItem, int theColumn)
             theItem->setData(kParameterColumn, kNameRole, QString::fromStdString(current));
             theItem->setData(kParameterColumn, kKeyRole, UserKey(current));
         }
+    } else if (kind == RowKind::ModelParameter && theColumn == kNameColumn) {
+        CommitModelName(theItem->data(kParameterColumn, kFeatureRole).toString().toStdString(),
+                        theItem->data(kParameterColumn, kFeatureIndexRole).toInt(),
+                        theItem->data(kParameterColumn, kNameRole).toString().toStdString(),
+                        text);
     } else if (kind == RowKind::ModelParameter && theColumn == kExpressionColumn) {
         CommitModelParameter(theItem->data(kParameterColumn, kFeatureRole).toString().toStdString(),
                              theItem->data(kParameterColumn, kFeatureIndexRole).toInt(),
@@ -788,6 +778,29 @@ void ParametersDialog::CommitModelParameter(const std::string& theFeatureName, i
     std::string error;
     if (!m_document->SetFeatureParameter(feature, edited, error)) {
         ShowError(where + QStringLiteral(": ") + QString::fromStdString(error));
+        return;
+    }
+    ClearStatus();
+}
+
+void ParametersDialog::CommitModelName(const std::string& theFeatureName, int theFeatureIndex,
+                                       const std::string& theParameterName, const QString& theText)
+{
+    FeaturePtr feature = FindFeature(theFeatureName, theFeatureIndex);
+    if (!feature) {
+        ShowError(QString::fromStdString(theFeatureName)
+                  + QStringLiteral(" is no longer in the timeline"));
+        return;
+    }
+    const std::string name = theText.trimmed().toStdString();
+    if (name == feature->ModelNameOf(theParameterName)) {
+        return;
+    }
+    std::string error;
+    if (!m_document->RenameModelParameter(feature, theParameterName, name, error)) {
+        ShowError(QStringLiteral("Cannot rename %1: %2")
+                      .arg(QString::fromStdString(feature->ModelNameOf(theParameterName)),
+                           QString::fromStdString(error)));
         return;
     }
     ClearStatus();

@@ -3,7 +3,10 @@
 #include <Standard_Failure.hxx>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <exception>
 
 namespace lcad {
@@ -47,6 +50,48 @@ std::string Trimmed(const std::string& theText)
     }
     const std::size_t last = theText.find_last_not_of(" \t\r\n");
     return theText.substr(first, last - first + 1);
+}
+
+// "d12" -- the shape of a model parameter name, and of a sketch's labels.
+bool IsModelStyleName(const std::string& theName)
+{
+    if (theName.size() < 2 || theName[0] != 'd') {
+        return false;
+    }
+    return std::all_of(theName.begin() + 1, theName.end(),
+                       [](char theChar) { return theChar >= '0' && theChar <= '9'; });
+}
+
+bool SameNameNoCase(const std::string& theA, const std::string& theB)
+{
+    return theA.size() == theB.size()
+           && std::equal(theA.begin(), theA.end(), theB.begin(), [](char theX, char theY) {
+                  return std::tolower(static_cast<unsigned char>(theX))
+                         == std::tolower(static_cast<unsigned char>(theY));
+              });
+}
+
+// A parameter's exact value as expression text. FormatValue rounds to
+// four decimals, and a plain model parameter read by someone else's
+// expression must give its real value, not its displayed one. Fixed
+// notation, because the evaluator refuses "1e-05".
+std::string ExactLiteral(double theValue, UnitKind theKind)
+{
+    char buffer[64];
+    std::snprintf(buffer, sizeof(buffer), "%.15f", theValue);
+    std::string text = buffer;
+    if (text.find('.') != std::string::npos) {
+        text.erase(text.find_last_not_of('0') + 1);
+        if (!text.empty() && text.back() == '.') {
+            text.pop_back();
+        }
+    }
+    if (theKind == UnitKind::Length) {
+        text += " mm";
+    } else if (theKind == UnitKind::Angle) {
+        text += " deg";
+    }
+    return text;
 }
 
 // Put theValue into a numeric parameter. An Int takes only a whole number:
@@ -180,6 +225,12 @@ void Document::Rebuild()
 {
     myErrors.clear();
 
+    // Every parameter, user and model alike, is resolved BEFORE the
+    // timeline runs -- Fusion's order -- so a feature reads values that
+    // already account for everything they depend on, wherever it sits.
+    AssignModelNames();
+    ResolveParameters();
+
     TopoDS_Shape current;
     const std::size_t limit = std::min(myRollbackIndex, myFeatures.size());
 
@@ -282,7 +333,17 @@ bool Document::ApplyExpressions(Feature& theFeature, std::string& theError) cons
             continue;
         }
 
-        const ExpressionResult result = myParameters.EvaluateValue(expression, parameter->Kind());
+        // Resolved with everything else before the timeline ran; its row is
+        // under the parameter's model name.
+        ExpressionResult result;
+        const UserParameter* row = myResolved.Find(theFeature.ModelNameOf(name));
+        if (row != nullptr) {
+            result.ok = row->isValid;
+            result.value = row->value;
+            result.error = row->error;
+        } else {
+            result = myResolved.EvaluateValue(expression, parameter->Kind());
+        }
         if (!result.ok) {
             theError = name + " = " + expression + ": " + result.error;
             return false;
@@ -308,6 +369,198 @@ bool Document::ApplyExpressions(Feature& theFeature, std::string& theError) cons
             return false;
         }
     }
+    return true;
+}
+
+bool Document::IsParameterNameTaken(const std::string& theName, std::string& theWho,
+                                    const Feature*     theIgnoredFeature,
+                                    const std::string& theIgnoredParameter) const
+{
+    for (const UserParameter& row : myParameters.Parameters()) {
+        if (SameNameNoCase(row.name, theName)) {
+            theWho = "the user parameter " + row.name;
+            return true;
+        }
+    }
+    for (const FeaturePtr& feature : myFeatures) {
+        if (!feature) {
+            continue;
+        }
+        for (const auto& entry : feature->ModelNames()) {
+            if (feature.get() == theIgnoredFeature && entry.first == theIgnoredParameter) {
+                continue;
+            }
+            if (SameNameNoCase(entry.second, theName)) {
+                theWho = feature->Name() + "'s " + entry.first;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Document::AssignModelNames()
+{
+    // Numbering goes on from the highest d# in use and never rewinds, so
+    // a deleted dimension's name is not handed to a different one.
+    int next = 1;
+    const auto consider = [&next](const std::string& theName) {
+        if (IsModelStyleName(theName)) {
+            next = std::max(next, std::atoi(theName.c_str() + 1) + 1);
+        }
+    };
+    for (const UserParameter& row : myParameters.Parameters()) {
+        consider(row.name);
+    }
+    for (const FeaturePtr& feature : myFeatures) {
+        if (feature) {
+            for (const auto& entry : feature->ModelNames()) {
+                consider(entry.second);
+            }
+        }
+    }
+
+    std::string who;
+    // First pass: a parameter already CALLED d-something (a sketch's
+    // dimension labels) claims its own name while nobody else has it --
+    // before any other parameter is handed a fresh one, or a sketch's plane
+    // offset, listed first, would take d1 from the dimension labelled d1.
+    for (const FeaturePtr& feature : myFeatures) {
+        if (!feature) {
+            continue;
+        }
+        for (const Parameter& parameter : feature->Parameters()) {
+            if (parameter.IsNumber() && feature->ModelNameOf(parameter.name).empty()
+                && IsModelStyleName(parameter.name) && !IsParameterNameTaken(parameter.name, who)) {
+                feature->SetModelName(parameter.name, parameter.name);
+                next = std::max(next, std::atoi(parameter.name.c_str() + 1) + 1);
+            }
+        }
+    }
+    // Second pass: everything still unnamed gets the next free d#.
+    for (const FeaturePtr& feature : myFeatures) {
+        if (!feature) {
+            continue;
+        }
+        for (const Parameter& parameter : feature->Parameters()) {
+            if (!parameter.IsNumber() || !feature->ModelNameOf(parameter.name).empty()) {
+                continue;
+            }
+            std::string fresh;
+            do {
+                fresh = "d" + std::to_string(next++);
+            } while (IsParameterNameTaken(fresh, who));
+
+            std::string key = parameter.name;
+            if (IsModelStyleName(parameter.name)
+                && feature->RenameParameter(parameter.name, fresh)) {
+                // Two sketches both started at d1: this one's becomes fresh,
+                // label and model name together.
+                feature->MoveParameterKeys(parameter.name, fresh);
+                key = fresh;
+            }
+            feature->SetModelName(key, fresh);
+        }
+    }
+}
+
+std::vector<UserParameter> Document::EvaluationRows(const Feature*     theOverrideFeature,
+                                                    const std::string& theOverrideParameter,
+                                                    const std::string& theOverrideExpression) const
+{
+    std::vector<UserParameter> rows = myParameters.Parameters();
+    for (const FeaturePtr& feature : myFeatures) {
+        if (!feature) {
+            continue;
+        }
+        for (const Parameter& parameter : feature->Parameters()) {
+            const std::string model = feature->ModelNameOf(parameter.name);
+            if (!parameter.IsNumber() || model.empty()) {
+                continue;
+            }
+            UserParameter row;
+            row.name = model;
+            row.kind = parameter.Kind();
+            const bool overridden =
+                feature.get() == theOverrideFeature && parameter.name == theOverrideParameter;
+            const std::string expression =
+                overridden ? theOverrideExpression : feature->ExpressionOf(parameter.name);
+            row.expression =
+                expression.empty() ? ExactLiteral(parameter.Number(), row.kind) : expression;
+            rows.push_back(row);
+        }
+    }
+    return rows;
+}
+
+void Document::ResolveParameters()
+{
+    myResolved.Assign(EvaluationRows());
+    myParameters.AdoptResults(myResolved);
+}
+
+bool Document::RenameModelParameter(const FeaturePtr& theFeature, const std::string& theParameter,
+                                    const std::string& theNewName, std::string& theError)
+{
+    if (!theFeature || IndexOf(theFeature.get()) == npos) {
+        theError = "that feature is not part of this design";
+        return false;
+    }
+    const std::string oldName = theFeature->ModelNameOf(theParameter);
+    if (oldName.empty()) {
+        theError = theParameter + " has no model parameter name";
+        return false;
+    }
+    if (theNewName == oldName) {
+        return true;
+    }
+    if (!IsExpressionIdentifier(theNewName)) {
+        theError = "\"" + theNewName
+                   + "\" cannot be a parameter name: start with a letter or _, then letters,"
+                     " digits or _";
+        return false;
+    }
+    if (IsReservedExpressionName(theNewName)) {
+        theError = "\"" + theNewName + "\" is already part of the expression language";
+        return false;
+    }
+    std::string who;
+    if (IsParameterNameTaken(theNewName, who, theFeature.get(), theParameter)) {
+        theError = "\"" + theNewName + "\" is already " + who;
+        return false;
+    }
+
+    Snapshot snapshot = TakeSnapshot();
+    // Everything that read the old name reads the new one.
+    for (const UserParameter& row : myParameters.Parameters()) {
+        const std::string renamed = RenameExpressionVariable(row.expression, oldName, theNewName);
+        if (renamed != row.expression) {
+            std::string ignored;
+            myParameters.SetExpression(row.name, renamed, ignored);
+        }
+    }
+    for (const FeaturePtr& feature : myFeatures) {
+        if (!feature) {
+            continue;
+        }
+        const std::map<std::string, std::string> expressions = feature->Expressions();
+        for (const auto& entry : expressions) {
+            const std::string renamed = RenameExpressionVariable(entry.second, oldName, theNewName);
+            if (renamed != entry.second) {
+                feature->SetExpression(entry.first, renamed);
+            }
+        }
+    }
+    std::string key = theParameter;
+    if (theParameter == oldName && theFeature->RenameParameter(oldName, theNewName)) {
+        // A sketch dimension's label is its model name; they move together.
+        theFeature->MoveParameterKeys(oldName, theNewName);
+        key = theNewName;
+    }
+    theFeature->SetModelName(key, theNewName);
+    PushSnapshot(std::move(snapshot));
+    myIsModified = true;
+    Rebuild();
     return true;
 }
 
@@ -392,6 +645,11 @@ bool Document::EditUserParameters(Edit&& theEdit)
 
 bool Document::AddUserParameter(const UserParameter& theParameter, std::string& theError)
 {
+    std::string who;
+    if (IsParameterNameTaken(theParameter.name, who)) {
+        theError = "\"" + theParameter.name + "\" is already " + who;
+        return false;
+    }
     return EditUserParameters([&]() { return myParameters.Add(theParameter, theError); });
 }
 
@@ -424,6 +682,11 @@ bool Document::RenameUserParameter(const std::string& theOldName,
                                    const std::string& theNewName,
                                    std::string&       theError)
 {
+    std::string who;
+    if (!SameNameNoCase(theOldName, theNewName) && IsParameterNameTaken(theNewName, who)) {
+        theError = "\"" + theNewName + "\" is already " + who;
+        return false;
+    }
     return EditUserParameters([&]() {
         std::vector<std::string> rewritten;
         if (!myParameters.Rename(theOldName, theNewName, rewritten, theError)) {
@@ -457,37 +720,26 @@ bool Document::RemoveUserParameter(const std::string& theName, std::string& theE
 
 std::vector<std::string> Document::UsersOfUserParameter(const std::string& theName) const
 {
-    std::vector<std::string> users = myParameters.Dependents(theName);
-
-    // A feature reading hole_dia breaks when plate_width goes, if hole_dia
-    // is made from plate_width -- so match features against the chain.
-    std::vector<std::string> broken = users;
-    broken.push_back(theName);
-    for (const FeaturePtr& feature : myFeatures) {
-        if (!feature) {
+    // Everything that depends on it in the resolved table, through any
+    // chain of user and model parameters -- then model parameters reported
+    // as the features that own them. Only parameters that still exist are
+    // rows, so a deleted dimension's leftover expression pins nothing.
+    std::vector<std::string> users;
+    for (const std::string& dependent : myResolved.Dependents(theName)) {
+        if (myParameters.Find(dependent) != nullptr) {
+            users.push_back(dependent);
             continue;
         }
-        // Only expressions still driving something: a sketch dimension that
-        // was deleted leaves its expression behind (undo may bring the
-        // dimension back), and that must not pin the parameter forever.
-        const std::vector<Parameter> parameters = feature->Parameters();
-        bool reads = false;
-        for (const auto& entry : feature->Expressions()) {
-            const bool live = std::any_of(parameters.begin(), parameters.end(),
-                                          [&entry](const Parameter& theParameter) {
-                                              return theParameter.name == entry.first;
-                                          });
-            if (!live) {
+        for (const FeaturePtr& feature : myFeatures) {
+            if (!feature) {
                 continue;
             }
-            for (const std::string& name : ExpressionVariables(entry.second)) {
-                if (std::find(broken.begin(), broken.end(), name) != broken.end()) {
-                    reads = true;
+            for (const auto& entry : feature->ModelNames()) {
+                if (entry.second == dependent
+                    && std::find(users.begin(), users.end(), feature->Name()) == users.end()) {
+                    users.push_back(feature->Name());
                 }
             }
-        }
-        if (reads) {
-            users.push_back(feature->Name());
         }
     }
     return users;
@@ -510,7 +762,22 @@ bool Document::SetFeatureParameter(const FeaturePtr& theFeature,
             if (IsLiteralOfWrongKind(expression, edited.Kind(), theError)) {
                 return false;
             }
-            const ExpressionResult result = myParameters.EvaluateValue(expression, edited.Kind());
+            // Tried against the WHOLE design -- user and model parameters,
+            // with this one's new expression in place -- so it may read d3,
+            // and a loop back to itself through any of them is refused.
+            AssignModelNames();
+            const std::string model = theFeature->ModelNameOf(edited.name);
+            ParameterTable trial;
+            trial.Assign(EvaluationRows(theFeature.get(), edited.name, expression));
+            const UserParameter* row = model.empty() ? nullptr : trial.Find(model);
+            ExpressionResult result = row != nullptr
+                                          ? ExpressionResult()
+                                          : trial.EvaluateValue(expression, edited.Kind());
+            if (row != nullptr) {
+                result.ok = row->isValid;
+                result.value = row->value;
+                result.error = row->error;
+            }
             if (!result.ok) {
                 theError = result.error;
                 return false;

@@ -124,6 +124,17 @@ public:
 
     void Clear();
 
+    // Replace every row and resolve, WITHOUT the edit-time checks: a cycle
+    // or a duplicate lands in the rows' errors instead of being refused.
+    // For the document's evaluation table -- the user parameters plus one
+    // row per model parameter -- which is rebuilt, not edited.
+    void Assign(std::vector<UserParameter> theRows);
+
+    // Take each row's value, validity and error from the row of the same
+    // name in theResolved, so user parameters that read model parameters
+    // (hole = d3 / 2) show what the whole design resolves them to.
+    void AdoptResults(const ParameterTable& theResolved);
+
     // ---- evaluating ----
 
     // Recompute every row in dependency order. Returns true when they all

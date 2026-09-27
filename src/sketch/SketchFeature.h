@@ -106,6 +106,11 @@ public:
     int AddConstraint(const SketchConstraint& theConstraint);
 
     bool RemoveConstraint(int theId);
+
+    // A dimension's label IS its model parameter name (d1, d2 ...); the
+    // document renames one when two sketches would both have a d1, or when
+    // the user renames it in Change Parameters.
+    bool RenameParameter(const std::string& theOldName, const std::string& theNewName) override;
     void ClearConstraints();
 
     const SketchConstraint* FindConstraint(int theId) const;

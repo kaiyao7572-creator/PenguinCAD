@@ -217,7 +217,7 @@ public:
         // Taper Angle and Twist Angle are the names of the parameters they
         // set, so both take expressions.
         if (!ShowFeatureDialog(theContext.parent, "Sweep", fields, hint,
-                               &theContext.document->UserParameters())) {
+                               &theContext.document->EvaluationTable())) {
             return;
         }
 

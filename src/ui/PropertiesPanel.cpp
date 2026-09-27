@@ -262,7 +262,7 @@ QWidget* PropertiesPanel::MakeEditorWidget(std::size_t theIndex, const Parameter
         // then shows instead of the number, as Fusion's fields do.
         auto* spin = new UnitLineEdit(theParameter.Kind(), m_formContainer);
         if (m_document != nullptr) {
-            spin->SetParameterTable(&m_document->UserParameters());
+            spin->SetParameterTable(&m_document->EvaluationTable());
         }
         if (theParameter.minimum != theParameter.maximum) {
             spin->SetRange(theParameter.minimum, theParameter.maximum);
@@ -288,7 +288,7 @@ QWidget* PropertiesPanel::MakeEditorWidget(std::size_t theIndex, const Parameter
         // a spin box could never have taken an expression at all.
         auto* count = new UnitLineEdit(UnitKind::Unitless, m_formContainer);
         if (m_document != nullptr) {
-            count->SetParameterTable(&m_document->UserParameters());
+            count->SetParameterTable(&m_document->EvaluationTable());
         }
         if (theParameter.minimum != theParameter.maximum) {
             count->SetRange(theParameter.minimum, theParameter.maximum);

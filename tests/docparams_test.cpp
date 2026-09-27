@@ -13,6 +13,7 @@
 #include <BRepGProp.hxx>
 #include <GProp_GProps.hxx>
 
+#include <cctype>
 #include <cmath>
 #include <iostream>
 
@@ -510,6 +511,108 @@ int main()
         std::cout << "        said: " << error << std::endl;
         live = std::dynamic_pointer_cast<CountedFeature>(Find(d, "Counted1"));
         check(live->LastError().empty() && live->myCount == 5, "back to a good count of 5");
+    }
+
+    std::cout << "-- model parameters: every dimension has a d# an expression can read --" << std::endl;
+    {
+        Document m;
+        auto box = std::make_shared<BoxFeature>(10.0, 20.0, 30.0);
+        box->SetName("Box1");
+        m.AddFeature(box);
+        const FeaturePtr liveBox = Find(m, "Box1");
+        const std::string length = liveBox->ModelNameOf("Length");
+        const std::string height = liveBox->ModelNameOf("Height");
+        std::cout << "        Box1 Length is " << length << ", Height is " << height << std::endl;
+        check(!length.empty() && !height.empty() && length != height,
+              "every numeric parameter got its own model name");
+
+        // Two sketches whose dimensions both start at d1.
+        auto s1 = std::make_shared<SketchFeature>(SketchFeature::PlaneXY(), 0.0);
+        s1->SetName("Sketch1");
+        const int c1 = s1->AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(100.0, 0.0), 5.0));
+        SketchConstraint dia1;
+        dia1.type = SketchConstraintType::Diameter;
+        dia1.a = SketchPointRef{c1, SketchPointRole::Whole};
+        dia1.value = 10.0;
+        s1->AddConstraint(dia1);
+        m.AddFeature(s1);
+        auto s2 = std::make_shared<SketchFeature>(SketchFeature::PlaneXY(), 0.0);
+        s2->SetName("Sketch2");
+        const int c2 = s2->AddEntity(SketchEntity::MakeCircle(gp_Pnt2d(200.0, 0.0), 5.0));
+        SketchConstraint dia2 = dia1;
+        dia2.a = SketchPointRef{c2, SketchPointRole::Whole};
+        s2->AddConstraint(dia2);
+        m.AddFeature(s2);
+        const auto labelOf = [&m](const std::string& theSketch) {
+            for (const Parameter& p : Find(m, theSketch)->Parameters()) {
+                if (p.name.size() > 1 && p.name[0] == 'd' && std::isdigit(static_cast<unsigned char>(p.name[1]))) {
+                    return p.name;
+                }
+            }
+            return std::string();
+        };
+        const std::string label1 = labelOf("Sketch1");
+        const std::string label2 = labelOf("Sketch2");
+        std::cout << "        Sketch1's dimension is " << label1 << ", Sketch2's is " << label2
+                  << std::endl;
+        check(!label1.empty() && !label2.empty() && label1 != label2,
+              "two sketches' dimensions no longer share a name");
+        check(Find(m, "Sketch2")->ModelNameOf(label2) == label2,
+              "and a dimension's label IS its model name");
+
+        // An expression reads a model parameter.
+        auto e = std::make_shared<ExtrudeFeature>();
+        e->SetName("Extrude1");
+        e->SetSketchName("Sketch1");
+        e->SetDistance(1.0);
+        m.AddFeature(e);
+        check(Drive(m, "Extrude1", "Distance", height + " / 3", error),
+              "Extrude1 Distance = " + height + " / 3 (Box1's Height, 30)");
+        // Box 10 x 20 x 30 = 6000, plus a disc pi * 5^2 * 10 = 785.398
+        checkVolume(m, 6000.0 + kPi * 25.0 * 10.0, "the extrude is 10 tall");
+        check(Drive(m, "Box1", "Height", "45", error), "Box1 Height = 45");
+        checkVolume(m, 10.0 * 20.0 * 45.0 + kPi * 25.0 * 15.0, "and follows it to 15");
+
+        // A user parameter reads one too.
+        UserParameter half;
+        half.name = "half_dia";
+        half.expression = label1 + " / 2";
+        check(m.AddUserParameter(half, error), "half_dia = " + label1 + " / 2");
+        check(m.UserParameters().Find("half_dia")->isValid
+                  && std::fabs(m.UserParameters().Find("half_dia")->value - 5.0) < 1e-9,
+              "and resolves to 5 -- the table sees model parameters");
+
+        // A loop through a model parameter is refused.
+        const std::string distance = Find(m, "Extrude1")->ModelNameOf("Distance");
+        check(!Drive(m, "Extrude1", "Distance", distance + " * 2", error),
+              "Distance = " + distance + " * 2 -- itself -- is refused");
+        std::cout << "        said: " << error << std::endl;
+
+        // Names do not collide.
+        UserParameter clash;
+        clash.name = length;
+        clash.expression = "1 mm";
+        check(!m.AddUserParameter(clash, error), "a user parameter cannot take Box1's " + length);
+        std::cout << "        said: " << error << std::endl;
+
+        // Renaming a model parameter rewrites what read it, and undoes.
+        check(m.RenameModelParameter(Find(m, "Box1"), "Height", "box_h", error),
+              "rename Box1's " + height + " to box_h");
+        check(Find(m, "Extrude1")->ExpressionOf("Distance") == "box_h / 3",
+              "Extrude1's expression now reads box_h / 3");
+        checkVolume(m, 10.0 * 20.0 * 45.0 + kPi * 25.0 * 15.0, "and the model did not move");
+        check(!m.RenameModelParameter(Find(m, "Box1"), "Width", "half_dia", error),
+              "a model parameter cannot take a user parameter's name");
+        check(m.RenameModelParameter(Find(m, "Sketch1"), label1, "hole", error),
+              "rename Sketch1's dimension to hole");
+        check(labelOf("Sketch1") == "" && m.UserParameters().Find("half_dia")->expression == "hole / 2",
+              "the dimension's label moved with it, and half_dia reads hole / 2");
+        m.Undo();
+        check(m.UserParameters().Find("half_dia")->expression == label1 + " / 2",
+              "undo puts the old name back everywhere");
+        m.Undo();
+        check(Find(m, "Extrude1")->ExpressionOf("Distance") == height + " / 3",
+              "and a second undo the one before");
     }
 
     std::cout << std::endl;

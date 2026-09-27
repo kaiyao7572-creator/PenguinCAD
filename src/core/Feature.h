@@ -193,6 +193,53 @@ public:
         }
     }
 
+    // ---- model parameter names ----
+    //
+    // Fusion names every numeric parameter of every feature -- d1, d2 ... --
+    // so an expression anywhere can read it ("d3 * 2") and Change
+    // Parameters can list and rename it. Keyed by parameter name, unique
+    // across the design, assigned by Document::Rebuild to any numeric
+    // parameter that has none, carried by Clone.
+    const std::map<std::string, std::string>& ModelNames() const { return myModelNames; }
+
+    std::string ModelNameOf(const std::string& theParameterName) const
+    {
+        const auto found = myModelNames.find(theParameterName);
+        return found != myModelNames.end() ? found->second : std::string();
+    }
+
+    void SetModelName(const std::string& theParameterName, std::string theModelName)
+    {
+        myModelNames[theParameterName] = std::move(theModelName);
+    }
+
+    // Rename a parameter ITSELF. Only for a feature whose parameter names
+    // are model names already -- a sketch labels its dimensions d1, d2 ...,
+    // and two sketches both start at d1 -- so the document can keep the
+    // parameter and its model name the same. Default: cannot.
+    virtual bool RenameParameter(const std::string& theOldName, const std::string& theNewName)
+    {
+        (void)theOldName;
+        (void)theNewName;
+        return false;
+    }
+
+    // Move what the base class keeps under a parameter's name -- its
+    // expression and its model name -- after RenameParameter succeeded.
+    void MoveParameterKeys(const std::string& theOldName, const std::string& theNewName)
+    {
+        const auto expression = myExpressions.find(theOldName);
+        if (expression != myExpressions.end()) {
+            myExpressions[theNewName] = expression->second;
+            myExpressions.erase(expression);
+        }
+        const auto model = myModelNames.find(theOldName);
+        if (model != myModelNames.end()) {
+            myModelNames[theNewName] = model->second;
+            myModelNames.erase(model);
+        }
+    }
+
     const std::string& Name() const { return myName; }
     void SetName(std::string theName) { myName = std::move(theName); }
 
@@ -215,12 +262,14 @@ protected:
         theOther.myName = myName;
         theOther.myIsSuppressed = myIsSuppressed;
         theOther.myExpressions = myExpressions;
+        theOther.myModelNames = myModelNames;
     }
 
 private:
     std::string  myName;
     bool         myIsSuppressed = false;
     std::map<std::string, std::string> myExpressions;
+    std::map<std::string, std::string> myModelNames;
     std::string  myLastError;
     TopoDS_Shape myResultShape;
 };

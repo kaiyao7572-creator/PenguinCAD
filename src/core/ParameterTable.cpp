@@ -334,6 +334,23 @@ ExpressionResult ParameterTable::Evaluate(const std::string& theText) const
     return EvaluateValue(theText, UnitKind::Unitless);
 }
 
+void ParameterTable::Assign(std::vector<UserParameter> theRows)
+{
+    myParameters = std::move(theRows);
+    Resolve();
+}
+
+void ParameterTable::AdoptResults(const ParameterTable& theResolved)
+{
+    for (UserParameter& row : myParameters) {
+        if (const UserParameter* resolved = theResolved.Find(row.name)) {
+            row.value = resolved->value;
+            row.isValid = resolved->isValid;
+            row.error = resolved->error;
+        }
+    }
+}
+
 bool ParameterTable::Resolve()
 {
     const std::vector<std::vector<std::size_t>> graph = BuildGraph();

@@ -342,7 +342,7 @@ public:
         // Every Number label here is the name of the parameter it sets, so
         // the fields take expressions ("n_holes", "pitch * 2").
         if (!ShowFeatureDialog(theContext.parent, "Rectangular Pattern", fields, hint,
-                               &theContext.document->UserParameters())) {
+                               &theContext.document->EvaluationTable())) {
             return;
         }
 
@@ -419,7 +419,7 @@ public:
                              "it. The axis runs through the world origin.");
 
         if (!ShowFeatureDialog(theContext.parent, "Circular Pattern", fields, hint,
-                               &theContext.document->UserParameters())) {
+                               &theContext.document->EvaluationTable())) {
             return;
         }
 
