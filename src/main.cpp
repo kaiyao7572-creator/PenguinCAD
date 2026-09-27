@@ -256,12 +256,12 @@ int CheckIcons()
                 continue;
             }
             const QString resource = QString::fromStdString(icon);
-            used.insert(resource);
             QFile file(resource);
             if (!file.open(QIODevice::ReadOnly)) {
                 fail(id, icon + " is missing -- is it listed in resources/icons.qrc?");
                 continue;
             }
+            used.insert(resource);
             const bool followsPalette = file.readAll().contains("currentColor");
 
             for (const int size : {16, 24, 32}) {

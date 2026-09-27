@@ -290,7 +290,6 @@ void MainWindow::buildRibbon()
                 QToolButton* button = new QToolButton(buttonRow);
                 button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
                 button->setAutoRaise(true);
-                button->setFixedWidth(96);
                 button->setMinimumHeight(74);
                 // Fusion's ribbon draws its tools at 32 px; the menus mirror
                 // the same actions at the style's small size.
@@ -334,6 +333,13 @@ void MainWindow::buildRibbon()
 
                     m_familyButtons.emplace_back(button, primary);
                 }
+
+                // A common width keeps the row even; a label too long for
+                // it even on two lines widens its own button rather than
+                // being elided. Fixed, not a minimum: the tab's scroll area
+                // squeezes its page down to each button's minimum width,
+                // which is how a 96 px minimum still drew "Plan...ugh".
+                button->setFixedWidth(std::max(96, button->sizeHint().width()));
 
                 buttonLayout->addWidget(button);
             }
@@ -387,34 +393,32 @@ void MainWindow::buildRibbon()
 namespace {
 
 // Ribbon buttons are narrow, and Qt elides a too-long label into things
-// like "2-...le". Wrapping on word boundaries instead keeps every tool
-// readable at the same button width.
+// like "2-...le". A label longer than theMaxChars is split onto two lines
+// at the word break that makes them most even -- "Plane Through / Three
+// Points", where filling the first line greedily gave "Plane / Through
+// Three Points" and a second line no button could hold. What still does
+// not fit widens its button rather than being cut (see buildRibbon).
 QString WrapButtonLabel(const QString& theTitle, int theMaxChars)
 {
     QString spaced = theTitle;
     spaced.replace('/', " /");          // let "Move/Rotate" break after the slash
     const QStringList words = spaced.split(' ', Qt::SkipEmptyParts);
-    QStringList lines;
-    QString current;
-    for (const QString& word : words) {
-        if (current.isEmpty()) {
-            current = word;
-        } else if (current.length() + 1 + word.length() <= theMaxChars) {
-            current += ' ' + word;
-        } else {
-            lines << current;
-            current = word;
+    const QString oneLine = words.join(' ');
+    if (words.size() < 2 || oneLine.length() <= theMaxChars) {
+        return oneLine;
+    }
+    qsizetype best = 1;
+    qsizetype bestLongest = oneLine.length();
+    for (qsizetype split = 1; split < words.size(); ++split) {
+        const qsizetype longest = std::max(words.mid(0, split).join(' ').length(),
+                                           words.mid(split).join(' ').length());
+        // On a tie the later break, so "Press Pull / Arrow" keeps its pair.
+        if (longest <= bestLongest) {
+            bestLongest = longest;
+            best = split;
         }
     }
-    if (!current.isEmpty()) {
-        lines << current;
-    }
-    // Keep it to two lines; anything longer would grow every button.
-    while (lines.size() > 2) {
-        const QString tail = lines.takeLast();
-        lines.last() += ' ' + tail;
-    }
-    return lines.join('\n');
+    return words.mid(0, best).join(' ') + '\n' + words.mid(best).join(' ');
 }
 
 } // namespace

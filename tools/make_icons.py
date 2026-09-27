@@ -50,8 +50,8 @@ def pts(ps):
     return ' '.join('%s,%s' % (f(x), f(y)) for x, y in ps)
 
 
-def outline(w=1.25):
-    return 'stroke="%s" stroke-width="%s" stroke-linejoin="round"' % (INK, f(w))
+def outline(w=1.25, ink=INK):
+    return 'stroke="%s" stroke-width="%s" stroke-linejoin="round"' % (ink, f(w))
 
 
 class Iso:
@@ -78,19 +78,19 @@ def corners(x0, y0, z0, x1, y1, z1):
     return [(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)]
 
 
-def poly(ps, fill, stroke=True, w=1.25, extra=''):
+def poly(ps, fill, stroke=True, w=1.25, extra='', ink=INK):
     s = '<polygon points="%s" fill="%s"' % (pts(ps), fill)
     if stroke:
-        s += ' ' + outline(w)
+        s += ' ' + outline(w, ink)
     return s + extra + '/>'
 
 
-def box(P, x0, y0, z0, x1, y1, z1, shades=GREY, w=1.25):
+def box(P, x0, y0, z0, x1, y1, z1, shades=GREY, w=1.25, ink=INK):
     top, left, right = shades
     t = [P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)]
     r = [P(x1, y0, z1), P(x1, y1, z1), P(x1, y1, z0), P(x1, y0, z0)]
     l = [P(x0, y1, z1), P(x1, y1, z1), P(x1, y1, z0), P(x0, y1, z0)]
-    return poly(l, left, w=w) + poly(r, right, w=w) + poly(t, top, w=w)
+    return poly(l, left, w=w, ink=ink) + poly(r, right, w=w, ink=ink) + poly(t, top, w=w, ink=ink)
 
 
 def path(d, stroke='currentColor', w=1.75, fill='none', dash=None, cap='round', join='round', extra=''):
@@ -246,25 +246,24 @@ def sketch_plane(P, a=16):
     return poly([P(0, 0, 0), P(a, 0, 0), P(a, a, 0), P(0, a, 0)], LIGHT)
 
 
+def sketch_on_plane(outline_colour, pencil_body, pencil_band):
+    """A rectangle being drawn on a plane, the pencil at its last corner."""
+    P = Iso(14, 14.2, 0.95)
+    s = sketch_plane(P, 14)
+    rect = [P(3, 3, 0), P(11, 3, 0), P(11, 11, 0), P(3, 11, 0)]
+    s += path(d_of(rect, True), stroke=outline_colour, w=1.9)
+    s += dot(*P(11, 3, 0), r=2.0)
+    return s + pencil(*P(11, 3, 0), length=14.5, width=5.2, angle=-62, body=pencil_body, band=pencil_band)
+
+
 @icon('sketch.create')
 def _():
-    P = Iso(16, 13.2, 1.1)
-    s = sketch_plane(P, 14)
-    rect = [P(2.5, 3, 0), P(10.5, 3, 0), P(10.5, 11, 0), P(2.5, 11, 0)]
-    s += path(d_of(rect, True), stroke=BLUE, w=1.9)
-    s += dot(*P(10.5, 3, 0), r=2.0)
-    s += pencil(*P(10.5, 3, 0), length=18, width=5.6, angle=-55)
-    return s
+    return sketch_on_plane(BLUE, LIGHT, MID)
 
 
 @icon('sketch.edit')
 def _():
-    P = Iso(16, 13.2, 1.1)
-    s = sketch_plane(P, 14)
-    rect = [P(2.5, 3, 0), P(10.5, 3, 0), P(10.5, 11, 0), P(2.5, 11, 0)]
-    s += path(d_of(rect, True), stroke=INK, w=1.5)
-    s += pencil(*P(10.5, 3, 0), length=18, width=5.6, angle=-55, body=BLUE, band=DBLUE)
-    return s
+    return sketch_on_plane(INK, BLUE, DBLUE)
 
 
 @icon('solid.box')
@@ -275,10 +274,8 @@ def _():
 
 @icon('solid.cylinder')
 def _():
-    P = Iso(16, 16, 1.0)
-    ex, ey, rx, ry = iso_ellipse(P, 0, 0, 0, 9.2)
-    P = Iso(16, 23.2, 1.0)
-    return cylinder(P, 0, 0, 0, 15.5, 9.2, 'g')
+    P = Iso(16, 22.9, 1.0)
+    return cylinder(P, 0, 0, 0, 14, 8.8, 'g')
 
 
 @icon('solid.sphere')
@@ -374,31 +371,50 @@ def _():
     return s
 
 
+def boss(P, x, y, z0, h, r, shades=(LBLUE, BLUE), w=1.0):
+    """A short upright cylinder standing on z0: a pattern's feature."""
+    top, side = shades
+    ex, ey0, rx, ry = iso_ellipse(P, x, y, z0 + h, r)
+    _, ey1, _, _ = iso_ellipse(P, x, y, z0, r)
+    d = 'M%s,%s L%s,%s A%s,%s 0 0 0 %s,%s L%s,%s Z' % (
+        f(ex - rx), f(ey0), f(ex - rx), f(ey1), f(rx), f(ry), f(ex + rx), f(ey1), f(ex + rx), f(ey0))
+    return path(d, stroke=INK, w=w, fill=side) + ellipse(ex, ey0, rx, ry, fill=top, w=w)
+
+
+def disc(P, cx, cy, z0, z1, r, top=LIGHT, side=MID):
+    """A flat round plate, flat-shaded like the boxes."""
+    ex, ey0, rx, ry = iso_ellipse(P, cx, cy, z1, r)
+    _, ey1, _, _ = iso_ellipse(P, cx, cy, z0, r)
+    d = 'M%s,%s L%s,%s A%s,%s 0 0 0 %s,%s L%s,%s Z' % (
+        f(ex - rx), f(ey0), f(ex - rx), f(ey1), f(rx), f(ry), f(ex + rx), f(ey1), f(ex + rx), f(ey0))
+    return path(d, stroke=INK, w=1.25, fill=side) + ellipse(ex, ey0, rx, ry, fill=top)
+
+
+# The seed of a pattern stays grey, its copies are what the command adds.
+SEED = (LIGHT, MID)
+
+
 @icon('solid.pattern.rectangular')
 def _():
-    a, g = 7, 5
-    cells = [(0, 0), (a + g, 0), (0, a + g), (a + g, a + g)]
-    P = fit(corners(0, 0, 0, 2 * a + g, 2 * a + g, a), 2.5, 3, 29.5, 29)
-    s = ''
-    for x, y in cells:
-        s += box(P, x, y, 0, x + a, y + a, a, GREY if (x, y) == (0, a + g) else BLUES)
+    A, t, h, r = 16, 2.2, 6.0, 2.9
+    P = fit(corners(0, 0, 0, A, A, t + h), 2.5, 2.5, 29.5, 29.5)
+    s = box(P, 0, 0, 0, A, A, t)
+    for x, y in sorted([(u, v) for u in (4, 12) for v in (4, 12)], key=lambda q: q[0] + q[1]):
+        s += boss(P, x, y, t, h, r, SEED if (x, y) == (4, 4) else (LBLUE, BLUE))
     return s
 
 
 @icon('solid.pattern.circular')
 def _():
-    R, a = 9.5, 4.6
-    places = []
-    for i in range(6):
-        t = math.radians(135 + i * 60)
-        places.append((R * math.cos(t), R * math.sin(t), i == 0))
-    P = fit([(x + dx, y + dy, z) for x, y, _ in places for dx in (-a / 2, a / 2) for dy in (-a / 2, a / 2)
-             for z in (0, a)], 2.5, 3, 29.5, 29)
-    ex, ey, rx, ry = iso_ellipse(P, 0, 0, 0, R)
-    s = ellipse(ex, ey, rx, ry, stroke='currentColor', w=1.2, dash='2.2 1.8')
-    s += dot(ex, ey, r=2.0, fill='currentColor')
-    for x, y, first in sorted(places, key=lambda p: p[0] + p[1]):
-        s += box(P, x - a / 2, y - a / 2, 0, x + a / 2, y + a / 2, a, GREY if first else BLUES, w=1.1)
+    R, t, h, r, pitch = 11, 2.2, 6.0, 2.5, 7.4
+    P = fit([(R * math.cos(math.radians(a)), R * math.sin(math.radians(a)), z)
+             for a in range(0, 360, 10) for z in (0, t)] + [(0, -R, t + h), (-R, 0, t + h)],
+            2.5, 2.5, 29.5, 29.5)
+    s = disc(P, 0, 0, 0, t, R)
+    places = [(pitch * math.cos(math.radians(a)), pitch * math.sin(math.radians(a)), a == 225)
+              for a in range(45, 405, 60)]
+    for x, y, seed in sorted(places, key=lambda q: q[0] + q[1]):
+        s += boss(P, x, y, t, h, r, SEED if seed else (LBLUE, BLUE))
     return s
 
 
@@ -609,10 +625,16 @@ def _():
 
 @icon('construct.plane_midplane')
 def _():
-    P = fit(corners(0, -2, 0, 14, 12, 12) + [(7, -2, 14), (7, 14, -2)], 3, 2.5, 29, 29.5)
-    s = box(P, 0, 0, 0, 7, 10, 9)
-    s += blue_plane([P(7, -2.5, -1.5), P(7, 12.5, -1.5), P(7, 12.5, 12), P(7, -2.5, 12)])
-    s += box(P, 7.6, 0, 0, 14, 10, 9)
+    # Standing planes side by side, where Offset Plane stacks them flat:
+    # the two grey ones given, the new one halfway and larger than both.
+    D, H, g, X = 10, 10, 1.8, 9
+    P = fit(corners(0, -g, -g, 2 * X, D + g, H + g), 2.5, 2.5, 29.5, 29.5)
+
+    def card(x, y0, y1, z0, z1):
+        return [P(x, y0, z1), P(x, y1, z1), P(x, y1, z0), P(x, y0, z0)]
+    s = poly(card(0, 0, D, 0, H), LIGHT)
+    s += blue_plane(card(X, -g, D + g, -g, H + g))
+    s += poly(card(2 * X, 0, D, 0, H), MID)
     return s
 
 
@@ -663,7 +685,7 @@ def _():
 def _():
     P = fit(corners(0, 0, 0, 16, 16, 0), 2.5, 13, 29.5, 27)
     x, y = P(8, 8, 0)
-    s = line([(x + 5.5, y + 12), (x, y)], stroke=BLUE, w=2.0, dash='1.8 1.6')
+    s = line([(x + 4.2, y + 9.2), (x, y)], stroke=BLUE, w=2.0, dash='1.8 1.6')
     s += poly([P(0, 0, 0), P(16, 0, 0), P(16, 16, 0), P(0, 16, 0)], LIGHT)
     s += line([(x, y), (x - 8.5, 2.5)], stroke=BLUE, w=2.2)
     s += dot(x, y, r=3.1, fill='currentColor')
@@ -673,44 +695,60 @@ def _():
 
 # ---------------------------------------------------------------- SELECT
 
-def select_cube(P, what):
-    a = 12
-    shades = BLUES if what == 'body' else GREY
-    s = box(P, 0, 0, 0, a, a, a, shades)
-    if what == 'face':
-        s += poly([P(0, 0, a), P(a, 0, a), P(a, a, a), P(0, a, a)], BLUE)
-    elif what == 'edge':
-        s += line([P(a, a, a), P(a, a, 0)], stroke=BLUE, w=3.2)
-        s += line([P(a, a, a), P(a, a, 0)], stroke=LBLUE, w=1.0)
+# The selection tools draw a stepped part rather than a cube: the cube
+# already means "a view" on the View tab and "a new box" on Create, and a
+# pick filter should not look like either.
+PART = (14, 7, 6, 12)   # length, depth of the upper block, step height, height
+
+
+def select_part(P, what):
+    A, B, h, H = PART
+    ink = BLUE if what == 'body' else INK
+    w = 1.6 if what == 'body' else 1.25
+    right = [P(A, 0, H), P(A, B, H), P(A, B, h), P(A, A, h), P(A, A, 0), P(A, 0, 0)]
+    front = [P(0, A, h), P(A, A, h), P(A, A, 0), P(0, A, 0)]
+    step = [P(0, B, h), P(A, B, h), P(A, A, h), P(0, A, h)]
+    riser = [P(0, B, H), P(A, B, H), P(A, B, h), P(0, B, h)]
+    top = [P(0, 0, H), P(A, 0, H), P(A, B, H), P(0, B, H)]
+    s = poly(right, DARK, w=w, ink=ink) + poly(front, MID, w=w, ink=ink)
+    s += poly(step, BLUE if what == 'face' else LIGHT, w=w, ink=ink)
+    s += poly(riser, MID, w=w, ink=ink) + poly(top, LIGHT, w=w, ink=ink)
+    if what == 'edge':
+        s += line([P(0, B, H), P(A, B, H)], stroke=BLUE, w=3.2)
+        s += line([P(0, B, H), P(A, B, H)], stroke=LBLUE, w=1.0)
     elif what == 'vertex':
-        x, y = P(a, a, a)
+        x, y = P(A, B, H)
         s += dot(x, y, r=3.4, fill=BLUE, ring='#FFFFFF')
     return s
 
 
+def part_fit(x0, y0, x1, y1):
+    A, B, h, H = PART
+    return fit(corners(0, 0, 0, A, A, H), x0, y0, x1, y1)
+
+
 @icon('select.bodies')
 def _():
-    return select_cube(fit(corners(0, 0, 0, 12, 12, 12), 4, 3, 28, 29), 'body')
+    return select_part(part_fit(3, 3, 29, 29), 'body')
 
 
 @icon('select.faces')
 def _():
-    return select_cube(fit(corners(0, 0, 0, 12, 12, 12), 4, 3, 28, 29), 'face')
+    return select_part(part_fit(3, 3, 29, 29), 'face')
 
 
 @icon('select.edges')
 def _():
-    return select_cube(fit(corners(0, 0, 0, 12, 12, 12), 4, 3, 28, 29), 'edge')
+    return select_part(part_fit(3, 3, 29, 29), 'edge')
 
 
 @icon('select.vertices')
 def _():
-    return select_cube(fit(corners(0, 0, 0, 12, 12, 12), 4, 3, 28, 29), 'vertex')
+    return select_part(part_fit(3, 3, 29, 29), 'vertex')
 
 
 def priority(what):
-    P = fit(corners(0, 0, 0, 12, 12, 12), 2, 2, 23, 24)
-    return select_cube(P, what) + pointer(19.5, 16.5, 1.02)
+    return select_part(part_fit(2, 2.5, 25, 25), what) + pointer(19.5, 16.2, 1.02)
 
 
 @icon('select.priority.body')
@@ -735,8 +773,8 @@ def _():
     P = Iso(12, 16, 0.95)
     s = poly([P(0, 0, 0), P(13, 0, 0), P(13, 13, 0), P(0, 13, 0)], LIGHT)
     s += path(d_of([P(3, 3, 0), P(9.5, 3, 0), P(9.5, 9.5, 0), P(3, 9.5, 0)], True), stroke=INK, w=1.2)
-    s += line([(11.5, 16.5), (17.5, 23), (28.5, 7.5)], stroke=INK, w=6.4)
-    s += line([(11.5, 16.5), (17.5, 23), (28.5, 7.5)], stroke=GREEN, w=4.0)
+    s += line([(11, 16.5), (17, 23), (26.8, 8.6)], stroke=INK, w=6.4)
+    s += line([(11, 16.5), (17, 23), (26.8, 8.6)], stroke=GREEN, w=4.0)
     return s
 
 
@@ -866,7 +904,7 @@ def _():
     r = 9.2
     R = r / math.cos(math.radians(30))
     hexa = polygon_pts(16, 16, R, 6, 30)
-    s = circle(16, 16, r, w=1.1).replace('/>', ' stroke-opacity="0.5"/>')
+    s = circle(16, 16, r, stroke=LBLUE, w=1.4)
     s += path(d_of(hexa, True))
     return s + dot(16, 16, 2.4) + dot(16, 16 + r, 2.6)
 
@@ -875,7 +913,7 @@ def _():
 def _():
     R = 12
     hexa = polygon_pts(16, 16, R, 6, 0)
-    s = circle(16, 16, R, w=1.1) .replace('/>', ' stroke-opacity="0.5"/>')
+    s = circle(16, 16, R, stroke=LBLUE, w=1.4)
     s += path(d_of(hexa, True))
     return s + dot(16, 16, 2.4) + dot(16 + R, 16, 2.6)
 
@@ -1086,10 +1124,10 @@ def _():
 
 @icon('sketch.constraint.collinear')
 def _():
-    s = line([(3, 26), (13, 17.5)])
-    s += line([(13, 17.5), (19, 12.4)], w=1.2, dash='1.8 1.5')
-    s += line([(19, 12.4), (29, 4)], stroke=BLUE, w=2.2)
-    return s
+    s = line([(11.5, 18.8), (20.5, 11.2)], w=1.1, dash='1.6 1.6')
+    s += line([(3.5, 25.5), (11.5, 18.8)]) + line([(20.5, 11.2), (28.5, 4.5)], stroke=BLUE, w=2.2)
+    s += dot(3.5, 25.5, 2.1, fill='currentColor') + dot(11.5, 18.8, 2.1, fill='currentColor')
+    return s + dot(20.5, 11.2, 2.3) + dot(28.5, 4.5, 2.3)
 
 
 @icon('sketch.constraint.fix')
@@ -1145,11 +1183,10 @@ def view_cube(face):
         'left': [P(0, 0, a), P(0, a, a), P(0, a, 0), P(0, 0, 0)],
     }
     if hidden:
-        s += poly(faces[face], BLUE, stroke=False)
+        s += poly(faces['front'], MID) + poly(faces['right'], DARK) + poly(faces['top'], LIGHT)
+        s += poly(faces[face], BLUE, stroke=False, extra=' fill-opacity="0.8"')
         for e in ([P(0, 0, 0), P(a, 0, 0)], [P(0, 0, 0), P(0, a, 0)], [P(0, 0, 0), P(0, 0, a)]):
             s += line(e, stroke=INK, w=1.1, dash='1.6 1.3')
-        op = ' fill-opacity="0.55"'
-        s += poly(faces['front'], MID, extra=op) + poly(faces['right'], DARK, extra=op) + poly(faces['top'], LIGHT, extra=op)
     else:
         shade = {'top': LIGHT, 'front': MID, 'right': DARK}
         for k in ('front', 'right', 'top'):
@@ -1206,7 +1243,7 @@ def _():
 def _():
     a = 12
     P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29)
-    return box(P, 0, 0, 0, a, a, a, BLUES, w=1.9)
+    return box(P, 0, 0, 0, a, a, a, BLUES, w=1.7, ink='currentColor')
 
 
 @icon('view.display_wireframe')
@@ -1289,23 +1326,18 @@ def _():
 
 @icon('inspect.section_view')
 def _():
-    A, H, c = 14, 11, 7
-    P = fit(corners(-1.5, 0, -1.5, A + 1.5, A, H + 1.5), 2.5, 2.5, 29.5, 29.5)
-    # The half the section plane cuts away, only as a ghost.
-    ghost = [[P(0, A, H), P(A, A, H), P(A, c, H)], [P(A, A, H), P(A, A, 0), P(A, c, 0)],
-             [P(0, A, H), P(0, A, 0), P(A, A, 0)]]
-    s = ''.join(line(g, w=1.0, dash='1.6 1.4') for g in ghost)
-    s += poly([P(0, 0, H), P(A, 0, H), P(A, c, H), P(0, c, H)], LIGHT)
-    s += poly([P(A, 0, H), P(A, c, H), P(A, c, 0), P(A, 0, 0)], DARK)
-    s += poly([P(0, c, H), P(A, c, H), P(A, c, 0), P(0, c, 0)], BLUE)
+    A, H, c, m = 14, 11, 7, 2.5
+    P = fit(corners(-m, 0, -m, A + m, c, H + m), 2.5, 2.5, 29.5, 29.5)
+    s = box(P, 0, 0, 0, A, c, H, (LIGHT, BLUE, DARK))
     # Hatching on the cut face, as a drawing marks a section.
     for i in range(1, 6):
-        t = i * A / 6
-        k = min(t, H)
-        s += line([P(t, c, H), P(t - k, c, H - k)], stroke=LBLUE, w=1.0, cap='butt')
-    s += ('<polygon points="%s" fill="none" stroke="%s" stroke-width="1.3" stroke-dasharray="2.4 1.6" '
+        t = i * (A + H) / 6
+        a = P(min(t, A), c, max(0, t - A)) if t > A else P(t, c, 0)
+        b = P(max(0, t - H), c, min(t, H))
+        s += line([a, b], stroke=LBLUE, w=1.1, cap='butt')
+    s += ('<polygon points="%s" fill="%s" fill-opacity="0.35" stroke="%s" stroke-width="1.35" '
           'stroke-linejoin="round"/>' % (
-              pts([P(-1.5, c, H + 1.5), P(A + 1.5, c, H + 1.5), P(A + 1.5, c, -1.5), P(-1.5, c, -1.5)]), BLUE))
+              pts([P(-m, c, H + m), P(A + m, c, H + m), P(A + m, c, -m), P(-m, c, -m)]), LBLUE, BLUE))
     return s
 
 
