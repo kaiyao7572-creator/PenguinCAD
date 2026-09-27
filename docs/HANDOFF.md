@@ -216,7 +216,7 @@ against real OCCT volumes (a 40×30×10 extrude is exactly 12000mm³).
 | `modify.combine` | `CombineFeature.*`, `CombineCommands.cpp` | 60-check harness: volumes, keep-tools, multi-tool, undo |
 | `solid.pattern.rectangular` / `.circular` / `solid.mirror` | `PatternFeatures.*` | 100 checks asserting **positions as well as volumes** |
 | STEP / OBJ export (now File > Export…) | `src/io/` | STEP round-trips at 6000mm³ and 3 bodies stay 3; OBJ indices 1-based, in range |
-| `gizmo.rotate` / `gizmo.scale` | `src/gizmos/RotateScaleGizmo*` | built, registered, **never driven by hand — see 3.9** |
+| `gizmo.rotate` / `gizmo.scale` | `src/gizmos/RotateScaleGizmo*` | driven on screen 2026-09-26: 45° exactly about the centroid, scale 2.0025 → volume × 2.0025³ (§3.9) |
 | `gizmo.press_pull` | `GizmoCommands.cpp` | arrow-blue pixels: 0 after a face click, 388 after invoking it |
 
 **Named parameters — wired in 2026-09-24.** The document owns a
@@ -499,25 +499,48 @@ What is left:
   read-only; `Document::SetUserParameterUnit` exists).
 - Fusion's Favorites column and filter box are absent.
 
-### 3.9 Never verified by anyone
+### 3.9 ~~Never verified by anyone~~ — driven on 2026-09-26
 
-Written, compiles, **never driven by hand**: view cube clicking, Measure
-Distance, Section View, `gizmo.rotate`, `gizmo.scale`, and the
-`RotateScaleGizmoTool` drag path. Several agents died before testing
-these. Treat them as unknown, not working.
+Three agents operated all of it on screen, fixed what was broken, and
+proved it with numbers; the highest-risk claims were re-checked by hand.
 
-The gizmo drag → `TransformFeature` path is **no longer** in this list:
-it had a real bug (below) and now has `tests/transform_test.cpp` behind
-it. But that test drives the FEATURE, not the mouse — the actual drag
-gesture is still unproven.
+- **Move / Rotate / Scale gizmos** are now a fixed size on screen (the
+  Move gizmo was ~10 px across) and drawn over the body. A Move drag of
+  99.85 px moved the body 32.006 mm (predicted 32.06 from 3.114 px/mm),
+  and only the picked body; a ring drag turned a box exactly 45° about
+  its centroid; a scale drag of 2.0025× gave volume × 2.0025³. Handles
+  left on screen after Undo were fixed. `tests/rotscale_gizmo_test.cpp`
+  drives the drag maths without a window.
+- **View cube** clicks, Ctrl+1..6, Home and F6 land where Fusion's do,
+  keep Z up, frame the MODEL (they framed the 360 mm origin axes), swing
+  over 0.45 s, and there is Fusion's home icon. `tests/view_test.cpp`.
+- **Measure** picks faces, edges and vertices, shows Fusion's panel, and
+  reads 20.000 / 28.284 / 34.641 mm on a 20 mm box's edge, face diagonal
+  and body diagonal. A face selected BEFORE pressing I becomes the first
+  pick, as in Fusion (this looked like a lost click in one check).
+- **Section View** cuts with a solid hatched cap (OCCT's hatch was
+  see-through, so a solid looked hollow) and leaves the model untouched.
 
-**A bug that was in this list and is now fixed, as a warning about the
-rest of it:** `TransformFeature` grew per-body targeting, but all three
-call sites constructed it *without* a target, so `myTarget.IsNull()` was
-true and every drag transformed the whole upstream shape. Invisible while
-a document held one body — and Combine, patterns and mirror now make a
-second body routine. Everything else in this section is the same kind of
-risk: plausible-looking code nobody has actually operated.
+Fixed on the way, found by those agents outside their directories: the
+**timeline showed no features at all** (buttons shown by a queued call
+were measured as hidden), a STEP import framed the origin axes, a
+**moved body was renamed** (Body1 → Body3), OCCT's grid-echo star
+followed the cursor, and a script could not photograph a drag midway.
+
+Still open from that work:
+- Displays other than 2× scaling were not tried; the gizmos in
+  perspective were tested without a window only.
+- The Move gizmo's handles are harder to grab than Rotate/Scale's (about
+  3–4 px of tolerance on rings, 8 px on arrows, against ~10 px).
+- A wheel zoom during a view swing does not stop the swing.
+- Clicking the view cube during Measure zooms to fit the selection.
+- A scaled body, or one a press/pull grew a lot, still gets a new name.
+- **The harness's starting camera is occasionally different** (about 1
+  run in 8, before and after these changes alike). Check the first frame
+  before trusting hard-coded click positions — the box of a default 20 mm
+  `solid.box` has its centroid near logical (586, 257).
+- This desktop redraws the viewport about once a second, so the 0.45 s
+  swing could only be verified by sampling the camera, not watched.
 
 ---
 
@@ -777,7 +800,7 @@ be clicked onto, the way the origin planes are.
 The Sketch sub-ring, the overflow menu, and Delete. Ask the user about
 the orbit binding before implementing gestures.
 
-### 7.5 Whatever §3.9 still lists
+### 7.5 The loose ends §3.9 still lists
 
 ### 7.6 The two big ones, when there is room
 
