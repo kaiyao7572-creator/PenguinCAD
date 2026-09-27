@@ -122,6 +122,12 @@ void TimelinePanel::RefreshStrip()
         UpdateMarker(i, effectiveRollback);
     }
 
+    // The scroll area does not resize the strip (setWidgetResizable(false)
+    // keeps it at its natural width so a long timeline scrolls), so it
+    // must be told to take the size its buttons now need -- renames and
+    // rollback change their widths too.
+    m_stripWidget->adjustSize();
+
     SyncActiveButton();
 }
 
@@ -148,6 +154,7 @@ void TimelinePanel::RebuildStrip(const std::vector<FeaturePtr>& theFeatures)
             }
         });
         m_stripLayout->addWidget(marker);
+        marker->show();   // see the button below
         m_markers.push_back(marker);
     };
 
@@ -180,6 +187,12 @@ void TimelinePanel::RebuildStrip(const std::vector<FeaturePtr>& theFeatures)
                 });
 
         m_stripLayout->addWidget(button);
+        // A child added to a strip that is already on screen is only shown
+        // by a QUEUED call, and until then the layout counts it as hidden --
+        // so the adjustSize below measured an empty strip, nothing resized
+        // it once the buttons appeared, and the timeline showed no features
+        // at all. Show it now.
+        button->show();
         m_featureButtons.push_back(button);
 
         addMarker(i + 1);
