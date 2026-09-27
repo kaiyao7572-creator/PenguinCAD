@@ -14,6 +14,7 @@
 #include <V3d_View.hxx>
 #include <gp_Pnt.hxx>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -94,6 +95,29 @@ public:
     void SetHoveredProfile(int theIndex);
     int HoveredProfile() const { return myHoveredProfile; }
 
+    // ---- the model view: no sketch open ----
+    //
+    // A finished sketch's regions stay pickable, as in Fusion, but only the
+    // region under the cursor and the ones already picked are tinted.
+    // Filling every region of every sketch would bury the model in blue,
+    // which is why Fusion does not do it either.
+
+    // A finished sketch's regions, built the first time they are asked for
+    // after a rebuild and kept until the next one. The hover asks on every
+    // mouse move, which is far too often to rebuild the planar arrangement.
+    const std::vector<ProfileRegion>& RegionsOf(const SketchFeature& theSketch);
+
+    // Light one region of a finished sketch; an empty name or -1 lights
+    // none. Moves one object rather than refreshing, for the same reason
+    // SetHoveredProfile does. True when what is lit changed, so the caller
+    // knows a redraw is due.
+    bool SetModelHover(const std::string& theSketchName, int theIndex);
+
+    // The picks changed -- a click, or Extrude spending the ones it built
+    // on after the rebuild had already drawn them. Redraws only what shows
+    // them.
+    void OnProfileSelectionChanged();
+
     // True for the AIS objects this display put in the viewport. Code that
     // walks everything on screen -- the plane picker looking for pickable
     // faces, the sketch-mode fade looking for the model -- has to be able
@@ -109,6 +133,9 @@ private:
     SketchDisplay() = default;
 
     void ClearSketchObjects();
+
+    // Refresh's body; Refresh itself only marks that one is under way.
+    void RefreshObjects();
 
     // Hand an object to the viewer and remember it so the next Refresh can
     // take it back out again.
@@ -140,6 +167,22 @@ private:
     // states can't drift apart between the initial draw and a recolour.
     void ApplyProfileTint(const Handle(AIS_Shape)& theObject, std::size_t theIndex) const;
 
+    // A flat, unlit tint over one region, on the fill layer, not
+    // pickable. Displayed but not remembered -- the caller keeps it.
+    Handle(AIS_Shape) ShowRegionFill(const TopoDS_Face&    theFace,
+                                     const Quantity_Color& theColor,
+                                     Standard_Real         theTransparency);
+
+    // The finished sketch the picks belong to, if it is still in the
+    // document and on screen.
+    const SketchFeature* PickedSketch() const;
+
+    // Model view only: one tint per picked region, and the hover tint.
+    void AddModelPicks();
+    void RemoveModelPicks();
+    void UpdateModelHover();
+    void RemoveModelHover();
+
     void AddSketch(SketchFeature& theSketch, bool theIsActive);
     void AddAnnotations(SketchFeature& theSketch);
 
@@ -169,6 +212,17 @@ private:
     std::vector<ProfileRegion>     myActiveRegions;
     std::vector<Handle(AIS_Shape)> myProfileObjects;
     int                            myHoveredProfile = -1;
+
+    // The model view's regions by sketch name, and the few tints it draws.
+    std::map<std::string, std::vector<ProfileRegion>> myModelRegions;
+    std::vector<Handle(AIS_Shape)>                    myModelPickObjects;
+    Handle(AIS_Shape)                                 myModelHoverObject;
+    std::string                                       myModelHoverSketch;
+    int                                               myModelHoverIndex = -1;
+
+    // Refresh prunes the picks, which notifies; the refresh is already
+    // drawing them, so the notification must not start a second draw.
+    bool myIsRefreshing = false;
 
     std::string myActiveSketchName;
     bool        myAreSketchesVisible = true;

@@ -10,6 +10,7 @@
 #include "ui/MarkingMenuController.h"
 #include "core/Registration.h"
 #include "core/ShapeFeature.h"
+#include "sketch/ModelProfilePicker.h"
 
 #include <AIS_Point.hxx>
 #include <AIS_Shape.hxx>
@@ -152,6 +153,11 @@ MainWindow::MainWindow(QWidget* parent)
 
     m_document.AddObserver(this);
     lcad::CreateDockPanels(this, makeContext());
+
+    // A finished sketch's regions stay pickable from the model view, as in
+    // Fusion -- click one, press E. A permanent background handler at the
+    // bottom of the viewport's interaction stack, beneath every tool.
+    lcad::InstallModelProfilePicker(makeContext());
 
     resize(1400, 900);
     setWindowTitle("linuxCAD");

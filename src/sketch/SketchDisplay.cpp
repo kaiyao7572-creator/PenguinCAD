@@ -137,6 +137,19 @@ void RefineTessellation(const Handle(AIS_Shape)& theObject)
     theObject->SetOwnDeviationAngle(kDeviationAngle);
 }
 
+// Unlit and with no face boundary: a region fill is a flat tint, not a
+// surface. Lighting it would shade the fill by the plane's angle to the
+// camera, and the boundary would double every curve underneath.
+//
+// Only once a colour is set: AIS_Shape materialises its shading aspect on
+// SetColor, and reaching into ShadingAspect()->Aspect() before that
+// dereferences a null handle -- a segfault no headless test can catch.
+void MakeFlatTint(const Handle(AIS_Shape)& theObject)
+{
+    theObject->Attributes()->ShadingAspect()->Aspect()->SetShadingModel(Graphic3d_TOSM_UNLIT);
+    theObject->Attributes()->SetFaceBoundaryDraw(Standard_False);
+}
+
 } // namespace
 
 SketchDisplay& SketchDisplay::Instance()
@@ -171,6 +184,10 @@ void SketchDisplay::Attach(const CommandContext& theContext)
         myDocument->AddObserver(this);  // AddObserver de-duplicates
     }
 
+    // This display is the one thing that draws the picks, so it is the one
+    // handler. Leaked with the display, so the captured pointer never dies.
+    ProfileSelection::Instance().SetChangeHandler([this]() { OnProfileSelectionChanged(); });
+
     if (rebound) {
         // The first Attach usually happens once the viewer is finally up,
         // which may be long after the document was last rebuilt.
@@ -203,6 +220,14 @@ bool SketchDisplay::OwnsObject(const Handle(AIS_InteractiveObject)& theObject) c
         }
     }
     for (const Handle(AIS_InteractiveObject)& object : mySketchObjects) {
+        if (object == theObject) {
+            return true;
+        }
+    }
+    if (!myModelHoverObject.IsNull() && myModelHoverObject == theObject) {
+        return true;
+    }
+    for (const Handle(AIS_Shape)& object : myModelPickObjects) {
         if (object == theObject) {
             return true;
         }
@@ -261,6 +286,14 @@ void SketchDisplay::ClearSketchObjects()
     myProfileObjects.clear();
     myActiveRegions.clear();
     myHoveredProfile = -1;
+
+    // The model view's regions were built from geometry this rebuild may
+    // have changed, and its tints name regions by index into them.
+    RemoveModelPicks();
+    RemoveModelHover();
+    myModelRegions.clear();
+    myModelHoverSketch.clear();
+    myModelHoverIndex = -1;
 }
 
 double SketchDisplay::PixelSize() const
@@ -412,12 +445,7 @@ void SketchDisplay::AddProfileFill(SketchFeature& theSketch)
         // closed region -- and no headless test can catch it, because none
         // of this exists without a viewer.
         ApplyProfileTint(object, i);
-
-        // Unlit and with no face boundary: this is a flat tint, not a
-        // surface. Lighting it would shade the fill by the plane's angle to
-        // the camera, and the boundary would double every curve underneath.
-        object->Attributes()->ShadingAspect()->Aspect()->SetShadingModel(Graphic3d_TOSM_UNLIT);
-        object->Attributes()->SetFaceBoundaryDraw(Standard_False);
+        MakeFlatTint(object);
 
         Show(object, AIS_Shaded, kFillLayer);
         myProfileObjects.push_back(object);
@@ -451,6 +479,162 @@ void SketchDisplay::SetHoveredProfile(int theIndex)
         ApplyProfileTint(object, static_cast<std::size_t>(index));
         myContext->Redisplay(object, Standard_False);
     }
+}
+
+const std::vector<ProfileRegion>& SketchDisplay::RegionsOf(const SketchFeature& theSketch)
+{
+    const auto found = myModelRegions.find(theSketch.Name());
+    if (found != myModelRegions.end()) {
+        return found->second;
+    }
+    std::vector<ProfileRegion> regions;
+    try {
+        regions = theSketch.ProfileRegions();
+    } catch (const Standard_Failure&) {
+        regions.clear();  // a sketch whose regions won't build simply has none to pick
+    }
+    return myModelRegions.emplace(theSketch.Name(), std::move(regions)).first->second;
+}
+
+const SketchFeature* SketchDisplay::PickedSketch() const
+{
+    const std::string& name = ProfileSelection::Instance().SketchName();
+    if (myDocument == nullptr || name.empty()) {
+        return nullptr;
+    }
+    for (const FeaturePtr& feature : myDocument->Features()) {
+        const SketchFeature* sketch = dynamic_cast<const SketchFeature*>(feature.get());
+        if (sketch != nullptr && sketch->Name() == name) {
+            return sketch->IsVisible() ? sketch : nullptr;
+        }
+    }
+    return nullptr;
+}
+
+Handle(AIS_Shape) SketchDisplay::ShowRegionFill(const TopoDS_Face&    theFace,
+                                                const Quantity_Color& theColor,
+                                                Standard_Real         theTransparency)
+{
+    Handle(AIS_Shape) object = new AIS_Shape(theFace);
+    RefineTessellation(object);
+    object->SetColor(theColor);  // before MakeFlatTint, which needs the aspect it creates
+    object->SetTransparency(theTransparency);
+    MakeFlatTint(object);
+
+    myContext->Display(object, AIS_Shaded, kNoSelectionMode, Standard_False);
+    myContext->SetZLayer(object, kFillLayer);
+    return object;
+}
+
+void SketchDisplay::AddModelPicks()
+{
+    const ProfileSelection& selection = ProfileSelection::Instance();
+    if (selection.IsEmpty() || myContext.IsNull() || !myActiveSketchName.empty()) {
+        return;
+    }
+    const SketchFeature* sketch = PickedSketch();
+    if (sketch == nullptr) {
+        return;
+    }
+    for (const ProfileRegion& region : RegionsOf(*sketch)) {
+        if (region.face.IsNull() || !selection.Contains(region.ref)) {
+            continue;
+        }
+        myModelPickObjects.push_back(
+            ShowRegionFill(region.face, kProfileChosenColor, kProfileChosenTransparency));
+    }
+}
+
+void SketchDisplay::RemoveModelPicks()
+{
+    if (!myContext.IsNull()) {
+        for (const Handle(AIS_Shape)& object : myModelPickObjects) {
+            if (!object.IsNull()) {
+                myContext->Remove(object, Standard_False);
+            }
+        }
+    }
+    myModelPickObjects.clear();
+}
+
+void SketchDisplay::UpdateModelHover()
+{
+    TopoDS_Face face;
+    if (myActiveSketchName.empty() && myModelHoverIndex >= 0) {
+        const auto found = myModelRegions.find(myModelHoverSketch);
+        if (found != myModelRegions.end()
+            && static_cast<std::size_t>(myModelHoverIndex) < found->second.size()) {
+            const ProfileRegion& region = found->second[static_cast<std::size_t>(myModelHoverIndex)];
+            // Picked beats hovered, exactly as in sketch mode: the chosen
+            // tint is already on it, and a lighter one laid over it would
+            // make it look less chosen.
+            const ProfileSelection& selection = ProfileSelection::Instance();
+            const bool isPicked =
+                selection.SketchName() == myModelHoverSketch && selection.Contains(region.ref);
+            if (!isPicked) {
+                face = region.face;
+            }
+        }
+    }
+
+    if (face.IsNull() || myContext.IsNull()) {
+        RemoveModelHover();
+        return;
+    }
+    if (myModelHoverObject.IsNull()) {
+        myModelHoverObject = ShowRegionFill(face, kProfileHoverColor, kProfileHoverTransparency);
+        return;
+    }
+    // One object moved from region to region, not one per region: the
+    // hover changes on every few pixels of travel.
+    myModelHoverObject->SetShape(face);
+    myContext->Redisplay(myModelHoverObject, Standard_False);
+}
+
+void SketchDisplay::RemoveModelHover()
+{
+    if (!myModelHoverObject.IsNull() && !myContext.IsNull()) {
+        myContext->Remove(myModelHoverObject, Standard_False);
+    }
+    myModelHoverObject.Nullify();
+}
+
+bool SketchDisplay::SetModelHover(const std::string& theSketchName, int theIndex)
+{
+    const bool isNone = theSketchName.empty() || theIndex < 0;
+    const std::string name = isNone ? std::string() : theSketchName;
+    const int index = isNone ? -1 : theIndex;
+    if (name == myModelHoverSketch && index == myModelHoverIndex) {
+        return false;
+    }
+    myModelHoverSketch = name;
+    myModelHoverIndex = index;
+    UpdateModelHover();
+    return true;
+}
+
+void SketchDisplay::OnProfileSelectionChanged()
+{
+    if (myIsRefreshing || myContext.IsNull()) {
+        return;
+    }
+
+    if (!myActiveSketchName.empty()) {
+        // Sketch mode draws every region already; only the tints move.
+        for (std::size_t i = 0; i < myProfileObjects.size(); ++i) {
+            if (myProfileObjects[i].IsNull()) {
+                continue;
+            }
+            ApplyProfileTint(myProfileObjects[i], i);
+            myContext->Redisplay(myProfileObjects[i], Standard_False);
+        }
+    } else {
+        RemoveModelPicks();
+        AddModelPicks();
+        // A region just picked stops wearing the hover tint over its own.
+        UpdateModelHover();
+    }
+    Redraw();
 }
 
 void SketchDisplay::AddSketch(SketchFeature& theSketch, bool theIsActive)
@@ -568,9 +752,26 @@ void SketchDisplay::AddAnnotations(SketchFeature& theSketch)
 
 void SketchDisplay::Refresh()
 {
+    // Pruning the picks below notifies, and this is already drawing them.
+    const bool wasRefreshing = myIsRefreshing;
+    myIsRefreshing = true;
+    RefreshObjects();
+    myIsRefreshing = wasRefreshing;
+}
+
+void SketchDisplay::RefreshObjects()
+{
     ClearSketchObjects();
 
-    if (myDocument == nullptr || myContext.IsNull() || !myAreSketchesVisible) {
+    if (myDocument == nullptr || myContext.IsNull()) {
+        return;
+    }
+    if (!myAreSketchesVisible) {
+        // With no sketch on screen there is nothing to see a pick on, so
+        // nothing may stay picked: E would build on regions nobody can see.
+        if (myActiveSketchName.empty()) {
+            ProfileSelection::Instance().Clear();
+        }
         return;
     }
 
@@ -603,6 +804,25 @@ void SketchDisplay::Refresh()
             SketchView::Instance().Realign(sketch->Position());
         }
     }
+
+    if (!myActiveSketchName.empty()) {
+        return;
+    }
+
+    // No sketch open: the picks were made in the model view, against a
+    // finished sketch. A rebuild (an undo, an edit to that sketch) may have
+    // reshaped or removed what they named, so they are checked against the
+    // regions as they are NOW before anything is drawn for them -- and a
+    // sketch that is gone or hidden takes its picks with it.
+    ProfileSelection& selection = ProfileSelection::Instance();
+    if (!selection.IsEmpty()) {
+        if (const SketchFeature* picked = PickedSketch()) {
+            selection.Prune(RegionsOf(*picked));
+        } else {
+            selection.Clear();
+        }
+    }
+    AddModelPicks();
 }
 
 void SketchDisplay::ShowPreview(const TopoDS_Shape& theShape)
