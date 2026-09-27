@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PenguinCAD</title>
+<meta name="description" content="PenguinCAD is an open-source, Fusion 360-style parametric CAD for Linux. It is early and half-built, and it is looking for contributors.">
+<meta name="theme-color" content="#0b1119">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PenguinCAD: a Fusion-style CAD for Linux, half-built in the open">
+<meta property="og:description" content="Open-source, native on Linux, built on OpenCASCADE. Early, honest about its gaps, and looking for people to help.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<!--
+  One self-contained page: website/build.py inlines every image and font
+  below as a data URI and writes website/index.html. Edit this file, run
+  `python3 website/build.py`, commit both.
+
+  Archivo and B612 Mono are under the SIL Open Font License 1.1.
+-->
+<style>
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 100% 125%;
+  font-display: swap;
+  src: url("fonts/archivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "B612 Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/b612mono.woff2") format("woff2");
+}
+
+/* Dark-first: bare :root is the "Viewport" palette, the night-time CAD
+   canvas; "Drawing" is the same page on a drafting sheet. Components only
+   ever read tokens, so a theme is a token swap. */
+:root {
+  --bg: #0b1119;
+  --bg-raised: #0f1722;
+  --panel: #121c28;
+  --panel-2: #172231;
+  --line: #213041;
+  --line-2: #2d3f53;
+  --ink: #e6edf5;
+  --ink-2: #a9b8c8;
+  --ink-3: #72869b;
+  --accent: #22a3e6;
+  --accent-strong: #52bbf0;
+  --accent-ink: #03121c;
+  --accent-soft: rgba(34, 163, 230, 0.13);
+  --beak: #ff9f43;
+  --beak-soft: rgba(255, 159, 67, 0.13);
+  --yes: #46c08a;
+  --part: #e0b34a;
+  --no: #f06a6d;
+  --no-soft: rgba(240, 106, 109, 0.1);
+  --grid-minor: rgba(128, 170, 210, 0.05);
+  --grid-major: rgba(128, 170, 210, 0.095);
+  --shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --code-bg: #0a1018;
+  --dim-bg: var(--bg);
+  color-scheme: dark;
+
+  --f-display: "Archivo", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-body: "Archivo", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-mono: "B612 Mono", "DejaVu Sans Mono", ui-monospace, Menlo, monospace;
+  --gutter: clamp(16px, 4vw, 40px);
+  --wide: 1200px;
+  --measure: 66ch;
+  --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f1f4f7;
+    --bg-raised: #e8edf2;
+    --panel: #ffffff;
+    --panel-2: #f5f8fa;
+    --line: #d5dee7;
+    --line-2: #bdcad7;
+    --ink: #0e1a26;
+    --ink-2: #3c4f62;
+    --ink-3: #64778b;
+    --accent: #0679bd;
+    --accent-strong: #0568a3;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(6, 121, 189, 0.09);
+    --beak: #c96208;
+    --beak-soft: rgba(201, 98, 8, 0.09);
+    --yes: #13815a;
+    --part: #9a6b00;
+    --no: #c4353a;
+    --no-soft: rgba(196, 53, 58, 0.07);
+    --grid-minor: rgba(18, 74, 128, 0.045);
+    --grid-major: rgba(18, 74, 128, 0.085);
+    --shadow: 0 40px 80px -45px rgba(16, 40, 64, 0.5), 0 0 0 1px rgba(16, 40, 64, 0.1);
+    --code-bg: #0f1822;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f1f4f7;
+  --bg-raised: #e8edf2;
+  --panel: #ffffff;
+  --panel-2: #f5f8fa;
+  --line: #d5dee7;
+  --line-2: #bdcad7;
+  --ink: #0e1a26;
+  --ink-2: #3c4f62;
+  --ink-3: #64778b;
+  --accent: #0679bd;
+  --accent-strong: #0568a3;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(6, 121, 189, 0.09);
+  --beak: #c96208;
+  --beak-soft: rgba(201, 98, 8, 0.09);
+  --yes: #13815a;
+  --part: #9a6b00;
+  --no: #c4353a;
+  --no-soft: rgba(196, 53, 58, 0.07);
+  --grid-minor: rgba(18, 74, 128, 0.045);
+  --grid-major: rgba(18, 74, 128, 0.085);
+  --shadow: 0 40px 80px -45px rgba(16, 40, 64, 0.5), 0 0 0 1px rgba(16, 40, 64, 0.1);
+  --code-bg: #0f1822;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 17px/1.62 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* The drafting sheet under everything: a 10 mm grid with a 50 mm major. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
+  background-size: 190px 190px, 190px 190px, 38px 38px, 38px 38px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 15%, #000 30%, transparent 85%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 15%, #000 30%, transparent 85%);
+}
+
+img { max-width: 100%; height: auto; }
+a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { color: var(--accent-strong); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+[hidden] { display: none !important; }
+code, kbd { font-family: var(--f-mono); font-size: 0.88em; }
+p { margin: 0; }
+
+.skip {
+  position: absolute; left: 12px; top: -60px; z-index: 100;
+  padding: 8px 14px; border-radius: 4px;
+  background: var(--accent); color: var(--accent-ink); text-decoration: none;
+}
+.skip:focus { top: 12px; }
+
+.wrap {
+  width: 100%;
+  max-width: var(--wide);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.eyebrow {
+  font: 400 12.5px/1.4 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.eyebrow b { color: var(--beak); font-weight: 400; }
+
+h1, h2, h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+h2 { font-size: clamp(30px, 4.2vw, 50px); }
+h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.005em; line-height: 1.25; }
+
+.lede { font-size: clamp(17px, 1.55vw, 19.5px); color: var(--ink-2); max-width: var(--measure); line-height: 1.58; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  min-height: 46px; padding: 0 20px;
+  border: 1px solid var(--line-2); border-radius: 8px;
+  background: transparent; color: var(--ink);
+  font: 600 15px/1 var(--f-body); font-stretch: 110%;
+  text-decoration: none; cursor: pointer;
+  transition: transform 0.18s var(--ease), background-color 0.18s, border-color 0.18s;
+}
+.btn:hover { color: var(--ink); border-color: var(--ink-3); transform: translateY(-1px); }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-ink); }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* ---------- nav ---------- */
+.nav {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.25s, border-color 0.25s;
+}
+.nav.scrolled {
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  border-bottom-color: var(--line);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+}
+.nav .wrap { display: flex; align-items: center; gap: 20px; min-height: 64px; }
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--ink); text-decoration: none;
+  font: 800 19px/1 var(--f-display); font-stretch: 125%; letter-spacing: -0.01em;
+}
+.brand:hover { color: var(--ink); }
+.brand svg { width: 34px; height: 34px; flex: none; }
+.brand .cad { color: var(--accent); }
+.nav-links { display: flex; gap: 2px; margin-left: auto; }
+.nav-links a {
+  padding: 8px 12px; border-radius: 4px;
+  color: var(--ink-2); text-decoration: none; font-size: 14.5px; font-weight: 500; white-space: nowrap;
+}
+.nav-links a:hover, .nav-links a[aria-current="true"] { color: var(--ink); background: var(--accent-soft); }
+.nav-end { display: flex; align-items: center; gap: 12px; }
+.theme-switch { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-raised); }
+.theme-switch button {
+  appearance: none; border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
+  font: 11px/1 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 7px 10px; border-radius: 999px;
+}
+.theme-switch button[aria-pressed="true"] { background: var(--panel-2); color: var(--ink); box-shadow: 0 0 0 1px var(--line-2); }
+.gh {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 8px;
+  color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600;
+}
+.gh:hover { color: var(--ink); border-color: var(--ink-3); }
+.gh svg { width: 18px; height: 18px; }
+@media (max-width: 1020px) { .nav-links { display: none; } .nav-end { margin-left: auto; } }
+@media (max-width: 520px) { .theme-switch { display: none; } }
+
+/* ---------- live dimension lines ---------- */
+/* A heading carries a real dimension: extension lines, arrowheads and its
+   own width as a d# value, measured on screen and kept current as the
+   window resizes. */
+.dimmed { position: relative; }
+.dim {
+  position: absolute; left: 0; bottom: calc(100% + 10px);
+  height: 22px; color: var(--beak); pointer-events: none;
+}
+.dim svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.dim line { stroke: currentColor; stroke-width: 1; }
+.dim path { fill: currentColor; }
+.dim .run { stroke-dasharray: var(--len, 2000); stroke-dashoffset: 0; }
+.dim.drawing .run { animation: dim-draw 1s var(--ease) both; }
+.dim.drawing path { animation: dim-fade 0.4s 0.7s both; }
+@keyframes dim-draw { from { stroke-dashoffset: var(--len, 2000); } }
+@keyframes dim-fade { from { opacity: 0; } }
+.dim .value {
+  position: absolute; left: 50%; top: 0; transform: translate(-50%, -2px);
+  padding: 0 8px; background: var(--dim-bg);
+  font: 12px/22px var(--f-mono); letter-spacing: 0.02em; white-space: nowrap;
+}
+.dim .value i { font-style: normal; color: var(--ink-3); }
+
+/* ---------- hero ---------- */
+.hero { padding-block: clamp(44px, 8vw, 96px) 0; }
+.hero-copy { display: grid; gap: 24px; }
+.hero h1 {
+  max-width: 1080px; margin-top: 30px;
+  font-size: clamp(40px, 6.6vw, 86px); line-height: 0.97; letter-spacing: -0.035em;
+}
+.hero h1 .quiet { color: var(--ink-3); }
+.facts {
+  display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; padding: 0; list-style: none;
+  font: 12.5px/1.4 var(--f-mono); letter-spacing: 0.04em; color: var(--ink-3);
+}
+.facts li { display: inline-flex; align-items: center; gap: 8px; }
+.facts li::before { content: ""; width: 6px; height: 6px; border: 1px solid var(--accent); transform: rotate(45deg); }
+
+/* The screenshot, in a window, with numbered callouts on its real flaws. */
+.shot-frame {
+  position: relative;
+  margin-top: clamp(40px, 6vw, 64px);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background: #2b2b2b;
+}
+.shot-frame .bar {
+  display: flex; align-items: center; gap: 12px; height: 34px; padding-inline: 14px;
+  background: #1d1d1d; color: #9a9a9a; font: 12px/1 var(--f-mono);
+}
+.shot-frame .bar i { width: 11px; height: 11px; border-radius: 50%; background: #3d3d3d; }
+.shot-frame .bar span { flex: 1; text-align: center; margin-right: 57px; }
+.shot-frame .canvas { position: relative; }
+.shot-frame img { display: block; width: 100%; }
+.pin {
+  position: absolute; z-index: 2;
+  width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  display: grid; place-items: center;
+  border-radius: 50%; border: 2px solid #fff;
+  background: var(--beak); color: #1a0e02;
+  font: 700 13px/1 var(--f-body);
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.7);
+  cursor: pointer; appearance: none; padding: 0;
+  transition: transform 0.18s var(--ease);
+}
+.pin::after {
+  content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  border: 2px solid var(--beak); opacity: 0;
+  animation: pin-pulse 2.8s var(--ease) infinite;
+  animation-delay: calc(var(--n, 0) * 0.35s);
+}
+@keyframes pin-pulse { 0% { opacity: 0.8; transform: scale(0.6); } 70%, 100% { opacity: 0; transform: scale(1.35); } }
+.pin:hover, .pin[aria-expanded="true"] { transform: scale(1.12); }
+.pin-note {
+  position: absolute; z-index: 3; width: min(290px, 70vw);
+  padding: 12px 14px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line-2); color: var(--ink);
+  font-size: 14px; line-height: 1.45;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+}
+.pin-note b { display: block; margin-bottom: 3px; }
+.pin-note span { color: var(--ink-2); }
+.shot-caption {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;
+  margin-top: 16px; color: var(--ink-3); font-size: 14.5px;
+}
+.shot-caption .legend { display: inline-flex; align-items: center; gap: 8px; }
+.shot-caption .legend i {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; background: var(--beak);
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+.flaws {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
+  margin: 20px 0 0; padding: 0; list-style: none; counter-reset: flaw;
+}
+@media (max-width: 900px) { .flaws { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .flaws { grid-template-columns: 1fr; } }
+.flaws li {
+  counter-increment: flaw;
+  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  font-size: 14px; color: var(--ink-2); line-height: 1.45;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.flaws li::before {
+  content: counter(flaw);
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--beak); color: #1a0e02; font: 700 12px/1 var(--f-body);
+}
+.flaws li.lit { border-color: var(--beak); background: var(--beak-soft); }
+.flaws b { color: var(--ink); font-weight: 600; }
+
+/* ---------- sections ---------- */
+.section { padding-block: clamp(76px, 10vw, 132px) 0; }
+.section-head { display: grid; gap: 16px; max-width: 860px; margin-bottom: clamp(32px, 4.5vw, 56px); }
+.section-head h2 { margin-top: 28px; }
+
+/* why: prose on the left, an honest routing table on the right */
+.why { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(28px, 5vw, 64px); align-items: start; }
+@media (max-width: 920px) { .why { grid-template-columns: 1fr; } }
+.why .prose { display: grid; gap: 16px; color: var(--ink-2); max-width: var(--measure); }
+.why .prose strong { color: var(--ink); font-weight: 600; }
+.route { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-2); }
+.route li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: baseline;
+  padding: 14px 2px; border-bottom: 1px solid var(--line-2);
+}
+.route .want { color: var(--ink-2); font-size: 15.5px; }
+.route .use { font: 600 15px/1.3 var(--f-body); font-stretch: 110%; color: var(--ink); text-align: right; }
+.route li.gap { background: linear-gradient(90deg, var(--beak-soft), transparent 80%); padding-inline: 12px; margin-inline: -10px; border-radius: 4px; }
+.route li.gap .use { color: var(--beak); }
+@media (max-width: 560px) {
+  .route li { grid-template-columns: 1fr; gap: 2px; }
+  .route .use { text-align: left; }
+}
+
+/* compare table */
+.table-scroll { overflow-x: auto; border: 1px solid var(--line-2); border-radius: 10px; background: color-mix(in srgb, var(--panel) 80%, transparent); }
+.compare { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 14px; }
+.compare th, .compare td { padding: 12px 12px; text-align: center; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.compare thead th {
+  position: sticky; top: 0;
+  font: 400 10.5px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); background: var(--panel-2); border-bottom: 1px solid var(--line-2);
+}
+.compare th[scope="row"] { text-align: left; font-weight: 600; white-space: nowrap; }
+.compare th[scope="row"] small { display: block; font: 400 11.5px/1.3 var(--f-mono); color: var(--ink-3); letter-spacing: 0.02em; margin-top: 2px; white-space: normal; }
+.compare td.note { text-align: left; color: var(--ink-2); font-size: 13px; min-width: 200px; line-height: 1.4; }
+.compare tbody tr { transition: background-color 0.2s; }
+.compare tbody tr:hover { background: var(--accent-soft); }
+.compare tr.us { background: var(--beak-soft); }
+.compare tr.us th[scope="row"] { color: var(--beak); }
+.compare tr:last-child th, .compare tr:last-child td { border-bottom: 0; }
+.mark { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font: 700 12px/1 var(--f-body); }
+.mark.y { color: var(--yes); background: color-mix(in srgb, var(--yes) 14%, transparent); }
+.mark.n { color: var(--no); background: var(--no-soft); }
+.mark.p { color: var(--part); background: color-mix(in srgb, var(--part) 14%, transparent); }
+.compare-key { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; color: var(--ink-3); font-size: 13.5px; }
+.compare-key span { display: inline-flex; align-items: center; gap: 8px; }
+.fine { margin-top: 12px; color: var(--ink-3); font-size: 14px; max-width: var(--measure); }
+
+/* status board */
+.status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 920px) { .status { grid-template-columns: 1fr; } }
+.col { border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--panel) 70%, transparent); overflow: hidden; }
+.col header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.col header h3 { font-size: 17px; }
+.col header .count { font: 12px/1 var(--f-mono); color: var(--ink-3); }
+.col ul { margin: 0; padding: 10px 18px 18px; list-style: none; display: grid; gap: 2px; }
+.col li { position: relative; padding: 7px 0 7px 18px; font-size: 14.5px; color: var(--ink-2); border-bottom: 1px dashed color-mix(in srgb, var(--line) 80%, transparent); }
+.col li:last-child { border-bottom: 0; }
+.col li::before { content: ""; position: absolute; left: 0; top: 14px; width: 8px; height: 8px; border-radius: 50%; }
+.col li strong { color: var(--ink); font-weight: 600; }
+.col.works header { box-shadow: inset 0 3px 0 var(--yes); }
+.col.works li::before { background: var(--yes); }
+.col.now header { box-shadow: inset 0 3px 0 var(--accent); }
+.col.now li::before { background: var(--accent); animation: busy 1.6s ease-in-out infinite; }
+.col.wanted header { box-shadow: inset 0 3px 0 var(--beak); }
+.col.wanted li::before { background: transparent; border: 1.5px solid var(--beak); }
+@keyframes busy { 50% { opacity: 0.3; } }
+
+/* screenshots */
+.gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 800px) { .gallery { grid-template-columns: 1fr; } }
+.gallery figure { margin: 0; display: grid; gap: 12px; align-content: start; }
+.gallery figure.wide { grid-column: 1 / -1; }
+.gallery button {
+  appearance: none; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: #2b2b2b; cursor: zoom-in; display: block; box-shadow: var(--shadow);
+  transition: transform 0.3s var(--ease);
+}
+.gallery button:hover { transform: translateY(-3px); }
+.gallery img { display: block; width: 100%; }
+.gallery figcaption { color: var(--ink-3); font-size: 14.5px; max-width: var(--measure); }
+.gallery figcaption b { color: var(--ink); font-weight: 600; }
+.lightbox {
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: var(--gutter);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  cursor: zoom-out; animation: fade 0.2s both;
+}
+.lightbox img { max-height: 92vh; border-radius: 8px; box-shadow: var(--shadow); }
+@keyframes fade { from { opacity: 0; } }
+
+/* help */
+.tracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 980px) { .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .tracks { grid-template-columns: 1fr; } }
+.track {
+  position: relative; display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px;
+  padding: 22px; border: 1px solid var(--line); border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  transition: border-color 0.2s, transform 0.25s var(--ease), background-color 0.2s;
+}
+.track:hover { border-color: var(--accent); transform: translateY(-3px); }
+.track .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line-2);
+  font: 11px/1 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);
+}
+.tag.easy { color: var(--yes); border-color: color-mix(in srgb, var(--yes) 45%, transparent); }
+.tag.mid { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.tag.big { color: var(--beak); border-color: color-mix(in srgb, var(--beak) 50%, transparent); }
+.track p { color: var(--ink-2); font-size: 15px; }
+.track ul { margin: 0; padding: 0 0 0 18px; color: var(--ink-2); font-size: 14.5px; display: grid; gap: 4px; }
+.track ul li::marker { color: var(--ink-3); }
+.track a.more { font-size: 14.5px; font-weight: 600; text-decoration: none; }
+.track a.more:hover { text-decoration: underline; }
+
+.steps {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
+  margin: clamp(40px, 5vw, 56px) 0 0; padding: 0; list-style: none; counter-reset: step;
+  border-top: 1.5px solid var(--ink-3);
+}
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
+.steps li { counter-increment: step; position: relative; padding: 26px 22px 6px 0; display: grid; gap: 8px; align-content: start; }
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font: 400 12px/1 var(--f-mono); letter-spacing: 0.1em; color: var(--beak);
+}
+.steps li::after {
+  content: ""; position: absolute; top: -5px; left: 0; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--bg); border: 1.5px solid var(--beak);
+}
+.steps b { font: 700 17px/1.3 var(--f-display); font-stretch: 112%; }
+.steps span { color: var(--ink-2); font-size: 14.5px; }
+
+/* faq */
+.faq { display: grid; gap: 0; border-top: 1px solid var(--line-2); max-width: 900px; }
+.faq details { border-bottom: 1px solid var(--line-2); }
+.faq summary {
+  list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 20px; align-items: center;
+  padding: 20px 2px; font: 700 18px/1.3 var(--f-display); font-stretch: 110%;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font: 400 22px/1 var(--f-mono); color: var(--ink-3); transition: transform 0.25s var(--ease); }
+.faq details[open] summary::after { transform: rotate(45deg); color: var(--beak); }
+.faq details > div { padding: 0 2px 22px; color: var(--ink-2); max-width: var(--measure); display: grid; gap: 12px; }
+
+/* build */
+.build { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 940px) { .build { grid-template-columns: 1fr; } }
+.terminal { border-radius: 10px; overflow: hidden; background: var(--code-bg); box-shadow: var(--shadow); color: #d8e3ee; }
+.term-tabs { display: flex; gap: 2px; padding: 8px 8px 0; background: #0b121b; border-bottom: 1px solid #1d2a38; }
+.term-tabs button {
+  appearance: none; border: 0; padding: 9px 14px; border-radius: 6px 6px 0 0;
+  background: transparent; color: #7f93a7; font: 12px/1 var(--f-mono); cursor: pointer;
+}
+.term-tabs button[aria-selected="true"] { background: var(--code-bg); color: #e6eef6; }
+.term-body { padding: 14px 0; }
+.cmd { display: flex; align-items: flex-start; gap: 12px; padding: 6px 16px; }
+.cmd:hover { background: rgba(255, 255, 255, 0.03); }
+.cmd code { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.cmd code::before { content: "$ "; color: #5f7488; }
+.term-note { display: block; padding: 8px 16px 2px; font: 12px/1.5 var(--f-mono); color: #71879c; }
+.copy {
+  appearance: none; flex: none; padding: 5px 9px; border-radius: 4px; cursor: pointer;
+  border: 1px solid #2a3a4b; background: transparent; color: #9fb2c5; font: 11px/1 var(--f-mono);
+}
+.copy:hover { border-color: #52bbf0; color: #fff; }
+.copy.done { border-color: #46c08a; color: #46c08a; }
+.reqs dl { margin: 0; display: grid; grid-template-columns: auto 1fr; border-top: 1px solid var(--line); }
+.reqs dt, .reqs dd { margin: 0; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.reqs dt { padding-right: 22px; font: 11.5px/1.9 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.reqs dd { color: var(--ink-2); }
+.reqs p { margin-top: 14px; color: var(--ink-3); font-size: 14.5px; }
+
+/* closing */
+.closing {
+  margin-top: clamp(76px, 10vw, 132px);
+  padding: clamp(32px, 5vw, 56px);
+  border: 1.5px solid var(--ink-3); border-radius: 4px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center;
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+}
+@media (max-width: 820px) { .closing { grid-template-columns: 1fr; } }
+.closing h2 { font-size: clamp(26px, 3.4vw, 40px); }
+.closing p { margin-top: 12px; color: var(--ink-2); max-width: 60ch; }
+
+.foot { margin-top: clamp(64px, 8vw, 104px); border-top: 1px solid var(--line); padding-block: 44px 64px; color: var(--ink-3); font-size: 14px; }
+.foot .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; }
+@media (max-width: 700px) { .foot .wrap { grid-template-columns: 1fr; } }
+.foot nav { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.foot a { color: var(--ink-2); text-decoration: none; }
+.foot a:hover { color: var(--ink); }
+.foot .legal { max-width: 72ch; margin-top: 14px; font-size: 13px; line-height: 1.6; }
+
+/* Readable at rest; the observer only adds a short lift as a block enters. */
+.reveal.in { animation: lift 0.7s var(--ease) both; }
+@keyframes lift { from { transform: translateY(16px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+<script>
+  // Before first paint, so a remembered theme never flashes the other one.
+  try { var t = localStorage.getItem("pcad-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="logo" viewBox="0 0 64 64">
+      <circle cx="32" cy="33" r="29" fill="none" style="stroke:var(--accent)" stroke-width="1.6" stroke-dasharray="4.2 3.2"/>
+      <path d="M30.5 7.5c9.8 0 15.9 7.6 16.6 17.2.5 7 3.4 11.4 3.4 18.3 0 9.6-7.9 15.5-18.5 15.5S13.6 52.4 13.6 42.4c0-6.2 2.6-10.6 2.6-17.4C16.2 14.9 21.6 7.5 30.5 7.5z" fill="#0E1722" stroke="#3B5068" stroke-width="1.2"/>
+      <path d="M33.8 14.6c5.6.4 8.6 4.6 9 10.2.4 6.2 3.4 10 3.4 17 0 7.4-5.6 11.9-13.3 11.9-7.4 0-12.4-4.4-12.4-11.3 0-6.5 3.6-9.8 4.4-15.6.9-7.3 3.4-12.6 8.9-12.2z" fill="#F4F7FA"/>
+      <path d="M40.6 20.2 52.8 23.6 40.9 26.9c-1.4-2.2-1.5-4.4-.3-6.7z" fill="#FF9F43"/>
+      <circle cx="35.6" cy="20.4" r="2.3" fill="#0E1722"/>
+      <circle cx="36.3" cy="19.7" r=".75" fill="#F4F7FA"/>
+      <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 16 16"><path d="M8 3v10M4 9l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="PenguinCAD, back to top">
+      <svg aria-hidden="true"><use href="#logo"/></svg>
+      <span>Penguin<span class="cad">CAD</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#why">Why</a>
+      <a href="#compare">Compare</a>
+      <a href="#status">Status</a>
+      <a href="#help">Help out</a>
+      <a href="#build">Build</a>
+    </nav>
+    <div class="nav-end">
+      <div class="theme-switch" role="group" aria-label="Colour theme">
+        <button type="button" data-theme-set="dark" aria-pressed="false">Viewport</button>
+        <button type="button" data-theme-set="light" aria-pressed="false">Drawing</button>
+      </div>
+      <a class="gh" href="https://github.com/kaiyao7572-creator/PenguinCAD"><svg aria-hidden="true"><use href="#i-github"/></svg>GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-copy">
+      <p class="eyebrow">Open-source CAD for Linux <b>·</b> early <b>·</b> looking for help</p>
+      <h1 data-dim="d1">A Fusion-style CAD for Linux, <span class="quiet">half‑built in the open.</span></h1>
+      <p class="lede">PenguinCAD copies the way Fusion&nbsp;360 works (the feature timeline, the marking menu, the shortcut keys) on OpenCASCADE, the open kernel FreeCAD also uses. Today you can sketch, extrude, fillet and drive it all from parameters. You can't make assemblies or drawings yet, and saving a design is still being built. If you want this to exist, the quickest way to get there is to help build it.</p>
+      <div class="cta">
+        <a class="btn primary" href="#help">Find something to work on <svg aria-hidden="true"><use href="#i-arrow-down"/></svg></a>
+        <a class="btn" href="https://github.com/kaiyao7572-creator/PenguinCAD"><svg aria-hidden="true"><use href="#i-github"/></svg>Read the code</a>
+      </div>
+      <ul class="facts">
+        <li>GPL-3.0</li>
+        <li>C++17 · Qt 6 · OpenCASCADE 7.9</li>
+        <li>~45k lines · 24 test suites</li>
+        <li>1 maintainer so far</li>
+      </ul>
+    </div>
+
+    <figure class="shot-frame reveal" style="margin-bottom:0">
+      <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>PenguinCAD, as it is today</span></div>
+      <div class="canvas" id="annotated">
+        <img src="img/app.webp" width="1800" height="1096" alt="PenguinCAD's main window: a filleted plate with two holes in the 3D view, the browser tree on the left, a toolbar of commands along the top, the properties panel on the right and a timeline of three features along the bottom.">
+        <button class="pin" type="button" style="left:34%;top:11.5%;--n:0" data-flaw="0" aria-label="Rough edge 1">1</button>
+        <button class="pin" type="button" style="left:97.9%;top:20.2%;--n:1" data-flaw="1" aria-label="Rough edge 2">2</button>
+        <button class="pin" type="button" style="left:6.6%;top:17.8%;--n:2" data-flaw="2" aria-label="Rough edge 3">3</button>
+        <button class="pin" type="button" style="left:24%;top:92.3%;--n:3" data-flaw="3" aria-label="Rough edge 4">4</button>
+      </div>
+    </figure>
+    <div class="shot-caption">
+      <span>Unretouched: a sketch, an extrude and a fillet, captured by the app's own script harness.</span>
+      <span class="legend"><i></i>Rough edges, each a good first contribution</span>
+    </div>
+    <ol class="flaws" id="flaws">
+      <li data-flaw="0"><span><b>Emoji for icons.</b> A proper SVG icon set is being drawn now; it will need a designer's eye.</span></li>
+      <li data-flaw="1"><span><b>Clipped fields.</b> The properties panel cuts off its own values: "nm" is really "mm".</span></li>
+      <li data-flaw="2"><span><b>Truncated names.</b> The browser squeezes "Sketch1" down to "Sket…".</span></li>
+      <li data-flaw="3"><span><b>A bare timeline.</b> Fusion's has feature icons and a marker you drag. Ours is text buttons.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section" id="why">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Why this exists</p>
+      <h2 data-dim="d2">Why build another CAD?</h2>
+    </div>
+    <div class="why">
+      <div class="prose reveal">
+        <p>Fusion&nbsp;360 taught a lot of people CAD: the timeline you can roll back, the ring of commands under the right mouse button, <kbd>E</kbd> for extrude. It doesn't run on Linux, and it keeps your designs in Autodesk's cloud.</p>
+        <p>The open-source options are real and some are excellent. <strong>None of them work the way Fusion does</strong>, and for someone who already knows Fusion, relearning a workflow is the hard part of switching.</p>
+        <p>PenguinCAD's bet is narrow: keep Fusion's interaction model as exactly as possible, on an open kernel, as a native Linux app. It is a long way from that goal. The table on the right is where we'd send you today, and it isn't mostly us.</p>
+      </div>
+      <ul class="route reveal" aria-label="Which tool to use for what">
+        <li><span class="want">A mature open-source CAD, today</span><span class="use">FreeCAD</span></li>
+        <li><span class="want">Fusion itself, on Windows or macOS</span><span class="use">Fusion 360</span></li>
+        <li><span class="want">Professional CAD in a browser, any OS</span><span class="use">Onshape</span></li>
+        <li><span class="want">Parts written as code, reproducible</span><span class="use">CadQuery · build123d · OpenSCAD</span></li>
+        <li><span class="want">Small, fast constraint modelling on Linux</span><span class="use">SolveSpace · Dune 3D</span></li>
+        <li class="gap"><span class="want">Fusion's way of working, native on Linux, open source</span><span class="use">Nothing yet. That's the gap.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="compare">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Comparison</p>
+      <h2 data-dim="d3">How it compares, honestly.</h2>
+      <p class="lede">PenguinCAD is the least capable tool on this list. Its row is here so you can see exactly what's missing, and the one column where it's trying to be different.</p>
+    </div>
+    <div class="table-scroll reveal" tabindex="0" role="region" aria-label="Comparison of CAD tools">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align:left">Tool</th>
+            <th scope="col">Native on Linux</th>
+            <th scope="col">Open source</th>
+            <th scope="col">Offline, no account</th>
+            <th scope="col">Parametric history</th>
+            <th scope="col">Fusion-style workflow</th>
+            <th scope="col">Assemblies</th>
+            <th scope="col">2D drawings</th>
+            <th scope="col">CAM</th>
+            <th scope="col" style="text-align:left">In one line</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="us">
+            <th scope="row">PenguinCAD<small>GPL-3.0 · OCCT</small></th>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td class="note">Fusion's workflow, early. Single parts only; saving is in progress.</td>
+          </tr>
+          <tr>
+            <th scope="row">FreeCAD<small>LGPL-2.0+ · OCCT</small></th>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td class="note">Mature and broad, organised into workbenches. Its own workflow.</td>
+          </tr>
+          <tr>
+            <th scope="row">Fusion 360<small>Autodesk · commercial</small></th>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td class="note">The reference. Windows and macOS, cloud account, free for personal use with limits.</td>
+          </tr>
+          <tr>
+            <th scope="row">Onshape<small>PTC · commercial</small></th>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td class="note">Runs in any browser. Cloud only; the free plan makes documents public.</td>
+          </tr>
+          <tr>
+            <th scope="row">SolidWorks<small>Dassault · commercial</small></th>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td class="note">The industry standard. Windows only, and priced for businesses.</td>
+          </tr>
+          <tr>
+            <th scope="row">SolveSpace<small>GPL-3.0 · own kernel</small></th>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td class="note">Tiny, fast and constraint-first. No fillets on solids.</td>
+          </tr>
+          <tr>
+            <th scope="row">Dune 3D<small>GPL-3.0 · OCCT</small></th>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td class="note">A young, Linux-first modeller with SolveSpace's solver. The closest in spirit.</td>
+          </tr>
+          <tr>
+            <th scope="row">Code-CAD<small>OpenSCAD · CadQuery · build123d</small></th>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark y" role="img" aria-label="Yes">✓</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark p" role="img" aria-label="Partly">~</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td><span class="mark n" role="img" aria-label="No">✕</span></td>
+            <td class="note">Parts are programs. Great for reproducible parts, and a different craft from clicking.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="compare-key" aria-hidden="true">
+      <span><span class="mark y">✓</span>Yes</span>
+      <span><span class="mark p">~</span>Partly, or through an add-on</span>
+      <span><span class="mark n">✕</span>No</span>
+    </div>
+    <p class="fine">This is our reading as of September 2026, and other projects move fast. If we got something wrong, fix it: this page lives in the repository under <code>website/</code>, and a pull request correcting the table is a perfectly good first contribution.</p>
+  </div>
+</section>
+
+<section class="section" id="status">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Where it stands</p>
+      <h2 data-dim="d4">What works, what's being built, what nobody has started.</h2>
+    </div>
+    <div class="status">
+      <div class="col works reveal">
+        <header><h3>Works today</h3><span class="count">tested</span></header>
+        <ul>
+          <li><strong>Sketching</strong>: lines, rectangles, circles, arcs, polygons, slots, splines, conics</li>
+          <li><strong>12 constraints and 6 driving dimensions</strong>, on an in-house solver</li>
+          <li><strong>Extrude, revolve, sweep, loft</strong>, as a new body or join, cut or intersect</li>
+          <li>Fillet, chamfer and shell (on every edge, for now)</li>
+          <li>Patterns, mirror, combine, Press Pull</li>
+          <li><strong>Parameters and expressions</strong> with unit checking; every dimension is a d# name</li>
+          <li>Marking menu with click, flick and hold; Fusion's navigation and keys</li>
+          <li>Measure, section view, model properties</li>
+          <li>STEP import and export; STL and OBJ export</li>
+        </ul>
+      </div>
+      <div class="col now reveal">
+        <header><h3>Being built now</h3><span class="count">in progress</span></header>
+        <ul>
+          <li><strong>Saving and opening designs</strong>: a native, human-readable .pcad format, with a round-trip test for every feature type</li>
+          <li><strong>A real icon set</strong> in place of the emoji</li>
+        </ul>
+      </div>
+      <div class="col wanted reveal">
+        <header><h3>Not started: wanted</h3><span class="count">yours?</span></header>
+        <ul>
+          <li><strong>Assemblies and joints</strong></li>
+          <li><strong>2D drawings</strong> a workshop can build from</li>
+          <li>Picking edges for fillet and chamfer</li>
+          <li>A Hole command</li>
+          <li>Sketching on construction planes</li>
+          <li>Sweeps along open paths</li>
+          <li>Packages: Flatpak, AppImage, AUR, COPR</li>
+          <li>CI on every pull request</li>
+          <li>Native Wayland (it runs through XWayland)</li>
+          <li>CAM</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="shots">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Screenshots</p>
+      <h2 data-dim="d5">More of the real thing.</h2>
+    </div>
+    <div class="gallery">
+      <figure class="wide reveal">
+        <button type="button" data-full="img/marking-menu.webp" aria-label="Enlarge the marking menu screenshot"><img src="img/marking-menu.webp" width="1800" height="1096" loading="lazy" alt="The marking menu open over the plate: eight commands in a ring around the cursor, with Hole, Delete, Redo and Press Pull greyed out."></button>
+        <figcaption><b>The marking menu.</b> Right-click, flick or hold, with Fusion's thresholds. Hole and Delete are greyed because they don't exist yet.</figcaption>
+      </figure>
+      <figure class="reveal">
+        <button type="button" data-full="img/sketch.webp" aria-label="Enlarge the sketch screenshot"><img src="img/sketch.webp" width="1800" height="1096" loading="lazy" alt="Sketch mode: a rectangle with two circles, live dimensions on every edge, and the contextual Sketch tab open in the toolbar."></button>
+        <figcaption><b>The sketcher.</b> Live dimensions while you draw, and a contextual Sketch tab that appears and disappears as Fusion's does.</figcaption>
+      </figure>
+      <figure class="reveal">
+        <button type="button" data-full="img/parameters.webp" aria-label="Enlarge the parameters screenshot"><img src="img/parameters.webp" width="1200" height="600" loading="lazy" alt="The Change Parameters dialog listing model parameters d1, d2 and d3 for Sketch1, Extrude1 and Fillet1, with their expressions and values."></button>
+        <figcaption><b>Change Parameters.</b> Every dimension becomes a named model parameter any expression can read. It works, and it's plain; this dialog is another good place to start.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="help">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Help out</p>
+      <h2 data-dim="d6">You don't need to know OpenCASCADE to help.</h2>
+      <p class="lede">Pick whatever matches what you're good at. Everything below is real, unclaimed work, and the list in <a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> goes into more detail.</p>
+    </div>
+    <div class="tracks">
+      <article class="track reveal">
+        <div class="tags"><span class="tag easy">No code</span><span class="tag">Fusion users</span></div>
+        <h3>Try it and tell us what breaks</h3>
+        <p>Build it and model something you'd model in Fusion. Every "that's not how Fusion does it" is worth an issue: it's the most valuable input this project can get.</p>
+        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/issues/new">Open an issue →</a>
+      </article>
+      <article class="track reveal">
+        <div class="tags"><span class="tag easy">Good first issue</span><span class="tag">Qt · C++</span></div>
+        <h3>Fix a rough edge</h3>
+        <ul>
+          <li>Clipped fields in the properties panel</li>
+          <li>Truncated names in the browser</li>
+          <li>Feature icons and a draggable marker on the timeline</li>
+          <li>The ribbon's stray horizontal scrollbar</li>
+        </ul>
+        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#good-first-issues">See the details →</a>
+      </article>
+      <article class="track reveal">
+        <div class="tags"><span class="tag mid">Medium</span><span class="tag">OCCT · geometry</span></div>
+        <h3>Close a modelling gap</h3>
+        <ul>
+          <li>Fillet and chamfer on picked edges</li>
+          <li>A Hole command</li>
+          <li>Sketch on a construction plane</li>
+          <li>Sweep along an open path</li>
+        </ul>
+        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#modelling-gaps">See the details →</a>
+      </article>
+      <article class="track reveal">
+        <div class="tags"><span class="tag big">Large</span><span class="tag">Design first</span></div>
+        <h3>Take on a big one</h3>
+        <p>Assemblies with joints, or 2D drawings. Each is a document-model project: start with a design discussion in an issue before writing code.</p>
+        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#big-projects">See the details →</a>
+      </article>
+      <article class="track reveal">
+        <div class="tags"><span class="tag easy">Linux packaging</span><span class="tag">CI</span></div>
+        <h3>Get it onto people's machines</h3>
+        <p>There are no packages yet. Flatpak, AppImage, AUR and COPR would each lower the bar to trying it. So would a CI build that runs the test suites on every pull request.</p>
+        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#packaging-and-ci">See the details →</a>
+      </article>
+      <article class="track reveal">
+        <div class="tags"><span class="tag easy">No C++</span><span class="tag">Design · docs</span></div>
+        <h3>Design and write</h3>
+        <p>Icons, a light theme, a first-model tutorial, this website, and the running audit of where PenguinCAD falls short of Fusion.</p>
+        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/docs/FUSION360_COMPARISON.md">Read the audit →</a>
+      </article>
+    </div>
+
+    <ol class="steps reveal" aria-label="How to make your first contribution">
+      <li><b>Build it</b><span>Three commands (below), then <code>./tests/run_tests.sh</code>. It should end with "All test suites passed."</span></li>
+      <li><b>Read the contract</b><span><a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a> covers the feature lifecycle, references and the known traps.</span></li>
+      <li><b>Claim something</b><span>Open or comment on an issue saying what you'll take, so two people don't build the same thing.</span></li>
+      <li><b>Send a pull request with a test</b><span>The app can drive its own UI and screenshot it, so a UI change can come with evidence.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Questions</p>
+      <h2 data-dim="d7">Fair questions.</h2>
+    </div>
+    <div class="faq reveal">
+      <details>
+        <summary>Can I do real work in it?</summary>
+        <div><p>Not yet. Until saving lands you can't even keep a design, and there are no assemblies or drawings. Treat it as something to build on, not something to depend on. If you need a CAD tool for a project this month, use one from the comparison above.</p></div>
+      </details>
+      <details>
+        <summary>Why not contribute to FreeCAD instead?</summary>
+        <div>
+          <p>That's a reasonable choice, and FreeCAD is the better tool today. Fusion's feel isn't a theme you can put on top of another program, though. It lives in the selection model, the timeline and the way every command flows, all the way down.</p>
+          <p>PenguinCAD is a small codebase where that feel is the whole design rather than an option. If you'd rather make FreeCAD more Fusion-like, that's good work too.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Was this written with AI?</summary>
+        <div><p>Largely, yes, with Claude Code, and the commits say so. That's part of why it needs people: review from someone who knows the code, testing from someone who does CAD every day, and design judgment are exactly what it's short of.</p></div>
+      </details>
+      <details>
+        <summary>Will it run on Windows or macOS?</summary>
+        <div><p>Qt and OpenCASCADE both run there, so nothing fundamental stands in the way, but nobody has tried. It is developed on Fedora and only tested on Linux.</p></div>
+      </details>
+      <details>
+        <summary>Is this affiliated with Autodesk?</summary>
+        <div><p>No. It's an independent open-source project that imitates how Fusion&nbsp;360 feels to use. It shares no code with it.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="build">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Build from source</p>
+      <h2 data-dim="d8">Three commands on Fedora.</h2>
+      <p class="lede">PenguinCAD needs Qt&nbsp;6 and OpenCASCADE 7.8 or newer. Fedora packages both. On other distributions, making this easy is one of the open jobs above.</p>
+    </div>
+    <div class="build">
+      <div class="terminal reveal">
+        <div class="term-tabs" role="tablist" aria-label="Distribution">
+          <button type="button" role="tab" id="tab-fedora" aria-selected="true" aria-controls="term-fedora">Fedora</button>
+          <button type="button" role="tab" id="tab-other" aria-selected="false" aria-controls="term-other" tabindex="-1">Other distros</button>
+        </div>
+        <div class="term-body" role="tabpanel" id="term-fedora" aria-labelledby="tab-fedora">
+          <div class="cmd"><code>sudo dnf install opencascade-devel qt6-qtbase-devel cmake gcc-c++ git</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>git clone https://github.com/kaiyao7572-creator/PenguinCAD.git &amp;&amp; cd PenguinCAD</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>cmake -B build &amp;&amp; cmake --build build -j$(nproc) &amp;&amp; ./build/penguincad</code><button class="copy" type="button">Copy</button></div>
+          <span class="term-note">Then ./tests/run_tests.sh to check everything still passes.</span>
+        </div>
+        <div class="term-body" role="tabpanel" id="term-other" aria-labelledby="tab-other" hidden>
+          <span class="term-note"># Install your distribution's Qt 6 base and OpenCASCADE (7.8+) development</span>
+          <span class="term-note"># packages, or build OCCT from source. Then:</span>
+          <div class="cmd"><code>git clone https://github.com/kaiyao7572-creator/PenguinCAD.git &amp;&amp; cd PenguinCAD</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>cmake -B build -DOpenCASCADE_DIR=/path/to/occt/lib/cmake/opencascade</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>cmake --build build -j$(nproc) &amp;&amp; ./build/penguincad</code><button class="copy" type="button">Copy</button></div>
+          <span class="term-note"># The test runner still assumes Fedora's paths; fixing that is a good first issue.</span>
+        </div>
+      </div>
+      <div class="reqs reveal">
+        <dl>
+          <dt>Compiler</dt><dd>C++17; developed with GCC</dd>
+          <dt>Qt</dt><dd>Qt 6 Widgets and OpenGL Widgets</dd>
+          <dt>Kernel</dt><dd>OpenCASCADE 7.8+ (developed on 7.9.3)</dd>
+          <dt>Build</dt><dd>CMake 3.16+</dd>
+          <dt>Display</dt><dd>X11, or Wayland through XWayland</dd>
+        </dl>
+        <p>Tested on Fedora 44. Built somewhere else? Tell us how it went; a working recipe for your distribution belongs in the README.</p>
+      </div>
+    </div>
+
+    <div class="closing reveal">
+      <div>
+        <h2>Linux deserves a CAD that feels like this. It won't build itself.</h2>
+        <p>Star the repository if you want to follow along. Open an issue if you want to help, even if it's only to say which piece you'd like to take on.</p>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/kaiyao7572-creator/PenguinCAD"><svg aria-hidden="true"><use href="#i-github"/></svg>PenguinCAD on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <a class="brand" href="#top"><svg aria-hidden="true"><use href="#logo"/></svg><span>Penguin<span class="cad">CAD</span></span></a>
+      <p class="legal">PenguinCAD is an independent open-source project, licensed under the GNU GPL v3 or later. It is not affiliated with, endorsed by or sponsored by Autodesk, PTC or Dassault Systèmes. Fusion 360, Onshape and SolidWorks are trademarks of their respective owners, named here only for comparison. Linux is a registered trademark of Linus Torvalds.</p>
+    </div>
+    <nav aria-label="Footer">
+      <a href="https://github.com/kaiyao7572-creator/PenguinCAD">GitHub</a>
+      <a href="https://github.com/kaiyao7572-creator/PenguinCAD/issues">Issues</a>
+      <a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md">Contributing</a>
+      <a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/LICENSE">GPL-3.0</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- theme ----
+  function theme() {
+    return root.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  }
+  function paintTheme() {
+    var t = theme();
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.themeSet === t)); });
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = t === "light" ? "#f1f4f7" : "#0b1119";
+  }
+  document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      root.dataset.theme = b.dataset.themeSet;
+      try { localStorage.setItem("pcad-theme", b.dataset.themeSet); } catch (e) { /* this visit only */ }
+      paintTheme();
+    });
+  });
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", paintTheme);
+  paintTheme();
+
+  // ---- nav ----
+  var nav = document.getElementById("nav");
+  function onScroll() { nav.classList.toggle("scrolled", window.scrollY > 8); }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a"));
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      links.forEach(function (a) { a.setAttribute("aria-current", String(a.getAttribute("href") === "#" + e.target.id)); });
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  links.forEach(function (a) { var s = document.querySelector(a.getAttribute("href")); if (s) spy.observe(s); });
+
+  // ---- live dimension lines ----
+  // Each data-dim heading gets a dimension: extension lines, arrowheads and
+  // its text width as a d# model parameter, in millimetres at CSS's
+  // 96 px per inch. Resize the window and it measures again.
+  var MM = 25.4 / 96;
+  var dims = [];
+  document.querySelectorAll("[data-dim]").forEach(function (el) {
+    el.classList.add("dimmed");
+    var d = document.createElement("div");
+    d.className = "dim";
+    d.setAttribute("aria-hidden", "true");
+    d.innerHTML = '<svg><line class="ea"/><line class="eb"/><line class="run"/><path class="pa"/><path class="pb"/></svg><span class="value"></span>';
+    el.appendChild(d);
+    dims.push({ el: el, d: d, name: el.dataset.dim });
+  });
+  function textWidth(el) {
+    var r = document.createRange();
+    r.selectNodeContents(el);
+    var left = el.getBoundingClientRect().left, right = left;
+    Array.prototype.forEach.call(r.getClientRects(), function (c) { if (c.width > 0) right = Math.max(right, c.right); });
+    return Math.max(40, right - left);
+  }
+  function layout(entry) {
+    // The dimension itself is inside the heading; measure without it.
+    entry.d.style.display = "none";
+    var w = Math.round(textWidth(entry.el));
+    entry.d.style.display = "";
+    var svg = entry.d.querySelector("svg");
+    entry.d.style.width = w + "px";
+    svg.setAttribute("viewBox", "0 0 " + w + " 22");
+    function set(sel, attrs) { var n = svg.querySelector(sel); for (var k in attrs) n.setAttribute(k, attrs[k]); }
+    set(".ea", { x1: 0.5, y1: 2, x2: 0.5, y2: 30 });
+    set(".eb", { x1: w - 0.5, y1: 2, x2: w - 0.5, y2: 30 });
+    set(".run", { x1: 1, y1: 11, x2: w - 1, y2: 11 });
+    set(".pa", { d: "M1 11 L9 8 L9 14 Z" });
+    set(".pb", { d: "M" + (w - 1) + " 11 L" + (w - 9) + " 8 L" + (w - 9) + " 14 Z" });
+    svg.querySelector(".run").style.setProperty("--len", w);
+    entry.d.querySelector(".value").innerHTML = "<i>" + entry.name + " =</i> " + (w * MM).toFixed(2) + " mm";
+  }
+  var raf = 0;
+  function relayout() { cancelAnimationFrame(raf); raf = requestAnimationFrame(function () { dims.forEach(layout); }); }
+  dims.forEach(layout);
+  new ResizeObserver(relayout).observe(document.body);
+  if (document.fonts) document.fonts.ready.then(relayout);
+
+  // ---- reveal ----
+  // Blocks already on screen are left alone; the rest lift in as they come
+  // into view, and their dimension lines draw.
+  var reveal = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add("in");
+      e.target.querySelectorAll(".dim").forEach(function (d) { d.classList.add("drawing"); });
+      reveal.unobserve(e.target);
+    });
+  }, { rootMargin: "0px 0px -8% 0px" });
+  requestAnimationFrame(function () {
+    document.querySelectorAll(".reveal").forEach(function (el) {
+      if (el.getBoundingClientRect().top < innerHeight) {
+        el.querySelectorAll(".dim").forEach(function (d) { d.classList.add("drawing"); });
+      } else if (!reduce) {
+        reveal.observe(el);
+      }
+    });
+    var heroDim = document.querySelector(".hero .dim");
+    if (heroDim) heroDim.classList.add("drawing");
+  });
+
+  // ---- screenshot callouts ----
+  var frame = document.getElementById("annotated");
+  var flaws = document.querySelectorAll("#flaws li");
+  var note = null;
+  function light(i) { flaws.forEach(function (li) { li.classList.toggle("lit", li.dataset.flaw === String(i)); }); }
+  function closeNote() {
+    if (note) note.remove();
+    note = null;
+    frame.querySelectorAll(".pin").forEach(function (p) { p.setAttribute("aria-expanded", "false"); });
+    light(-1);
+  }
+  frame.querySelectorAll(".pin").forEach(function (pin) {
+    pin.setAttribute("aria-expanded", "false");
+    pin.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var open = pin.getAttribute("aria-expanded") === "true";
+      closeNote();
+      if (open) return;
+      var i = pin.dataset.flaw;
+      var li = document.querySelector('#flaws li[data-flaw="' + i + '"]');
+      note = document.createElement("div");
+      note.className = "pin-note";
+      note.setAttribute("role", "note");
+      note.innerHTML = li.querySelector("span").innerHTML;
+      frame.appendChild(note);
+      var fx = frame.clientWidth, fy = frame.clientHeight;
+      var px = pin.offsetLeft, py = pin.offsetTop;
+      var left = Math.min(Math.max(8, px - note.offsetWidth / 2), fx - note.offsetWidth - 8);
+      var top = py + 24;
+      if (top + note.offsetHeight > fy - 8) top = py - note.offsetHeight - 24;
+      note.style.left = left + "px";
+      note.style.top = top + "px";
+      pin.setAttribute("aria-expanded", "true");
+      light(i);
+    });
+    pin.addEventListener("mouseenter", function () { light(pin.dataset.flaw); });
+    pin.addEventListener("mouseleave", function () { if (!note) light(-1); });
+  });
+  flaws.forEach(function (li) {
+    var pin = frame.querySelector('.pin[data-flaw="' + li.dataset.flaw + '"]');
+    li.addEventListener("mouseenter", function () { pin.style.transform = "scale(1.18)"; });
+    li.addEventListener("mouseleave", function () { pin.style.transform = ""; });
+  });
+  document.addEventListener("click", closeNote);
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeNote(); });
+
+  // ---- lightbox ----
+  document.querySelectorAll(".gallery button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var box = document.createElement("div");
+      box.className = "lightbox";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-label", "Enlarged screenshot");
+      var img = b.querySelector("img");
+      box.innerHTML = '<img alt="">';
+      box.querySelector("img").src = img.src;
+      box.querySelector("img").alt = img.alt;
+      function close() { box.remove(); document.removeEventListener("keydown", esc); b.focus(); }
+      function esc(ev) { if (ev.key === "Escape") close(); }
+      box.addEventListener("click", close);
+      document.addEventListener("keydown", esc);
+      document.body.appendChild(box);
+    });
+  });
+
+  // ---- build tabs ----
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.term-tabs [role="tab"]'));
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () {
+      tabs.forEach(function (o) {
+        var on = o === t;
+        o.setAttribute("aria-selected", String(on));
+        o.tabIndex = on ? 0 : -1;
+        document.getElementById(o.getAttribute("aria-controls")).hidden = !on;
+      });
+    });
+    t.addEventListener("keydown", function (ev) {
+      if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
+      var next = tabs[(i + (ev.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      next.click();
+      next.focus();
+    });
+  });
+
+  // ---- copy ----
+  document.querySelectorAll(".copy").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var code = b.parentElement.querySelector("code");
+      function done(label) {
+        b.textContent = label;
+        b.classList.add("done");
+        setTimeout(function () { b.textContent = "Copy"; b.classList.remove("done"); }, 1600);
+      }
+      function select() {
+        var r = document.createRange();
+        r.selectNodeContents(code);
+        var s = getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        done("Selected");
+      }
+      if (navigator.clipboard) navigator.clipboard.writeText(code.textContent).then(function () { done("Copied"); }, select);
+      else select();
+    });
+  });
+})();
+</script>
+</body>
+</html>

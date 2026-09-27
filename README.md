@@ -4,10 +4,20 @@ A parametric solid modeller for Linux, built along the lines Fusion 360 draws:
 a linear feature timeline, a constrained sketcher that drives it, and a browser
 that lists what a design *contains* separately from the timeline that records
 how it was *made*. Qt 6 for the UI, [OpenCASCADE][occt] 7.9 for geometry,
-C++17, about 36,000 lines of source and 4,700 of tests. No dependencies beyond
+C++17, about 45,000 lines of source and 8,000 of tests. No dependencies beyond
 Qt and OCCT.
 
 One native window. No account, no cloud, no telemetry.
+
+**It is early and half-built, and it is looking for help.** If you want a
+Fusion-style CAD on Linux to exist, [CONTRIBUTING.md](CONTRIBUTING.md) lists
+real, unclaimed work, from one-line Qt fixes to assemblies. You don't need to
+know OpenCASCADE for most of it.
+
+![PenguinCAD today: a filleted plate in the 3D view, the browser, the toolbar, the properties panel and the timeline](website/src/img/app.webp)
+
+*The app as it is today, unretouched. The emoji toolbar, the clipped
+properties field and the bare timeline are all good first issues.*
 
 [occt]: https://dev.opencascade.org/
 
@@ -19,13 +29,13 @@ there, pattern and mirror it, fillet and shell it, and go back afterwards and
 change any number you typed. The timeline rebuilds, undo is exact, and the
 properties panel edits features in place.
 
-What it cannot do is **keep** anything. There is no native document format. A
-design exists only while the process is running. Work can leave the app — STEP,
-OBJ or STL — but nothing that leaves can be brought back in for editing. Treat
-a session as disposable until that changes.
+What it cannot do yet is **keep** anything. A native document format
+(`.pcad`) is being built now; until it lands, a design exists only while the
+process is running. Work can leave the app as STEP, OBJ or STL, but nothing
+that leaves can be brought back in for editing.
 
 So: worth trying if you want to see how far a Fusion-shaped modeller gets on
-OCCT, or you want to work on one. Not yet something to do real work in.
+OCCT, or you want to help build one. Not yet something to do real work in.
 
 `docs/FUSION360_COMPARISON.md` is a deliberately unsparing audit of where the
 app stands against Fusion 360, and is the best place to look for what is
@@ -185,8 +195,9 @@ dialog's type list, as Fusion's Export does:
 
 Named honestly, because the gaps are large and structural:
 
-- **No native save or open.** See Status above. This is the limitation that
-  most determines whether the app is useful to you.
+- **No native save or open yet.** See Status above; it is being built now.
+  This is the limitation that most determines whether the app is useful to
+  you.
 - **No assemblies or components.** One document, one timeline, one body table.
   Multi-part designs are out of reach, not just awkward.
 - **No 2D drawings.** There is no dimensioned output a shop could act on.
@@ -270,27 +281,24 @@ it. Script syntax is documented in `src/InputScript.h` and
 ./tests/run_tests.sh
 ```
 
-Fourteen suites, 915 assertions. They compile the real source files directly
-rather than linking the app, so they need no window server and no full build.
-Coverage today: unit parsing and formatting; the unit-aware input widget; a
-sketch to extrude to edit to undo pipeline against real OCCT volumes; sketch
-axis inference and snapping; profile regions and reference resolution; the
-body/entity taxonomy; construction planes, axes and points; the sketch curve
-types; press/pull face selection and offset; the press/pull gizmo's geometry;
-typed sketch input with live dimensions; reference identity and its refusal to
-guess an ambiguous match; the named-parameter engine; and sweep, checked
-against the closed-form volume of a torus.
+Twenty-four suites, about 1,700 assertions. They compile the real source files
+directly rather than linking the app, so they need no window server and no full
+build. They cover units and the unit-aware input widget, the sketch-to-extrude
+pipeline against real OCCT volumes, sketch inference, profiles and picking,
+the sketch curve types, the entity taxonomy, construction geometry, press/pull,
+the gizmos, reference identity, the parameter and expression engine, the
+marking menu's geometry and gestures, the view commands, inspection, and a
+check that no key is bound to two commands.
 
-Add to these when you add model-level behaviour. There is no CI, so running
-them is a thing you have to remember. The gaps worth knowing about: the
-constraint solver has almost no coverage and no property or fuzz testing; the
-four viewport selection traps `docs/ARCHITECTURE.md` warns about cannot be
-reached from here at all, since three of them only appear against a live AIS
-context and a window server and every suite is headless by design; and Combine,
-Loft, Pattern and Mirror shipped without suites of their own. See section 3.5
-of the comparison document.
+Add to these when you add model-level behaviour. There is no CI yet, so running
+them is a thing you have to remember; a CI job is one of the open tasks in
+[CONTRIBUTING.md](CONTRIBUTING.md#packaging-and-ci). The test runner also
+assumes Fedora's paths for Qt and OCCT.
 
 ## Contributing
+
+**Start with [CONTRIBUTING.md](CONTRIBUTING.md)**: it lists the open work by
+size, from good first issues to assemblies, and how to get a change in.
 
 **Read `docs/ARCHITECTURE.md` first, in full.** It is the contract, not an
 overview: the `Feature` lifecycle (`Compute` must never throw, `Clone` must
@@ -328,4 +336,15 @@ STEP import and STL export predate the `src/io/` split and still live at
 Members are `myFoo` in core-style `lcad` classes and `m_foo` in Qt widget
 classes; parameters are `theFoo`. OCCT handles are never deleted and are
 checked with `.IsNull()`. Comments explain why, not what. A command's `Icon()`
-returns one emoji — a placeholder, and the app's weakest first impression.
+returns one emoji for now: a placeholder, and the app's weakest first
+impression. An SVG icon set is being drawn.
+
+## License
+
+PenguinCAD is free software under the [GNU General Public License v3.0 or
+later](LICENSE). It is an independent project, not affiliated with Autodesk;
+Fusion 360 is a trademark of Autodesk, Inc., named here to describe the
+workflow PenguinCAD imitates.
+
+The project website is `website/index.html`, a single self-contained page
+built from `website/src/` by `python3 website/build.py`.
