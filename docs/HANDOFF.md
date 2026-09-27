@@ -114,6 +114,16 @@ Ownership is per-directory (`src/sketch/`, `src/ui/`, `src/features/`,
 `src/view/`, `src/inspect/`, `src/gizmos/`). Parallel agents in one
 directory produce merge chaos. Sequence them instead.
 
+### 1.4a A commit nobody made on purpose was pushed
+
+On 2026-09-26 `752f57c "initial Commit"` appeared on `main` -- made in
+the main checkout with everything staged while agents worked in
+worktrees under `.claude/worktrees/` -- and was pushed to `origin`. It
+swept in half-finished work and the worktrees as gitlinks. It was not
+rewritten (it is pushed); `18da453` removed the gitlinks and
+`.claude/worktrees/` is now ignored. If a commit you did not make shows
+up, stop and read it before building on it.
+
 ### 1.4b Your own shell can silently skip the edit
 
 A patch was written as `grep ... && python3 - <<'PYEOF'`. The grep found

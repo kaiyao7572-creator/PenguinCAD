@@ -190,11 +190,9 @@ Named honestly, because the gaps are large and structural:
 - **No assemblies or components.** One document, one timeline, one body table.
   Multi-part designs are out of reach, not just awkward.
 - **No 2D drawings.** There is no dimensioned output a shop could act on.
-- **Parameters are not Fusion's yet in two ways.** Feature dimensions other
-  than sketch dimensions have no `d#` names an expression can read, and units
-  are not checked through an expression — a length parameter used as a
-  pattern quantity is accepted by its number. And with no native file format,
-  parameters, like everything else, do not survive closing the app.
+- **Parameters stop at the design.** Every dimension is a named, renamable
+  model parameter that expressions can read, with units checked, but with no
+  native file format they do not survive closing the app.
 - **Import is STEP only** — no IGES, Parasolid, SAT, DXF, 3MF, and no STL in.
 - **Linux and X11 only.** OCCT's window integration wants an X11 window handle,
   so Wayland is reached through XWayland rather than natively.
