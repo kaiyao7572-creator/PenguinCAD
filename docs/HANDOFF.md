@@ -200,6 +200,13 @@ dimensions, axis inference, snapping to endpoints/centres/midpoints/origin.
 and bodies are pickable in the viewport, with Fusion's SELECT filter panel
 deciding which. Picks become durable `GeometryRef`s that features hold.
 
+**Toolbar icons** (`resources/icons/`, drawn by `tools/make_icons.py`) —
+one SVG per command in a Fusion-style house style, 32 px on the ribbon and
+16 in the menus, with sketch line work lightened on the dark palette.
+`penguincad --check-icons` fails the suite for a missing, misnamed, blank
+or off-box icon. Style rules: docs/ARCHITECTURE.md, "Toolbar icons";
+contact sheet and every ribbon tab: `docs/img/`.
+
 **Sketch tools** — line/rect/circle/arc/polygon/ellipse/slot/point plus
 all three of Fusion's spline-family tools: fit point spline, control
 point spline, and the conic curve (two ends and a point on it, with `[`

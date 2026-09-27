@@ -67,8 +67,8 @@ public:
     virtual std::string Description() const { return Title(); }
 
     // The button's icon: a bundled SVG named after the id,
-    // ":/icons/solid.extrude.svg", drawn to the house style in
-    // docs/ARCHITECTURE.md and listed in resources/icons.qrc. Anything not
+    // ":/icons/solid.extrude.svg", drawn by tools/make_icons.py to the
+    // house style in docs/ARCHITECTURE.md ("Toolbar icons"). Anything not
     // starting with ":/" is shown as text instead. `penguincad --check-icons`
     // fails the test suite for a command whose icon does not load.
     virtual std::string Icon() const { return std::string(); }

@@ -278,7 +278,7 @@ class Command {
   virtual std::string Title() const = 0;    // "Extrude"
   virtual std::string Group() const = 0;    // ribbon tab name
   virtual std::string Description() const;  // tooltip
-  virtual std::string Icon() const;         // ONE emoji, e.g. "📦"
+  virtual std::string Icon() const;         // ":/icons/solid.extrude.svg"
   virtual std::string Shortcut() const;     // "E", "Ctrl+Return"
   virtual bool IsEnabled(const CommandContext&) const;
   virtual bool IsCheckable() const;         // for toggles
@@ -305,6 +305,47 @@ sharing their first two dotted parts (`select.priority.face`,
 `IsEnabled()` should return false when the command can't run (e.g. needs a
 selection or an existing body) — it's re-queried on every document change,
 so buttons grey out correctly.
+
+### Toolbar icons
+
+Every command's `Icon()` is `":/icons/<its id>.svg"`, an SVG bundled
+through `resources/icons.qrc`. `penguincad --check-icons` (run by
+`tests/run_tests.sh`) fails for a command without one, an icon named
+after anything but its id, one that does not draw at 16, 24 or 32 px on
+either palette, and one that runs off its box. A string not starting with
+`:/` is still shown as text above the label, the old emoji fallback.
+
+**Do not hand-draw a new icon.** Add a function to `tools/make_icons.py`
+and run it: it rewrites every SVG and the `.qrc` from one table, so the
+set keeps one style and the resource list cannot drift from the files.
+The house style, modelled on Fusion's toolbar:
+
+- 32 x 32 viewBox, two units of margin; it has to read at 16 px (menus),
+  24 and 32 px (the ribbon, drawn at 32).
+- Solids are small isometric shapes: light top `#DDE6EE`, mid left face
+  `#AAB7C4`, dark right face `#6E7F90`, outlined 1.25 px in `#2B3A48`.
+- What the operation adds or changes is Fusion blue, `#0696D7`, with
+  `#7CC6EA` for its lit top and `#0473A6` for its shadow side. A
+  pattern's seed and anything merely given stays grey.
+- Sketch tools are 1.75 px line drawings with blue points.
+- Neighbours must differ at 24 px by shape, not only by a detail:
+  Fillet's round against Chamfer's bevel, the patterns' square plate
+  against a round disc. Cubes mean views (View tab) or Box; the selection
+  tools use a stepped part so they cannot be mistaken for either.
+
+**The dark palette.** The desktop here prefers dark, so the app runs on
+`#353535`, where the ink outline all but vanishes. Line work drawn on bare
+background -- a sketch line, an arrow, a display mode's edges -- strokes
+in `currentColor`, which the root `<svg color="#2B3A48">` sets.
+`ui/CommandIcon.cpp` swaps that one attribute for a light ink on a dark
+palette, so those lines turn light while a solid keeps its dark edges
+against its own light faces. Choose per stroke: ink where it sits on a
+filled face, `currentColor` where it sits on the toolbar. The check fails
+an icon that uses `currentColor` without the root attribute.
+
+The icons are drawn by the SVG image plugin (`libqsvg`), not QtSvg, whose
+development headers this machine does not have. Without the plugin the
+ribbon falls back to labels and the check fails loudly.
 
 ### `core/ViewportInteraction.h` — taking over the mouse
 
@@ -505,6 +546,10 @@ arm 900 click OK               # press a dialog button by its text
 arm 900 cell plate_t / Expression = 10 mm   # edit a tree cell
 arm 900 dump                   # print fields, tree rows, labels, buttons
 arm 900 shot dialog.png        # photograph the open dialog
+ribbon shot solid.png          # the whole tab in front, scrolled-off buttons too
+ribbon menu Pattern            # drop down a ribbon flyout ...
+popup shot pattern-menu.png    # ... photograph it ...
+ribbon close                   # ... and close it
 ```
 
 The desktop's file chooser (the xdg portal) is another process a script
