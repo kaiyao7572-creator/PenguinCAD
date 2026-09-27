@@ -23,3 +23,6 @@ ui_*.h
 *.png
 /*.txt
 !docs/*.png
+
+# Agent worktrees made by Claude Code workflows; never part of the project
+.claude/worktrees/
