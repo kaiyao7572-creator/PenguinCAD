@@ -40,7 +40,7 @@ class QString;
 //                           "shift" or "alt" are held for the click, which
 //                           is how multi-select is driven
 //   rclick <x> <y>          press+release right button
-//   press <x> <y>           left button down
+//   press <x> <y>           left button down; `move` then drags with it
 //   release <x> <y>         left button up
 //   drag <x1> <y1> <x2> <y2> [right]
 //                           press, several moves, release; "right" drags

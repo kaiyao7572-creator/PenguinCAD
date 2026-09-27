@@ -446,6 +446,9 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
     QTextStream stream(&file);
     Settle(600);   // let the viewer come up before anything is sent
 
+    // Buttons a `press` left down, which `move` reports until `release`.
+    Qt::MouseButtons held = Qt::NoButton;
+
     while (!stream.atEnd()) {
         QString line = stream.readLine().trimmed();
         const int hash = line.indexOf('#');
@@ -545,8 +548,11 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         } else if (verb == "tab" && parts.size() >= 2) {
             theWindow->ActivateTab(parts.at(1));
         } else if (verb == "move" && parts.size() >= 3) {
+            // With the button still down after a `press`, so a drag can be
+            // stopped halfway and photographed; a move reporting no button
+            // held ended every tool's drag on its first step.
             SendMouse(theWindow, QEvent::MouseMove, QPointF(number(1), number(2)),
-                      Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+                      Qt::NoButton, held, Qt::NoModifier);
         } else if ((verb == "click" || verb == "rclick") && parts.size() >= 3) {
             const Qt::MouseButton button = (verb == "rclick") ? Qt::RightButton : Qt::LeftButton;
             const QPointF pos(number(1), number(2));
@@ -564,10 +570,12 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
             const QPointF pos(number(1), number(2));
             SendMouse(theWindow, QEvent::MouseButtonPress, pos, Qt::LeftButton, Qt::LeftButton,
                       Qt::NoModifier);
+            held = Qt::LeftButton;
         } else if (verb == "release" && parts.size() >= 3) {
             const QPointF pos(number(1), number(2));
             SendMouse(theWindow, QEvent::MouseButtonRelease, pos, Qt::LeftButton, Qt::NoButton,
                       Qt::NoModifier);
+            held = Qt::NoButton;
         } else if (verb == "drag" && parts.size() >= 5) {
             const QPointF from(number(1), number(2));
             const QPointF to(number(3), number(4));
