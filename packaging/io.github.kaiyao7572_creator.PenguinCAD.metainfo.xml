@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 The PenguinCAD contributors -->
+<component type="desktop-application">
+  <id>io.github.kaiyao7572_creator.PenguinCAD</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>PenguinCAD</name>
+  <summary>Parametric CAD with Fusion 360’s workflow</summary>
+  <developer id="io.github.kaiyao7572_creator">
+    <name>The PenguinCAD contributors</name>
+  </developer>
+
+  <description>
+    <p>
+      PenguinCAD is an open-source parametric solid modeller that works the way Fusion 360 does:
+      a feature timeline you can roll back, a constrained sketcher that drives it,
+      a marking menu under the right mouse button, and the same shortcut keys.
+      It is built on the OpenCASCADE geometry kernel.
+    </p>
+    <p>It is early software. Today it can:</p>
+    <ul>
+      <li>Sketch lines, rectangles, circles, arcs, splines and more, with constraints and driving dimensions</li>
+      <li>Extrude, revolve, sweep and loft, joining, cutting or intersecting with existing bodies</li>
+      <li>Fillet, chamfer, shell, pattern and mirror</li>
+      <li>Drive every dimension from named parameters and unit-checked expressions</li>
+      <li>Import and export STEP, and export STL and OBJ</li>
+    </ul>
+    <p>
+      Assemblies and 2D drawings are not available yet. The project is looking for contributors.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.kaiyao7572_creator.PenguinCAD.desktop</launchable>
+  <provides>
+    <binary>penguincad</binary>
+  </provides>
+
+  <url type="homepage">https://kaiyao7572-creator.github.io/PenguinCAD/</url>
+  <url type="bugtracker">https://github.com/kaiyao7572-creator/PenguinCAD/issues</url>
+  <url type="vcs-browser">https://github.com/kaiyao7572-creator/PenguinCAD</url>
+  <url type="contribute">https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>A sketched, extruded and filleted part, with the browser, properties and timeline</caption>
+      <image>https://raw.githubusercontent.com/kaiyao7572-creator/PenguinCAD/main/packaging/screenshots/app.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The marking menu under the right mouse button</caption>
+      <image>https://raw.githubusercontent.com/kaiyao7572-creator/PenguinCAD/main/packaging/screenshots/marking-menu.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Sketching with live dimensions</caption>
+      <image>https://raw.githubusercontent.com/kaiyao7572-creator/PenguinCAD/main/packaging/screenshots/sketch.png</image>
+    </screenshot>
+  </screenshots>
+
+  <content_rating type="oars-1.1"/>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#a8dcf7</color>
+    <color type="primary" scheme_preference="dark">#0c3f60</color>
+  </branding>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </recommends>
+
+  <keywords>
+    <keyword>CAD</keyword>
+    <keyword>3D</keyword>
+    <keyword>parametric</keyword>
+    <keyword>modelling</keyword>
+    <keyword>sketch</keyword>
+    <keyword>STEP</keyword>
+  </keywords>
+
+  <releases>
+    <release version="0.1.0" date="2026-09-27">
+      <description>
+        <p>The first public build: sketching with constraints, solid features, parameters and expressions, the marking menu, and STEP import and export.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- A rounded tile at the proportions the GNOME and KDE icon guidelines
+       ask of a square icon (about 80% of the canvas), with the penguin
+       sketched on a dashed construction circle. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34b1ef"/>
+      <stop offset="1" stop-color="#1586c9"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="104" height="104" rx="22" fill="url(#tile)"/>
+  <circle cx="64" cy="66" r="42" fill="none" stroke="#dff2fd" stroke-opacity=".55" stroke-width="2" stroke-dasharray="6 4.5"/>
+  <g transform="translate(64 67) scale(1.3) translate(-32 -33)">
+    <path d="M30.5 7.5c9.8 0 15.9 7.6 16.6 17.2.5 7 3.4 11.4 3.4 18.3 0 9.6-7.9 15.5-18.5 15.5S13.6 52.4 13.6 42.4c0-6.2 2.6-10.6 2.6-17.4C16.2 14.9 21.6 7.5 30.5 7.5z" fill="#0E1722"/>
+    <path d="M33.8 14.6c5.6.4 8.6 4.6 9 10.2.4 6.2 3.4 10 3.4 17 0 7.4-5.6 11.9-13.3 11.9-7.4 0-12.4-4.4-12.4-11.3 0-6.5 3.6-9.8 4.4-15.6.9-7.3 3.4-12.6 8.9-12.2z" fill="#F4F7FA"/>
+    <path d="M40.6 20.2 52.8 23.6 40.9 26.9c-1.4-2.2-1.5-4.4-.3-6.7z" fill="#FF9F43"/>
+    <circle cx="35.6" cy="20.4" r="2.3" fill="#0E1722"/>
+    <circle cx="36.3" cy="19.7" r=".75" fill="#F4F7FA"/>
+    <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
+  </g>
+</svg>

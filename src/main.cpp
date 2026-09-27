@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QKeySequence>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QPalette>
 #include <QPixmap>
 #include <QProcess>
@@ -159,6 +160,12 @@ int main(int argc, char* argv[])
     }
 
     QApplication app(argc, argv);
+
+    // Ties the window to its installed .desktop entry, so the dock shows
+    // PenguinCAD's name and icon rather than a generic one, and portals
+    // (the file chooser inside Flatpak) know which app is asking.
+    QGuiApplication::setDesktopFileName("io.github.kaiyao7572_creator.PenguinCAD");
+    QGuiApplication::setWindowIcon(QIcon::fromTheme("io.github.kaiyao7572_creator.PenguinCAD"));
 
     if (app.arguments().contains("--check-shortcuts")) {
         return CheckShortcuts();

@@ -1,0 +1,78 @@
+# Flatpak manifest for PenguinCAD.
+#
+# Builds OpenCASCADE 7.9.3 (no runtime ships it) and then PenguinCAD from
+# this checkout, on the KDE runtime for Qt 6. To build and install locally:
+#
+#   flatpak-builder --user --install --install-deps-from=flathub --force-clean \
+#       build-flatpak packaging/io.github.kaiyao7572_creator.PenguinCAD.yml
+#   flatpak run io.github.kaiyao7572_creator.PenguinCAD
+#
+# packaging/README.md covers the single-file bundle and Flathub.
+id: io.github.kaiyao7572_creator.PenguinCAD
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+command: penguincad
+
+finish-args:
+  # OpenCASCADE draws into an X11 window (Xw_Window), so the app runs on X11,
+  # or on Wayland through XWayland; it has no native Wayland path yet.
+  - --socket=x11
+  - --share=ipc
+  # Hardware-accelerated OpenGL for the 3D view.
+  - --device=dri
+  # No filesystem access: opening, saving, importing and exporting all go
+  # through the file-chooser portal, which the app selects itself.
+
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /share/doc
+  - '*.a'
+
+modules:
+  - name: opencascade
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DINSTALL_DIR_LAYOUT=Unix
+      # Draw is OCCT's Tcl test harness; nothing here needs it, or Tcl/Tk.
+      - -DBUILD_MODULE_Draw=OFF
+      - -DBUILD_MODULE_DETools=OFF
+      - -DUSE_TK=OFF
+      - -DUSE_FREETYPE=ON
+      - -DUSE_FREEIMAGE=OFF
+      - -DUSE_RAPIDJSON=OFF
+      - -DUSE_DRACO=OFF
+      - -DUSE_TBB=OFF
+      - -DUSE_VTK=OFF
+      - -DUSE_OPENVR=OFF
+      - -DUSE_FFMPEG=OFF
+      - -DBUILD_DOC_Overview=OFF
+      - -DINSTALL_SAMPLES=OFF
+      - -DINSTALL_TEST_CASES=OFF
+    sources:
+      - type: archive
+        url: https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_9_3.tar.gz
+        sha256: 5ecf094ec6b12d5413dfb851d8c3590c354058aee556e32e408bdfbf8c357d57
+    cleanup:
+      - /bin
+      - /share/opencascade/samples
+
+  - name: penguincad
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: dir
+        path: ..
+        # Local build trees and agent worktrees are not sources.
+        skip:
+          - build
+          - build-flatpak
+          - .flatpak-builder
+          - .claude
+          - repo

@@ -1,0 +1,40 @@
+# Builds PenguinCAD as a Flatpak. Every run keeps the bundle as a workflow
+# artifact; a pushed tag such as v0.1.0 also attaches it to that GitHub
+# release, which is what the website's download button points at.
+name: Flatpak
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["website/**", "docs/**", "**/*.md"]
+  pull_request:
+    paths-ignore: ["website/**", "docs/**", "**/*.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  flatpak:
+    name: Build the Flatpak bundle
+    runs-on: ubuntu-latest
+    container:
+      # Flathub's image with flatpak-builder and the KDE 6.11 runtime.
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          manifest-path: packaging/io.github.kaiyao7572_creator.PenguinCAD.yml
+          bundle: PenguinCAD-x86_64.flatpak
+          # OpenCASCADE takes most of the build; the cache keeps it between
+          # runs until the manifest changes.
+          cache-key: flatpak-builder-${{ hashFiles('packaging/*.yml') }}
+      - name: Attach the bundle to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PenguinCAD-x86_64.flatpak
+          generate_release_notes: true

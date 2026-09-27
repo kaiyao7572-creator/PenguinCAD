@@ -26,3 +26,6 @@ ui_*.h
 
 # Agent worktrees made by Claude Code workflows; never part of the project
 .claude/worktrees/
+
+# Store screenshots referenced by the AppStream metadata
+!packaging/screenshots/*.png

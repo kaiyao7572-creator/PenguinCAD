@@ -56,3 +56,19 @@ target_link_libraries(penguincad PRIVATE
     TKLCAF
     TKVCAF
 )
+
+# ---- install: the binary plus what a desktop needs to find and launch it ----
+#
+# The .desktop file puts PenguinCAD in the application menu and search, the
+# metainfo describes it to software centres, and the icon is the one both
+# show. The Flatpak build (packaging/) relies on these same rules.
+include(GNUInstallDirs)
+set(PENGUINCAD_APP_ID io.github.kaiyao7572_creator.PenguinCAD)
+
+install(TARGETS penguincad RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES packaging/${PENGUINCAD_APP_ID}.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES packaging/${PENGUINCAD_APP_ID}.metainfo.xml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+install(FILES packaging/${PENGUINCAD_APP_ID}.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
