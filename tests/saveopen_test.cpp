@@ -950,6 +950,10 @@ int main()
                "must be a number");
         refuse(Edited(plateText, "\"units\": \"mm\"", "\"units\": \"furlong\""), "an unknown unit",
                "\"furlong\" is not a length unit");
+        refuse(Edited(plateText, "\"entity\": 5,", "\"entity\": 55,"), "a constraint on a curve that is not there",
+               "names curve 55");
+        refuse(Edited(plateText, "\"label\": \"d2\"", "\"label\": \"d1\""), "two dimensions with one label",
+               "two dimensions are both called d1");
     }
 
     std::cout << std::endl;

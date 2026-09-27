@@ -565,6 +565,30 @@ bool SketchFeature::Restore(const gp_Ax3&                 thePlanePosition,
         return false;
     }
 
+    // A constraint on a curve that is not there would quietly stop the
+    // solver (RemoveEntity drops them for exactly that reason), and two
+    // dimensions sharing a label would be one parameter row that edits
+    // only the first of them.
+    std::sort(entityIds.begin(), entityIds.end());
+    std::vector<std::string> labels;
+    for (const SketchConstraint& constraint : theConstraints) {
+        for (const SketchPointRef* operand : {&constraint.a, &constraint.b, &constraint.c}) {
+            if (operand->entity != 0
+                && !std::binary_search(entityIds.begin(), entityIds.end(), operand->entity)) {
+                theError = "constraint " + std::to_string(constraint.id) + " names curve "
+                           + std::to_string(operand->entity) + ", which the sketch does not have";
+                return false;
+            }
+        }
+        if (constraint.IsDimension() && !constraint.label.empty()) {
+            if (std::find(labels.begin(), labels.end(), constraint.label) != labels.end()) {
+                theError = "two dimensions are both called " + constraint.label;
+                return false;
+            }
+            labels.push_back(constraint.label);
+        }
+    }
+
     myPlanePosition = thePlanePosition;
     myEntities = std::move(theEntities);
     myConstraints = std::move(theConstraints);

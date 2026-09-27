@@ -203,8 +203,9 @@ public:
     // a finished sketch.
     //
     // False, changing nothing, when thePlanePosition is left-handed, an id
-    // is not positive or appears twice, or a counter does not lie past
-    // every id in use.
+    // is not positive or appears twice, a counter does not lie past every
+    // id in use, a constraint names a curve the sketch does not have, or
+    // two dimensions share a label.
     bool Restore(const gp_Ax3&                 thePlanePosition,
                  std::vector<SketchEntity>     theEntities,
                  std::vector<SketchConstraint> theConstraints,
