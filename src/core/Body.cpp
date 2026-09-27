@@ -274,6 +274,40 @@ void BodyTable::Update(const TopoDS_Shape& theShape)
         }
     }
 
+    // Third: a body that MOVED -- the same size somewhere else, which is
+    // what a move or a rotate makes. Fusion keeps its name; matching on
+    // position alone called it Body3. Only an unambiguous pairing counts:
+    // the new body has exactly one leftover old body of its kind and size,
+    // and that old body has no other taker. Two same-size bodies that both
+    // moved cannot be told apart this way, and get new names rather than
+    // possibly each other's.
+    std::vector<std::vector<std::size_t>> sameSize(shapes.size());
+    std::vector<int> takers(previous.size(), 0);
+    for (std::size_t i = 0; i < shapes.size(); ++i) {
+        if (matched[i] >= 0) {
+            continue;
+        }
+        const Body::Kind kind = KindOf(shapes[i]);
+        const double measure = MeasureOf(shapes[i], kind);
+        for (std::size_t j = 0; j < previous.size(); ++j) {
+            if (taken[j] || !previous[j] || previous[j]->BodyKind() != kind) {
+                continue;
+            }
+            const double theirs = MeasureOf(previous[j]->Shape(), kind);
+            const double scale = std::max({std::fabs(measure), std::fabs(theirs), 1.0e-9});
+            if (std::fabs(measure - theirs) / scale <= kSameSizeRatio) {
+                sameSize[i].push_back(j);
+                ++takers[j];
+            }
+        }
+    }
+    for (std::size_t i = 0; i < shapes.size(); ++i) {
+        if (matched[i] < 0 && sameSize[i].size() == 1 && takers[sameSize[i].front()] == 1) {
+            matched[i] = static_cast<int>(sameSize[i].front());
+            taken[sameSize[i].front()] = true;
+        }
+    }
+
     for (std::size_t i = 0; i < shapes.size(); ++i) {
         auto body = std::make_shared<Body>(shapes[i], std::string());
         if (matched[i] >= 0) {

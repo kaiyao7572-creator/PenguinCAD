@@ -203,6 +203,28 @@ int main()
               "a body that shares nothing with the old one gets a new name");
     }
 
+    // ---- 6b. a body that MOVED keeps its name, as in Fusion ----
+    {
+        BodyTable table;
+        table.Update(CompoundOf({Box(10, 10, 10, gp_Pnt(0, 0, 0)),
+                                 Box(4, 4, 4, gp_Pnt(50, 0, 0))}));
+        // The big box moved 30 mm, the way a Move drag leaves it.
+        table.Update(CompoundOf({Box(10, 10, 10, gp_Pnt(30, 0, 0)),
+                                 Box(4, 4, 4, gp_Pnt(50, 0, 0))}));
+        check(table.Count() == 2, "still two bodies");
+        check(table.Find("Body1") != nullptr && table.Find("Body3") == nullptr,
+              "the moved box is still Body1, not a new Body3");
+        check(table.Bodies()[0]->Name() == "Body1", "and it is the moved one");
+
+        // Two same-size bodies that BOTH moved cannot be told apart by size:
+        // new names, rather than possibly each other's.
+        BodyTable twins;
+        twins.Update(CompoundOf({Box(5, 5, 5, gp_Pnt(0, 0, 0)), Box(5, 5, 5, gp_Pnt(50, 0, 0))}));
+        twins.Update(CompoundOf({Box(5, 5, 5, gp_Pnt(0, 90, 0)), Box(5, 5, 5, gp_Pnt(50, 90, 0))}));
+        check(twins.Find("Body1") == nullptr && twins.Find("Body2") == nullptr,
+              "two moved twins get new names, not guessed ones");
+    }
+
     // ---- 7. the document exposes its bodies ----
     {
         Document doc;

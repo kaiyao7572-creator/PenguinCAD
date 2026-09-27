@@ -116,6 +116,13 @@ int main()
                   << stayed.Z() << ") -- expect (55, 5, 5)" << std::endl;
         check(stayed.Distance(gp_Pnt(55, 5, 5)) < 1e-6,
               "the body that was NOT picked did not move with it");
+
+        // Fusion keeps a moved body's name; matching bodies on position
+        // alone used to call it Body3.
+        const Body* renamed = doc.FindBody("Body1");
+        check(renamed != nullptr && renamed->Centroid().Distance(gp_Pnt(5, 5, 105)) < 1e-6,
+              "the moved cube is still Body1");
+        check(doc.FindBody("Body3") == nullptr, "and no Body3 appeared");
     }
 
     // ---- 3. no target still means "everything", which is what the
