@@ -357,6 +357,94 @@ int main()
     check(ExpressionVariables("40 mm + w").size() == 1, "nor is it read out as a name");
 
     // ------------------------------------------------------------------
+    std::cout << "-- 8b. units checked through the expression, as Fusion does --" << std::endl;
+    // ------------------------------------------------------------------
+    {
+        const TypedVariableLookup typed = [](const std::string& theName, double& theValue,
+                                             UnitKind& theKind) {
+            if (theName == "w") { theValue = 10.0; theKind = UnitKind::Length; return true; }
+            if (theName == "a") { theValue = 30.0; theKind = UnitKind::Angle; return true; }
+            if (theName == "n") { theValue = 3.0; theKind = UnitKind::Unitless; return true; }
+            return false;
+        };
+        const auto dims = [&typed](const std::string& theText, int theLength, int theAngle,
+                                   double theValue, const std::string& theWhat) {
+            const ExpressionResult r = EvaluateTypedExpression(theText, typed);
+            check(r.ok && r.lengthPower == theLength && r.anglePower == theAngle
+                      && std::fabs(r.value - theValue) < 1e-9,
+                  "\"" + theText + "\" is " + theWhat);
+        };
+        const auto refuses = [&typed](const std::string& theText, const std::string& theFragment) {
+            const ExpressionResult r = EvaluateTypedExpression(theText, typed);
+            check(!r.ok && r.error.find(theFragment) != std::string::npos,
+                  "\"" + theText + "\" is refused -- \"" + r.error + "\"");
+        };
+        dims("w * 2", 1, 0, 20.0, "a length");
+        dims("w + 2", 1, 0, 12.0, "a length: a plain number takes the other side's unit");
+        dims("2 + w", 1, 0, 12.0, "a length from either side");
+        dims("n + w", 1, 0, 13.0, "a length: a unitless parameter adopts too");
+        dims("w * w", 2, 0, 100.0, "an area");
+        dims("w * w / w", 1, 0, 10.0, "a length again");
+        dims("sqrt(w * w)", 1, 0, 10.0, "a length: sqrt halves the powers");
+        dims("sin(a)", 0, 0, 0.5, "a plain number: trig of an angle");
+        dims("sin(30)", 0, 0, 0.5, "a plain number: trig of a plain number reads degrees");
+        dims("asin(0.5)", 0, 1, 30.0, "an angle");
+        dims("pow(w, 2)", 2, 0, 100.0, "an area");
+        dims("min(w, 5)", 1, 0, 5.0, "a length");
+        dims("10 mm + 1 in", 1, 0, 35.4, "a length");
+        dims("90 deg / 2", 0, 1, 45.0, "an angle");
+        refuses("w + a", "cannot add an angle to a length");
+        refuses("10 mm + 5 deg", "cannot add an angle to a length");
+        refuses("a - w", "cannot subtract a length from an angle");
+        refuses("sin(w)", "takes an angle");
+        refuses("asin(w)", "takes a plain number");
+        refuses("pow(w, 0.5)", "whole-number exponent");
+        refuses("pow(2, w)", "plain number as its exponent");
+        refuses("sqrt(w)", "no unit");
+        refuses("min(w, a)", "min() of a length and an angle");
+        check(EvaluateExpression("w + 5deg", [](const std::string&, double& v) { v = 1; return true; }).ok,
+              "an UNTYPED lookup's names are plain numbers, so nothing changes for it");
+
+        ExpressionResult length;
+        length.ok = true;
+        length.lengthPower = 1;
+        check(FitsKind(length, UnitKind::Length), "a length fits a length field");
+        check(!FitsKind(length, UnitKind::Angle), "not an angle field");
+        check(!FitsKind(length, UnitKind::Unitless), "and not a count");
+        check(FitsKind(ExpressionResult(), UnitKind::Angle), "a plain number fits anything");
+    }
+    {
+        ParameterTable units;
+        std::string error;
+        units.Add("w", "10 mm", error);
+        UserParameter angle;
+        angle.name = "tilt";
+        angle.expression = "w";
+        angle.kind = UnitKind::Angle;
+        check(units.Add(angle, error), "an angle row reading a length is accepted as a row...");
+        check(!units.Find("tilt")->isValid
+                  && units.Find("tilt")->error.find("is a length, and this needs an angle")
+                         != std::string::npos,
+              "...and says it is a length where an angle is needed: " + units.Find("tilt")->error);
+        UserParameter count;
+        count.name = "n";
+        count.expression = "w / 2";
+        count.kind = UnitKind::Unitless;
+        units.Add(count, error);
+        check(!units.Find("n")->isValid, "a count row made of a length is refused");
+        UserParameter ratio;
+        ratio.name = "r";
+        ratio.expression = "w / w";
+        ratio.kind = UnitKind::Unitless;
+        units.Add(ratio, error);
+        check(units.Find("r")->isValid, "a length over a length is a plain ratio, and fine");
+        units.Add("area_row", "w * w", error);
+        check(!units.Find("area_row")->isValid, "a length row cannot hold an area");
+        check(units.EvaluateValue("w * 3", UnitKind::Length).ok, "a length field takes w * 3");
+        check(!units.EvaluateValue("w", UnitKind::Angle).ok, "an angle field refuses w");
+    }
+
+    // ------------------------------------------------------------------
     std::cout << "-- 9. what a name may be --" << std::endl;
     // ------------------------------------------------------------------
     check(IsExpressionIdentifier("plate_width"), "plate_width is a name");

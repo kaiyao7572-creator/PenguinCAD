@@ -136,7 +136,7 @@ public:
     //
     // The callback holds this table by pointer: it is valid for as long as
     // the table is.
-    VariableLookup Lookup() const;
+    TypedVariableLookup Lookup() const;
 
     // Evaluate an expression that is not itself a row -- a feature's
     // distance, a dialog field -- against this table's parameters.
@@ -165,7 +165,7 @@ public:
     static ExpressionResult EvaluateValueWith(const std::string& theText, UnitKind theKind,
                                               LengthUnit            theLengthUnit,
                                               AngleUnit             theAngleUnit,
-                                              const VariableLookup& theLookup);
+                                              const TypedVariableLookup& theLookup);
 
     // ---- names ----
 

@@ -77,7 +77,7 @@ bool UnitLineEdit::EvaluateText(const std::string& theText, double& theValue,
         myTable != nullptr
             ? myTable->EvaluateValue(theText, myKind, myLengthUnit, myAngleUnit)
             : ParameterTable::EvaluateValueWith(theText, myKind, myLengthUnit, myAngleUnit,
-                                                VariableLookup());
+                                                TypedVariableLookup());
     theValue = result.value;
     theError = result.error;
     return result.ok;

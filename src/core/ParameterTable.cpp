@@ -250,15 +250,16 @@ bool ParameterTable::Order(const std::vector<std::vector<std::size_t>>& theGraph
 // Evaluating
 // ---------------------------------------------------------------------
 
-VariableLookup ParameterTable::Lookup() const
+TypedVariableLookup ParameterTable::Lookup() const
 {
     const ParameterTable* table = this;
-    return [table](const std::string& theName, double& theValue) {
+    return [table](const std::string& theName, double& theValue, UnitKind& theKind) {
         const UserParameter* parameter = table->Find(theName);
         if (parameter == nullptr || !parameter->isValid) {
             return false;
         }
         theValue = parameter->value;
+        theKind = parameter->kind;
         return true;
     };
 }
@@ -289,14 +290,27 @@ ExpressionResult ParameterTable::EvaluateValue(const std::string& theText, UnitK
 ExpressionResult ParameterTable::EvaluateValueWith(const std::string& theText, UnitKind theKind,
                                                    LengthUnit theLengthUnit,
                                                    AngleUnit  theAngleUnit,
-                                                   const VariableLookup& theLookup)
+                                                   const TypedVariableLookup& theLookup)
 {
     // Always the evaluator, never a short cut through Units.h's own
     // fraction reading: ParseValue("1/0") comes back as a contented 1,
     // and a division by zero that answers is exactly the kind of quiet
     // wrongness this engine is supposed to make impossible.
-    ExpressionResult result = EvaluateExpression(theText, theLookup);
+    ExpressionResult result = EvaluateTypedExpression(theText, theLookup);
     if (!result.ok) {
+        return result;
+    }
+
+    // The unit check Fusion makes: a length cannot drive an angle, and a
+    // count cannot be 4 mm of anything.
+    if (!FitsKind(result, theKind)) {
+        const std::string what = DescribeDimension(result.lengthPower, result.anglePower);
+        const std::string wanted = theKind == UnitKind::Length  ? "a length"
+                                   : theKind == UnitKind::Angle ? "an angle"
+                                                                : "a plain number";
+        result.ok = false;
+        result.value = 0.0;
+        result.error = Quoted(theText) + " is " + what + ", and this needs " + wanted;
         return result;
     }
 
@@ -341,7 +355,7 @@ bool ParameterTable::ResolveWith(const std::vector<std::vector<std::size_t>>& th
         myParameters[i].error = theCycleErrors[i];
     }
 
-    const VariableLookup lookup = Lookup();
+    const TypedVariableLookup lookup = Lookup();
 
     bool allResolved = true;
 

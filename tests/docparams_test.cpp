@@ -379,7 +379,11 @@ int main()
         // Document only pushes a value that really changed, so a rebuild
         // must neither drift the angle nor refuse it.
         Document angled;
-        check(AddLength(angled, "unused", "1 mm"), "a table to evaluate against");
+        UserParameter tilt;
+        tilt.name = "tilt";
+        tilt.expression = "30 deg";
+        tilt.kind = UnitKind::Angle;
+        check(angled.AddUserParameter(tilt, error), "tilt = 30 deg, an angle parameter");
         auto lines = std::make_shared<SketchFeature>(SketchFeature::PlaneXY(), 0.0);
         lines->SetName("Sketch1");
         const int a = lines->AddEntity(SketchEntity::MakeLine(gp_Pnt2d(0, 0), gp_Pnt2d(10, 0)));
@@ -391,7 +395,7 @@ int main()
         angle.value = kPi / 6.0;
         lines->AddConstraint(angle);
         angled.AddFeature(lines);
-        check(Drive(angled, "Sketch1", "d1", "30 deg + unused * 0", error), "d1 = 30 deg");
+        check(Drive(angled, "Sketch1", "d1", "tilt", error), "d1 = tilt");
         const Parameter d1 = ParameterOf(Find(angled, "Sketch1"), "d1");
         check(std::fabs(d1.doubleValue - 30.0) < 1e-9, "reads 30 degrees");
         angled.Rebuild();
@@ -497,6 +501,13 @@ int main()
         check(d.SetUserParameterExpression("n", "20", error), "n = 20");
         check(!Find(d, "Counted1")->LastError().empty(), "and 20 is outside Count's 1..10");
         check(d.SetUserParameterExpression("n", "5", error), "n = 5");
+        UserParameter len;
+        len.name = "len";
+        len.expression = "4 mm";
+        check(d.AddUserParameter(len, error), "len = 4 mm, a LENGTH");
+        check(!Drive(d, "Counted1", "Count", "len", error),
+              "a length cannot drive a count -- 4 mm of copies is not a number of copies");
+        std::cout << "        said: " << error << std::endl;
         live = std::dynamic_pointer_cast<CountedFeature>(Find(d, "Counted1"));
         check(live->LastError().empty() && live->myCount == 5, "back to a good count of 5");
     }
