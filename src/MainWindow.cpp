@@ -7,6 +7,7 @@
 #include "core/ConstructionGeometry.h"
 #include "io/ExportDialog.h"
 #include "ui/MarkingMenu.h"
+#include "ui/MarkingMenuController.h"
 #include "core/Registration.h"
 #include "core/ShapeFeature.h"
 
@@ -127,8 +128,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     lcad::RegisterAllCommands(CommandRegistry::Instance());
 
-    m_viewport->SetContextClickCallback(
-        [this](const QPoint& theGlobalPos) { showMarkingMenu(theGlobalPos); });
+    m_markingMenu = std::make_unique<lcad::MarkingMenuController>(
+        this, [this]() { return markingMenuItems(); });
+    m_viewport->SetMarkingMenuCallback(
+        [this](lcad::MarkingMenuInput theInput, const QPoint& thePress, const QPoint& theCursor) {
+            m_markingMenu->Feed(theInput, thePress, theCursor);
+        });
 
     buildRibbon();
 
@@ -779,7 +784,7 @@ void MainWindow::onOpenStep()
     statusBar()->showMessage("Loaded " + path);
 }
 
-void MainWindow::showMarkingMenu(const QPoint& theGlobalPos)
+lcad::MarkingMenu::ItemList MainWindow::markingMenuItems()
 {
     using lcad::MarkingMenu;
     const CommandContext context = makeContext();
@@ -816,7 +821,7 @@ void MainWindow::showMarkingMenu(const QPoint& theGlobalPos)
 
     // Clockwise from the top, in Fusion's order: Repeat, Press Pull, Redo,
     // Hole, Sketch, Move/Copy, Undo, Delete.
-    std::array<MarkingMenu::Item, 8> items;
+    MarkingMenu::ItemList items;
 
     if (m_lastCommand != nullptr) {
         items[0].label = "Repeat " + QString::fromStdString(m_lastCommand->Title());
@@ -846,9 +851,7 @@ void MainWindow::showMarkingMenu(const QPoint& theGlobalPos)
         items[2].enabled = m_document.CanRedo();
         items[2].action = [this]() { onRedo(); };
     }
-
-    auto* menu = new MarkingMenu(items, this);
-    menu->PopUp(theGlobalPos);
+    return items;
 }
 
 void MainWindow::onExport()

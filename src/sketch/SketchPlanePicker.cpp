@@ -364,9 +364,9 @@ bool SketchPlanePicker::OnMousePress(const Graphic3d_Vec2i& thePos,
     if (!myIsRunning) {
         return false;
     }
-    // Right and middle stay with the viewport so orbit and pan keep
-    // working while the planes are up -- picking the right face usually
-    // means spinning the model first.
+    // Middle and right stay with the viewport so pan, orbit (Shift+middle)
+    // and the marking menu keep working while the planes are up -- picking
+    // the right face usually means spinning the model first.
     if (theButton != Qt::LeftButton) {
         return false;
     }
@@ -391,8 +391,8 @@ bool SketchPlanePicker::OnMouseMove(const Graphic3d_Vec2i& thePos,
     if (!myIsRunning) {
         return false;
     }
-    // Any held button is a drag the viewport owns -- orbit, pan or the
-    // tail of a click.
+    // Any held button is a drag the viewport owns -- a pan, an orbit, a
+    // marking-menu gesture or the tail of a click.
     if (theButtons != Qt::NoButton) {
         return false;
     }

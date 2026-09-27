@@ -408,6 +408,35 @@ void SendWheel(MainWindow* theWindow, const QPointF& thePos, int theNotches)
     QCoreApplication::sendEvent(target, &event);
 }
 
+// A button word trailing a press, release or drag: "left" (the default),
+// "right" or "middle", mixed in any order with the modifier words.
+Qt::MouseButton ParseButton(const QStringList& theParts, int theFrom)
+{
+    for (int i = theFrom; i < theParts.size(); ++i) {
+        const QString word = theParts.at(i).toLower();
+        if (word == "right") {
+            return Qt::RightButton;
+        }
+        if (word == "middle") {
+            return Qt::MiddleButton;
+        }
+    }
+    return Qt::LeftButton;
+}
+
+// The gesture trail a right-button flick draws, when one is on screen. It
+// is a plain tool window rather than a popup, so `popup` never finds it.
+MarkingMenuTrail* VisibleTrail()
+{
+    for (QWidget* widget : QApplication::topLevelWidgets()) {
+        auto* trail = dynamic_cast<MarkingMenuTrail*>(widget);
+        if (trail != nullptr && trail->isVisible()) {
+            return trail;
+        }
+    }
+    return nullptr;
+}
+
 // Modifier words trailing a click: "ctrl", "shift", "alt", in any order.
 Qt::KeyboardModifiers ParseModifiers(const QStringList& theParts, int theFrom)
 {
@@ -446,8 +475,11 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
     QTextStream stream(&file);
     Settle(600);   // let the viewer come up before anything is sent
 
-    // Buttons a `press` left down, which `move` reports until `release`.
-    Qt::MouseButtons held = Qt::NoButton;
+    // Buttons a `press` left down, which `move` reports until `release`,
+    // and the modifiers it was pressed with: Shift held through a middle
+    // drag is what makes it an orbit rather than a pan.
+    Qt::MouseButtons      held = Qt::NoButton;
+    Qt::KeyboardModifiers heldModifiers = Qt::NoModifier;
 
     while (!stream.atEnd()) {
         QString line = stream.readLine().trimmed();
@@ -531,6 +563,32 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
             continue;
         }
 
+        if (verb == "trail" && parts.size() >= 2) {
+            // The gesture trail is up only while a right button is held and
+            // dragged, which is exactly when a script can stop and look.
+            MarkingMenuTrail* trail = VisibleTrail();
+            const QString what = parts.at(1).toLower();
+            if (trail == nullptr) {
+                std::cout << "  trail: none is shown" << std::endl;
+            } else if (what == "shot" && parts.size() >= 3) {
+                trail->grab().save(parts.at(2));
+                std::cout << "  trail shot -> " << parts.at(2).toStdString() << std::endl;
+            } else {
+                static const char* const kCompass[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+                const MarkingMenu::Item* item = trail->LitItem();
+                if (trail->LitWedge() < 0) {
+                    std::cout << "  trail: points at nothing (inside the threshold)" << std::endl;
+                } else {
+                    std::cout << "  trail: points " << kCompass[trail->LitWedge()] << " \""
+                              << (item != nullptr ? item->label.toStdString() : std::string()) << "\""
+                              << (item == nullptr || item->label.isEmpty() ? " (empty)"
+                                  : item->enabled ? "" : " (greyed)")
+                              << std::endl;
+                }
+            }
+            continue;
+        }
+
         if (verb == "menu" && parts.size() >= 2) {
             const QString path = line.section(QRegularExpression("\\s+"), 1);
             std::cout << "  menu " << path.toStdString() << std::endl;
@@ -550,9 +608,10 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
         } else if (verb == "move" && parts.size() >= 3) {
             // With the button still down after a `press`, so a drag can be
             // stopped halfway and photographed; a move reporting no button
-            // held ended every tool's drag on its first step.
+            // held ended every tool's drag on its first step. Modifiers
+            // named here are added to the ones the press was made with.
             SendMouse(theWindow, QEvent::MouseMove, QPointF(number(1), number(2)),
-                      Qt::NoButton, held, Qt::NoModifier);
+                      Qt::NoButton, held, heldModifiers | ParseModifiers(parts, 3));
         } else if ((verb == "click" || verb == "rclick") && parts.size() >= 3) {
             const Qt::MouseButton button = (verb == "rclick") ? Qt::RightButton : Qt::LeftButton;
             const QPointF pos(number(1), number(2));
@@ -567,26 +626,38 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
             SendMouse(theWindow, QEvent::MouseButtonRelease, pos, button, Qt::NoButton,
                       modifiers);
         } else if (verb == "press" && parts.size() >= 3) {
+            // "press x y right", "press x y middle shift": the button, then
+            // what is held with it, both optional.
             const QPointF pos(number(1), number(2));
-            SendMouse(theWindow, QEvent::MouseButtonPress, pos, Qt::LeftButton, Qt::LeftButton,
-                      Qt::NoModifier);
-            held = Qt::LeftButton;
+            const Qt::MouseButton button = ParseButton(parts, 3);
+            heldModifiers = ParseModifiers(parts, 3);
+            held |= button;
+            SendMouse(theWindow, QEvent::MouseButtonPress, pos, button, held, heldModifiers);
         } else if (verb == "release" && parts.size() >= 3) {
+            // Releases the named button, or the one `press` held down.
             const QPointF pos(number(1), number(2));
-            SendMouse(theWindow, QEvent::MouseButtonRelease, pos, Qt::LeftButton, Qt::NoButton,
-                      Qt::NoModifier);
-            held = Qt::NoButton;
+            Qt::MouseButton button = ParseButton(parts, 3);
+            if (!held.testFlag(button) && held != Qt::NoButton) {
+                button = held.testFlag(Qt::RightButton)    ? Qt::RightButton
+                         : held.testFlag(Qt::MiddleButton) ? Qt::MiddleButton
+                                                           : Qt::LeftButton;
+            }
+            held &= ~Qt::MouseButtons(button);
+            SendMouse(theWindow, QEvent::MouseButtonRelease, pos, button, held,
+                      heldModifiers | ParseModifiers(parts, 3));
+            if (held == Qt::NoButton) {
+                heldModifiers = Qt::NoModifier;
+            }
         } else if (verb == "drag" && parts.size() >= 5) {
             const QPointF from(number(1), number(2));
             const QPointF to(number(3), number(4));
-            // "drag x1 y1 x2 y2 right" drags with the right button: an
-            // orbit, and the proof that one does not open the marking menu.
-            const Qt::MouseButton button =
-                (parts.size() >= 6 && parts.at(5).toLower() == "right") ? Qt::RightButton
-                                                                         : Qt::LeftButton;
-            SendMouse(theWindow, QEvent::MouseMove, from, Qt::NoButton, Qt::NoButton,
-                      Qt::NoModifier);
-            SendMouse(theWindow, QEvent::MouseButtonPress, from, button, button, Qt::NoModifier);
+            // "drag x1 y1 x2 y2 right" drags with the right button -- a
+            // marking-menu gesture toward that direction; "middle" pans and
+            // "middle shift" orbits, as in Fusion.
+            const Qt::MouseButton button = ParseButton(parts, 5);
+            const Qt::KeyboardModifiers modifiers = ParseModifiers(parts, 5);
+            SendMouse(theWindow, QEvent::MouseMove, from, Qt::NoButton, Qt::NoButton, modifiers);
+            SendMouse(theWindow, QEvent::MouseButtonPress, from, button, button, modifiers);
             // Several intermediate moves: a single jump wouldn't exercise
             // rubber-band previews the way a real drag does.
             const int steps = 8;
@@ -594,11 +665,10 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
                 const double t = static_cast<double>(i) / steps;
                 const QPointF at(from.x() + (to.x() - from.x()) * t,
                                  from.y() + (to.y() - from.y()) * t);
-                SendMouse(theWindow, QEvent::MouseMove, at, Qt::NoButton, button, Qt::NoModifier);
+                SendMouse(theWindow, QEvent::MouseMove, at, Qt::NoButton, button, modifiers);
                 Settle(16);
             }
-            SendMouse(theWindow, QEvent::MouseButtonRelease, to, button, Qt::NoButton,
-                      Qt::NoModifier);
+            SendMouse(theWindow, QEvent::MouseButtonRelease, to, button, Qt::NoButton, modifiers);
         } else if (verb == "key" && parts.size() >= 2) {
             SendKey(theWindow, parts.at(1));
         } else if (verb == "hotkey" && parts.size() >= 2) {

@@ -1,9 +1,13 @@
 #pragma once
 
+#include <QElapsedTimer>
+#include <QPoint>
+#include <QTimer>
 #include <QWidget>
 #include <QWindow>
 
 #include "core/ViewportInteraction.h"
+#include "ui/MarkingMenuGesture.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_SelectionScheme.hxx>
@@ -21,10 +25,21 @@
 // delivers expose events, which is what OCCT's viewer needs to know when
 // it's safe to create its GL context and draw.
 //
-// Mouse handling is delegated to OCCT's own AIS_ViewController, which
-// gives us Fusion-360-style navigation for free: left-click/drag to
-// select (with a rubber-band box for multi-select), right-drag to orbit,
-// middle-drag to pan, scroll to zoom.
+// Mouse handling is Fusion 360's default scheme, which the user chose:
+//
+//   left click / left drag   select (a rubber-band box for several)
+//   middle drag              pan
+//   Shift + middle drag      orbit
+//   wheel                    zoom, anchored at the cursor
+//   right button             the marking menu, and nothing else: a click
+//                            opens the ring, a flick runs the wedge it points
+//                            into, a press held still brings the ring up
+//                            under the button (ui/MarkingMenuGesture.h)
+//
+// Left and middle go through OCCT's own AIS_ViewController, bound in
+// initializeOcctViewer(); the wheel is hand-rolled in wheelEvent. The right
+// button never reaches the controller -- nothing there is bound to it, and
+// a right drag that orbited would be a gesture that could never run.
 //
 // Left-drag box selection is direction-sensitive like Fusion: dragging
 // left-to-right draws a "window" box (only fully-enclosed objects get
@@ -63,12 +78,16 @@ public:
         m_onSelectionChanged = std::move(theCallback);
     }
 
-    // A right CLICK -- pressed and released without moving -- in global
-    // screen coordinates, which is where Fusion opens its marking menu. A
-    // right DRAG still orbits and never reaches this.
-    void SetContextClickCallback(std::function<void(const QPoint&)> theCallback)
+    // Everything the right button does over the canvas, already told apart
+    // by a RightButtonTracker: the press, a click, a gesture's moves and
+    // release, a hold's. Points are GLOBAL -- where the button went down,
+    // and where the pointer is now. Tools see the right button first and
+    // all of them decline it, so this runs mid-tool too.
+    using MarkingMenuCallback =
+        std::function<void(lcad::MarkingMenuInput, const QPoint&, const QPoint&)>;
+    void SetMarkingMenuCallback(MarkingMenuCallback theCallback)
     {
-        m_onContextClick = std::move(theCallback);
+        m_onMarkingMenu = std::move(theCallback);
     }
 
 protected:
@@ -128,10 +147,18 @@ private:
 
     std::function<void()> m_onSelectionChanged;
 
-    // Where the right button went down, to tell a click from an orbit.
-    std::function<void(const QPoint&)> m_onContextClick;
-    QPointF m_rightPressPos;
-    bool    m_rightPressed = false;
+    // The right button, followed from press to release to tell a click, a
+    // flick and a hold apart. The timer is what notices a hold: a hand
+    // holding still sends no events to notice it with.
+    void beginRightPress(const QPointF& thePos, bool theSpontaneous);
+    void feedMarkingMenu(lcad::MarkingMenuInput theInput, const QPointF& theCursor);
+    void onHoldTimeout();
+
+    MarkingMenuCallback     m_onMarkingMenu;
+    lcad::RightButtonTracker m_rightTracker;
+    QElapsedTimer           m_rightClock;
+    QTimer*                 m_holdTimer = nullptr;
+    bool                    m_rightPressSpontaneous = true;   // from the window system
 };
 
 // Thin QWidget wrapper so this drops into a normal Qt layout (menus,
@@ -157,9 +184,9 @@ public:
     {
         m_window->SetSelectionCallback(std::move(theCallback));
     }
-    void SetContextClickCallback(std::function<void(const QPoint&)> theCallback)
+    void SetMarkingMenuCallback(OcctNativeWindow::MarkingMenuCallback theCallback)
     {
-        m_window->SetContextClickCallback(std::move(theCallback));
+        m_window->SetMarkingMenuCallback(std::move(theCallback));
     }
     lcad::ViewportInteraction* CurrentInteraction() const
     {

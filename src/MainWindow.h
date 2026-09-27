@@ -2,6 +2,7 @@
 
 #include "core/Command.h"
 #include "core/Document.h"
+#include "ui/MarkingMenu.h"
 
 #include <QMainWindow>
 #include <QString>
@@ -14,6 +15,7 @@
 
 class OcctViewport;
 class QAction;
+namespace lcad { class MarkingMenuController; }
 class QToolButton;
 class QTabWidget;
 
@@ -68,9 +70,11 @@ private:
 
     lcad::CommandContext makeContext();
 
-    // Fusion's right-click marking menu, built for what is going on now:
+    // What Fusion's marking menu holds right now, clockwise from the top:
     // Undo and Redo either side, or Cancel and OK while a tool is running.
-    void showMarkingMenu(const QPoint& theGlobalPos);
+    // The ONE list the ring and a right-button gesture both read, so they
+    // can never disagree about what is where.
+    lcad::MarkingMenu::ItemList markingMenuItems();
 
     OcctViewport* m_viewport = nullptr;
     QTabWidget*   m_ribbon = nullptr;
@@ -101,4 +105,7 @@ private:
     // What the marking menu's Repeat runs. Selection filters and camera
     // commands are not "the last thing I did" in Fusion's sense.
     lcad::Command* m_lastCommand = nullptr;
+
+    // The right button over the canvas: click, flick or hold.
+    std::unique_ptr<lcad::MarkingMenuController> m_markingMenu;
 };

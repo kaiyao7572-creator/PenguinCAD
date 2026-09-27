@@ -618,8 +618,9 @@ bool SketchTool::OnMousePress(const Graphic3d_Vec2i& thePos,
     if (!myIsRunning) {
         return false;
     }
-    // Right and middle stay with the viewport so orbit and pan keep
-    // working while a tool is armed.
+    // Middle and right stay with the viewport, so a tool that is armed
+    // still pans (middle), orbits (Shift+middle) and takes marking-menu
+    // gestures (right) -- Fusion's Cancel and OK are a flick away.
     if (theButton != Qt::LeftButton) {
         return false;
     }
@@ -654,7 +655,7 @@ bool SketchTool::OnMouseMove(const Graphic3d_Vec2i& thePos,
         return false;
     }
     if (theButtons.testFlag(Qt::RightButton) || theButtons.testFlag(Qt::MiddleButton)) {
-        return false;  // orbit/pan drag in progress
+        return false;  // a pan, an orbit or a marking-menu gesture in progress
     }
     if (theButtons.testFlag(Qt::LeftButton) && !ConsumedLastPress()) {
         return false;  // a box-select drag the viewport started, not ours

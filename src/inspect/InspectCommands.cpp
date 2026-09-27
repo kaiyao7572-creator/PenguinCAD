@@ -480,8 +480,9 @@ public:
                       Qt::KeyboardModifiers theModifiers) override
     {
         (void)theModifiers;
-        // Right/middle stay with the viewport so orbit and pan keep working
-        // while the tool is armed.
+        // Middle and right stay with the viewport, so pan (middle), orbit
+        // (Shift+middle) and the marking menu (right) keep working while
+        // the tool is armed.
         if (!myIsRunning || theButton != Qt::LeftButton) {
             return false;
         }
@@ -538,7 +539,7 @@ public:
             return false;
         }
         if (theButtons.testFlag(Qt::RightButton) || theButtons.testFlag(Qt::MiddleButton)) {
-            return false;   // orbit/pan drag in progress
+            return false;   // a pan, an orbit or a marking-menu gesture in progress
         }
         // Hover-highlight what a click would pick, with our pick modes.
         ArmPicking();

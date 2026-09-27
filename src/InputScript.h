@@ -35,16 +35,26 @@ class QString;
 //   arm <ms> cell <Row> / <Column> = <text>
 //                           edit the tree cell in that row and column
 //   tab <Name>              bring a ribbon tab forward
-//   move <x> <y>            move the cursor in the viewport
 //   click <x> <y> [ctrl]    press+release left button; trailing "ctrl",
 //                           "shift" or "alt" are held for the click, which
 //                           is how multi-select is driven
-//   rclick <x> <y>          press+release right button
-//   press <x> <y>           left button down; `move` then drags with it
-//   release <x> <y>         left button up
-//   drag <x1> <y1> <x2> <y2> [right]
-//                           press, several moves, release; "right" drags
-//                           with the right button, which orbits
+//   rclick <x> <y>          press+release right button: the marking menu
+//   press <x> <y> [right|middle] [shift|ctrl|alt]
+//                           a button down (left unless named); `move` then
+//                           drags with it, and with those modifiers held
+//   move <x> <y> [shift|ctrl|alt]
+//                           move the cursor in the viewport; after a `press`
+//                           it drags, adding any modifiers named here
+//   release <x> <y> [right|middle]
+//                           that button up (the one `press` held if not
+//                           named). "press ... right", "wait 500", "release"
+//                           is a HOLD: the ring comes up in between
+//   drag <x1> <y1> <x2> <y2> [right|middle] [shift|ctrl|alt]
+//                           press, several moves, release. "middle" pans,
+//                           "middle shift" orbits, and "right" is a marking-
+//                           menu gesture toward (x2, y2)
+//   trail dump|shot <path>  what the gesture trail points at, or a picture
+//                           of it, while a right drag is held
 //   key <Name>              Escape, Return, Delete, or a single character,
 //                           sent to the viewport as a tool would see it
 //   hotkey <Seq>            a key as the SHORTCUT map sees it ("F6",

@@ -140,6 +140,14 @@ OcctNativeWindow::OcctNativeWindow(QWindow* parent)
     setFormat(format);
 
     setSurfaceType(QWindow::OpenGLSurface);
+
+    // Precise: a coarse timer may fire up to 5% early, and a hold judged at
+    // 333 ms is still Pending -- the ring would then wait for the next
+    // mouse move, which a hand holding still never sends.
+    m_holdTimer = new QTimer(this);
+    m_holdTimer->setSingleShot(true);
+    m_holdTimer->setTimerType(Qt::PreciseTimer);
+    connect(m_holdTimer, &QTimer::timeout, this, [this]() { onHoldTimeout(); });
 }
 
 void OcctNativeWindow::initializeOcctViewer()
@@ -262,17 +270,26 @@ void OcctNativeWindow::initializeOcctViewer()
     displayAxis(gp_Pnt(0, 1, 0), Quantity_Color(0.25, 0.80, 0.25, Quantity_TOC_RGB)); // Y, green
     displayAxis(gp_Pnt(0, 0, 1), Quantity_Color(0.25, 0.45, 0.95, Quantity_TOC_RGB)); // Z, blue
 
-    // Fusion-360-style bindings: left click/drag selects (with a
-    // rubber-band box for multi-select), right-drag orbits the camera,
-    // middle-drag pans. Scroll-to-zoom is hand-rolled in wheelEvent.
+    // Fusion 360's default mouse scheme: left click/drag selects (with a
+    // rubber-band box for multi-select), middle-drag pans, Shift+middle-
+    // drag orbits. Scroll-to-zoom is hand-rolled in wheelEvent.
     // Ctrl+Left is bound too so a Ctrl-held drag still starts the select
     // gesture instead of silently doing nothing.
+    //
+    // Nothing is bound to the right button. It belongs to the marking menu
+    // -- a right drag is a gesture there -- and never reaches this
+    // controller (see mousePressEvent).
+    //
+    // The map is looked up with the modifiers held at the press, and again
+    // whenever they change mid-drag: pressing Shift during a pan turns it
+    // into an orbit, and letting go turns it back into a pan (driven on
+    // screen -- the axes turned only while Shift was down).
     AIS_MouseGestureMap& gestures = ChangeMouseGestureMap();
     gestures.Clear();
     gestures.Bind(Aspect_VKeyMouse_LeftButton, AIS_MouseGesture_SelectRectangle);
     gestures.Bind(Aspect_VKeyMouse_LeftButton | Aspect_VKeyFlags_CTRL, AIS_MouseGesture_SelectRectangle);
-    gestures.Bind(Aspect_VKeyMouse_RightButton, AIS_MouseGesture_RotateOrbit);
     gestures.Bind(Aspect_VKeyMouse_MiddleButton, AIS_MouseGesture_Pan);
+    gestures.Bind(Aspect_VKeyMouse_MiddleButton | Aspect_VKeyFlags_SHIFT, AIS_MouseGesture_RotateOrbit);
 
     // Plain left click/drag replaces the selection; Ctrl+left click/drag
     // toggles objects in/out of it instead, like Fusion's multi-select.
@@ -389,13 +406,18 @@ void OcctNativeWindow::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+    if (event->button() == Qt::RightButton) {
+        // Only a right press on its own: one added to a drag already in
+        // progress is a slip of the hand, not the start of a gesture.
+        if (event->buttons() == Qt::RightButton) {
+            beginRightPress(event->position(), event->spontaneous());
+        }
+        return;
+    }
+
     if (event->button() == Qt::LeftButton) {
         m_selectionStartX = pos.x();
         m_lastMoveX = m_selectionStartX;
-    }
-    if (event->button() == Qt::RightButton) {
-        m_rightPressPos = event->position();
-        m_rightPressed = true;
     }
 
     // Detect what is under the press BEFORE handing the click on.
@@ -427,6 +449,15 @@ void OcctNativeWindow::mouseReleaseEvent(QMouseEvent* event)
         return;
     }
 
+    if (event->button() == Qt::RightButton) {
+        m_holdTimer->stop();
+        const QPointF at = event->position();
+        feedMarkingMenu(m_rightTracker.Release(at.x(), at.y(),
+                                               static_cast<double>(m_rightClock.elapsed())),
+                        at);
+        return;
+    }
+
     if (event->button() == Qt::LeftButton) {
         m_lastMoveX = pos.x();
     }
@@ -436,16 +467,41 @@ void OcctNativeWindow::mouseReleaseEvent(QMouseEvent* event)
                         ToAspectFlags(event->modifiers()),
                         false);
     updateView();
+}
 
-    // A right press that went nowhere was a click, not an orbit. Four
-    // logical pixels of slack, because a hand pressing a button moves.
-    if (event->button() == Qt::RightButton && m_rightPressed) {
-        m_rightPressed = false;
-        const QPointF travel = event->position() - m_rightPressPos;
-        if (std::abs(travel.x()) + std::abs(travel.y()) <= 4.0 && m_onContextClick) {
-            m_onContextClick(mapToGlobal(event->position().toPoint()));
-        }
+void OcctNativeWindow::beginRightPress(const QPointF& thePos, bool theSpontaneous)
+{
+    m_rightPressSpontaneous = theSpontaneous;
+    m_rightClock.start();
+    feedMarkingMenu(m_rightTracker.Press(thePos.x(), thePos.y()), thePos);
+    m_holdTimer->start(static_cast<int>(lcad::kMarkingHoldMs));
+}
+
+void OcctNativeWindow::onHoldTimeout()
+{
+    if (!m_rightTracker.IsActive()) {
+        return;
     }
+    const double elapsed = static_cast<double>(m_rightClock.elapsed());
+    const QPointF last(m_rightTracker.LastX(), m_rightTracker.LastY());
+    const lcad::MarkingMenuInput input = m_rightTracker.Move(last.x(), last.y(), elapsed);
+    if (input == lcad::MarkingMenuInput::None
+        && m_rightTracker.State() == lcad::RightPress::Pending) {
+        // Woken a hair early by the clock's reckoning: look again when the
+        // hold time has really passed, rather than never.
+        m_holdTimer->start(std::max(1, static_cast<int>(lcad::kMarkingHoldMs - elapsed) + 1));
+        return;
+    }
+    feedMarkingMenu(input, last);
+}
+
+void OcctNativeWindow::feedMarkingMenu(lcad::MarkingMenuInput theInput, const QPointF& theCursor)
+{
+    if (theInput == lcad::MarkingMenuInput::None || !m_onMarkingMenu) {
+        return;
+    }
+    const QPointF press(m_rightTracker.PressX(), m_rightTracker.PressY());
+    m_onMarkingMenu(theInput, mapToGlobal(press).toPoint(), mapToGlobal(theCursor).toPoint());
 }
 
 void OcctNativeWindow::OnSelectionChanged(const Handle(AIS_InteractiveContext)& theCtx,
@@ -467,14 +523,38 @@ void OcctNativeWindow::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
+    if (m_rightTracker.IsActive()) {
+        if (event->buttons().testFlag(Qt::RightButton)) {
+            // A right drag is a gesture, not a hover: nothing under it
+            // highlights, and the camera stays where it is.
+            feedMarkingMenu(m_rightTracker.Move(event->position().x(), event->position().y(),
+                                                static_cast<double>(m_rightClock.elapsed())),
+                            event->position());
+            return;
+        }
+        // The button came up where this window never heard it: over a ring
+        // that grabbed the pointer as it opened, say. Only the device that
+        // pressed it can say so -- the script harness presses with
+        // synthetic events while the real mouse, idle and buttonless, still
+        // sends the odd hover move (one arrives whenever a dialog closes),
+        // and taking that as a release killed a flick halfway through.
+        if (event->spontaneous() == m_rightPressSpontaneous) {
+            m_holdTimer->stop();
+            feedMarkingMenu(m_rightTracker.Abandon(), event->position());
+        }
+    }
+
     m_lastMoveX = pos.x();
 
     if (event->buttons() & Qt::LeftButton) {
         updateRubberBandStyle();
     }
 
+    // Without the right button: the controller never saw it go down, and
+    // a button it thinks is held that it never saw pressed would stop the
+    // hover highlight for no reason it could know.
     UpdateMousePosition(pos,
-                         ToAspectMouseButtons(event->buttons()),
+                         ToAspectMouseButtons(event->buttons() & ~Qt::MouseButtons(Qt::RightButton)),
                          ToAspectFlags(event->modifiers()),
                          false);
     updateView();
