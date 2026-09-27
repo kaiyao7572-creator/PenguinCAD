@@ -285,7 +285,7 @@ public:
     std::string Title() const override { return "Rectangular Pattern"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kCreateSection; }
-    std::string Icon() const override { return "▦"; }
+    std::string Icon() const override { return ":/icons/solid.pattern.rectangular.svg"; }
     std::string Shortcut() const override { return "Shift+P"; }
     std::string Description() const override
     {
@@ -373,7 +373,7 @@ public:
     std::string Title() const override { return "Circular Pattern"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kCreateSection; }
-    std::string Icon() const override { return "✳"; }
+    std::string Icon() const override { return ":/icons/solid.pattern.circular.svg"; }
     std::string Shortcut() const override { return "Shift+O"; }
     std::string Description() const override
     {
@@ -449,7 +449,7 @@ public:
     std::string Title() const override { return "Mirror"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kCreateSection; }
-    std::string Icon() const override { return "◫"; }
+    std::string Icon() const override { return ":/icons/solid.mirror.svg"; }
     std::string Shortcut() const override { return "Shift+M"; }
     std::string Description() const override
     {

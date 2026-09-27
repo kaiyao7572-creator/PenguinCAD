@@ -721,18 +721,16 @@ private:
 
 // ---- commands ----
 
-// One command per standard orientation; they differ only in id/label/icon
+// One command per standard orientation; they differ only in id/label/key
 // and which V3d_TypeOfOrientation they apply, so a single parameterized
 // class stands in for all seven (same idea as SketchToolCommand).
 class StandardViewCommand : public Command
 {
 public:
-    StandardViewCommand(std::string theId, std::string theTitle, std::string theIcon,
-                        std::string theShortcut, std::string theDescription,
-                        V3d_TypeOfOrientation theOrientation)
+    StandardViewCommand(std::string theId, std::string theTitle, std::string theShortcut,
+                        std::string theDescription, V3d_TypeOfOrientation theOrientation)
         : myId(std::move(theId)),
           myTitle(std::move(theTitle)),
-          myIcon(std::move(theIcon)),
           myShortcut(std::move(theShortcut)),
           myDescription(std::move(theDescription)),
           myOrientation(theOrientation)
@@ -743,7 +741,7 @@ public:
     std::string Title() const override { return myTitle; }
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Orientation"; }
-    std::string Icon() const override { return myIcon; }
+    std::string Icon() const override { return ":/icons/" + myId + ".svg"; }
     std::string Shortcut() const override { return myShortcut; }
     std::string Description() const override { return myDescription; }
 
@@ -763,7 +761,6 @@ public:
 private:
     std::string           myId;
     std::string           myTitle;
-    std::string           myIcon;
     std::string           myShortcut;
     std::string           myDescription;
     V3d_TypeOfOrientation myOrientation;
@@ -776,7 +773,7 @@ public:
     std::string Title() const override { return "Fit All"; }
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Orientation"; }
-    std::string Icon() const override { return "🔍"; }
+    std::string Icon() const override { return ":/icons/view.fit_all.svg"; }
     // F6, as in Fusion. F belongs to Fillet, and a key bound twice fires neither.
     std::string Shortcut() const override { return "F6"; }
     std::string Description() const override { return "Frame the entire model in the viewport"; }
@@ -809,11 +806,10 @@ public:
 class DisplayModeCommand : public Command
 {
 public:
-    DisplayModeCommand(std::string theId, std::string theTitle, std::string theIcon,
-                       std::string theDescription, DisplayModeController::Mode theMode)
+    DisplayModeCommand(std::string theId, std::string theTitle, std::string theDescription,
+                       DisplayModeController::Mode theMode)
         : myId(std::move(theId)),
           myTitle(std::move(theTitle)),
-          myIcon(std::move(theIcon)),
           myDescription(std::move(theDescription)),
           myMode(theMode)
     {
@@ -823,7 +819,7 @@ public:
     std::string Title() const override { return myTitle; }
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Display"; }
-    std::string Icon() const override { return myIcon; }
+    std::string Icon() const override { return ":/icons/" + myId + ".svg"; }
     std::string Description() const override { return myDescription; }
 
     bool IsCheckable() const override { return true; }
@@ -842,7 +838,6 @@ public:
 private:
     std::string                 myId;
     std::string                 myTitle;
-    std::string                 myIcon;
     std::string                 myDescription;
     DisplayModeController::Mode myMode;
 };
@@ -854,7 +849,7 @@ public:
     std::string Title() const override { return "Grid"; }
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Show"; }
-    std::string Icon() const override { return "🔲"; }
+    std::string Icon() const override { return ":/icons/view.grid_toggle.svg"; }
     std::string Shortcut() const override { return "G"; }
     std::string Description() const override { return "Show or hide the ground grid"; }
 
@@ -899,7 +894,7 @@ public:
     std::string Title() const override { return "Perspective"; }
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Display"; }
-    std::string Icon() const override { return "🎥"; }
+    std::string Icon() const override { return ":/icons/view.projection_toggle.svg"; }
     std::string Shortcut() const override { return "P"; }
     std::string Description() const override
     {
@@ -942,7 +937,7 @@ public:
     std::string Title() const override { return "View Cube"; }
     std::string Group() const override { return kViewGroup; }
     std::string Section() const override { return "Show"; }
-    std::string Icon() const override { return "🎲"; }
+    std::string Icon() const override { return ":/icons/view.view_cube.svg"; }
     std::string Description() const override
     {
         return "Show or hide the corner navigation cube (click a face, edge or "
@@ -976,37 +971,37 @@ public:
 void RegisterViewCommands(CommandRegistry& theRegistry)
 {
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.front", "Front", "⬆️", "Ctrl+1", "Look straight at the front (XZ) of the model",
+        "view.front", "Front", "Ctrl+1", "Look straight at the front (XZ) of the model",
         V3d_TypeOfOrientation_Zup_Front));
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.back", "Back", "⬇️", "Ctrl+2", "Look straight at the back of the model",
+        "view.back", "Back", "Ctrl+2", "Look straight at the back of the model",
         V3d_TypeOfOrientation_Zup_Back));
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.left", "Left", "⬅️", "Ctrl+3", "Look straight at the left side of the model",
+        "view.left", "Left", "Ctrl+3", "Look straight at the left side of the model",
         V3d_TypeOfOrientation_Zup_Left));
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.right", "Right", "➡️", "Ctrl+4", "Look straight at the right side (YZ) of the model",
+        "view.right", "Right", "Ctrl+4", "Look straight at the right side (YZ) of the model",
         V3d_TypeOfOrientation_Zup_Right));
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.top", "Top", "🔼", "Ctrl+5", "Look straight down at the top (XY) of the model",
+        "view.top", "Top", "Ctrl+5", "Look straight down at the top (XY) of the model",
         V3d_TypeOfOrientation_Zup_Top));
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.bottom", "Bottom", "🔽", "Ctrl+6", "Look straight up at the bottom of the model",
+        "view.bottom", "Bottom", "Ctrl+6", "Look straight up at the bottom of the model",
         V3d_TypeOfOrientation_Zup_Bottom));
     theRegistry.Add(std::make_unique<StandardViewCommand>(
-        "view.isometric", "Isometric", "🏠", "Home",
+        "view.isometric", "Isometric", "Home",
         "Return to the default home/isometric view", V3d_TypeOfOrientation_Zup_AxoRight));
 
     theRegistry.Add(std::make_unique<FitAllCommand>());
 
     theRegistry.Add(std::make_unique<DisplayModeCommand>(
-        "view.display_shaded", "Shaded", "🧱", "Solid shaded display with no face boundaries",
+        "view.display_shaded", "Shaded", "Solid shaded display with no face boundaries",
         DisplayModeController::Mode::Shaded));
     theRegistry.Add(std::make_unique<DisplayModeCommand>(
-        "view.display_wireframe", "Wireframe", "🕸", "Edges only, no shaded surfaces",
+        "view.display_wireframe", "Wireframe", "Edges only, no shaded surfaces",
         DisplayModeController::Mode::Wireframe));
     theRegistry.Add(std::make_unique<DisplayModeCommand>(
-        "view.display_shaded_edges", "Shaded + Edges", "🔷",
+        "view.display_shaded_edges", "Shaded + Edges",
         "Shaded surfaces with face boundaries drawn on top",
         DisplayModeController::Mode::ShadedWithEdges));
 

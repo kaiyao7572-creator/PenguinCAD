@@ -180,7 +180,7 @@ public:
     std::string Title() const override { return "Combine"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifyGroup; }
-    std::string Icon() const override { return "⧉"; }
+    std::string Icon() const override { return ":/icons/modify.combine.svg"; }
     std::string Description() const override
     {
         return "Join, cut or intersect one body with another";

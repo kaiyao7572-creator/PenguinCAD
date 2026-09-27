@@ -210,7 +210,7 @@ public:
     std::string Title() const override { return "Loft"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return "Create"; }
-    std::string Icon() const override { return "🏺"; }
+    std::string Icon() const override { return ":/icons/solid.loft.svg"; }
     std::string Shortcut() const override { return "Shift+L"; }
     std::string Description() const override
     {

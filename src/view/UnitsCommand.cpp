@@ -28,7 +28,7 @@ public:
     std::string Title() const override { return "Units"; }
     std::string Group() const override { return "View"; }
     std::string Section() const override { return "Show"; }
-    std::string Icon() const override { return "📏"; }
+    std::string Icon() const override { return ":/icons/view.units.svg"; }
     std::string Description() const override
     {
         return "Set the document's default unit. Any field still accepts an explicit "

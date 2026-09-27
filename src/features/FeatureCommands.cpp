@@ -241,7 +241,7 @@ class BoxCommand : public SolidCommand
 public:
     std::string Id() const override { return "solid.box"; }
     std::string Title() const override { return "Box"; }
-    std::string Icon() const override { return "📦"; }
+    std::string Icon() const override { return ":/icons/solid.box.svg"; }
     std::string Shortcut() const override { return "B"; }
     std::string Description() const override
     {
@@ -278,7 +278,7 @@ class CylinderCommand : public SolidCommand
 public:
     std::string Id() const override { return "solid.cylinder"; }
     std::string Title() const override { return "Cylinder"; }
-    std::string Icon() const override { return "🛢"; }
+    std::string Icon() const override { return ":/icons/solid.cylinder.svg"; }
     std::string Shortcut() const override { return "Y"; }
     std::string Description() const override
     {
@@ -315,7 +315,7 @@ class SphereCommand : public SolidCommand
 public:
     std::string Id() const override { return "solid.sphere"; }
     std::string Title() const override { return "Sphere"; }
-    std::string Icon() const override { return "🔮"; }
+    std::string Icon() const override { return ":/icons/solid.sphere.svg"; }
     std::string Shortcut() const override { return "Shift+S"; }
     std::string Description() const override { return "Create a sphere from its radius"; }
 
@@ -347,7 +347,7 @@ class ConeCommand : public SolidCommand
 public:
     std::string Id() const override { return "solid.cone"; }
     std::string Title() const override { return "Cone"; }
-    std::string Icon() const override { return "🔺"; }
+    std::string Icon() const override { return ":/icons/solid.cone.svg"; }
     std::string Shortcut() const override { return "K"; }
     std::string Description() const override
     {
@@ -385,7 +385,7 @@ class TorusCommand : public SolidCommand
 public:
     std::string Id() const override { return "solid.torus"; }
     std::string Title() const override { return "Torus"; }
-    std::string Icon() const override { return "🍩"; }
+    std::string Icon() const override { return ":/icons/solid.torus.svg"; }
     std::string Shortcut() const override { return "Shift+T"; }
     std::string Description() const override
     {
@@ -519,7 +519,7 @@ class ExtrudeCommand : public ProfileCommand
 public:
     std::string Id() const override { return "solid.extrude"; }
     std::string Title() const override { return "Extrude"; }
-    std::string Icon() const override { return "⬆"; }
+    std::string Icon() const override { return ":/icons/solid.extrude.svg"; }
     std::string Shortcut() const override { return "E"; }
     std::string Description() const override
     {
@@ -564,7 +564,7 @@ class RevolveCommand : public ProfileCommand
 public:
     std::string Id() const override { return "solid.revolve"; }
     std::string Title() const override { return "Revolve"; }
-    std::string Icon() const override { return "🔄"; }
+    std::string Icon() const override { return ":/icons/solid.revolve.svg"; }
     std::string Shortcut() const override { return "Shift+R"; }
     std::string Description() const override
     {
@@ -631,7 +631,7 @@ class PressPullCommand : public ModifyCommand
 public:
     std::string Id() const override { return "modify.press_pull"; }
     std::string Title() const override { return "Press Pull"; }
-    std::string Icon() const override { return "⇅"; }
+    std::string Icon() const override { return ":/icons/modify.press_pull.svg"; }
     std::string Shortcut() const override { return "Q"; }
     std::string Description() const override
     {
@@ -685,7 +685,7 @@ class FilletCommand : public ModifyCommand
 public:
     std::string Id() const override { return "modify.fillet"; }
     std::string Title() const override { return "Fillet"; }
-    std::string Icon() const override { return "⚪"; }
+    std::string Icon() const override { return ":/icons/modify.fillet.svg"; }
     std::string Shortcut() const override { return "F"; }
     std::string Description() const override { return "Round every edge of the body"; }
 
@@ -717,7 +717,7 @@ class ChamferCommand : public ModifyCommand
 public:
     std::string Id() const override { return "modify.chamfer"; }
     std::string Title() const override { return "Chamfer"; }
-    std::string Icon() const override { return "🔶"; }
+    std::string Icon() const override { return ":/icons/modify.chamfer.svg"; }
     std::string Shortcut() const override { return "Shift+C"; }
     std::string Description() const override { return "Bevel every edge of the body"; }
 
@@ -748,7 +748,7 @@ class ShellCommand : public ModifyCommand
 public:
     std::string Id() const override { return "modify.shell"; }
     std::string Title() const override { return "Shell"; }
-    std::string Icon() const override { return "🥣"; }
+    std::string Icon() const override { return ":/icons/modify.shell.svg"; }
     std::string Shortcut() const override { return "Shift+H"; }
     std::string Description() const override
     {
@@ -805,7 +805,7 @@ class OffsetPlaneCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.plane_offset"; }
     std::string Title() const override { return "Offset Plane"; }
-    std::string Icon() const override { return "▱"; }
+    std::string Icon() const override { return ":/icons/construct.plane_offset.svg"; }
     std::string Description() const override
     {
         return "A plane parallel to another, a set distance away";
@@ -837,7 +837,7 @@ class AnglePlaneCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.plane_angle"; }
     std::string Title() const override { return "Plane at Angle"; }
-    std::string Icon() const override { return "◪"; }
+    std::string Icon() const override { return ":/icons/construct.plane_angle.svg"; }
     std::string Description() const override
     {
         return "A plane turned about another plane's own X axis";
@@ -871,7 +871,7 @@ class MidplaneCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.plane_midplane"; }
     std::string Title() const override { return "Midplane"; }
-    std::string Icon() const override { return "⬓"; }
+    std::string Icon() const override { return ":/icons/construct.plane_midplane.svg"; }
     std::string Description() const override { return "Halfway between two parallel planes"; }
 
     bool IsEnabled(const CommandContext& theContext) const override
@@ -909,7 +909,7 @@ class ThreePointPlaneCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.plane_three_points"; }
     std::string Title() const override { return "Plane Through Three Points"; }
-    std::string Icon() const override { return "◺"; }
+    std::string Icon() const override { return ":/icons/construct.plane_three_points.svg"; }
     std::string Description() const override { return "A plane through three points"; }
 
     void Execute(CommandContext& theContext) override
@@ -941,7 +941,7 @@ class TwoPointAxisCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.axis_two_points"; }
     std::string Title() const override { return "Axis Through Two Points"; }
-    std::string Icon() const override { return "╱"; }
+    std::string Icon() const override { return ":/icons/construct.axis_two_points.svg"; }
     std::string Description() const override { return "A construction axis through two points"; }
 
     void Execute(CommandContext& theContext) override
@@ -970,7 +970,7 @@ class NormalAxisCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.axis_perpendicular"; }
     std::string Title() const override { return "Axis Perpendicular to Plane"; }
-    std::string Icon() const override { return "⊥"; }
+    std::string Icon() const override { return ":/icons/construct.axis_perpendicular.svg"; }
     std::string Description() const override
     {
         return "A construction axis along a plane's normal";
@@ -1000,7 +1000,7 @@ class CoordinatePointCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.point_coordinates"; }
     std::string Title() const override { return "Point at Coordinates"; }
-    std::string Icon() const override { return "•"; }
+    std::string Icon() const override { return ":/icons/construct.point_coordinates.svg"; }
     std::string Description() const override { return "A construction point at a typed position"; }
 
     void Execute(CommandContext& theContext) override
@@ -1027,7 +1027,7 @@ class AxisPlanePointCommand : public ConstructCommand
 public:
     std::string Id() const override { return "construct.point_axis_plane"; }
     std::string Title() const override { return "Point at Axis and Plane"; }
-    std::string Icon() const override { return "✛"; }
+    std::string Icon() const override { return ":/icons/construct.point_axis_plane.svg"; }
     std::string Description() const override { return "Where an axis crosses a plane"; }
 
     void Execute(CommandContext& theContext) override
@@ -1064,12 +1064,10 @@ public:
 class SelectionFilterCommand : public Command
 {
 public:
-    SelectionFilterCommand(EntityType theType, std::string theId, std::string theTitle,
-                           std::string theIcon)
+    SelectionFilterCommand(EntityType theType, std::string theId, std::string theTitle)
         : myType(theType)
         , myId(std::move(theId))
         , myTitle(std::move(theTitle))
-        , myIcon(std::move(theIcon))
     {
     }
 
@@ -1077,7 +1075,7 @@ public:
     std::string Title() const override { return myTitle; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return "Select"; }
-    std::string Icon() const override { return myIcon; }
+    std::string Icon() const override { return ":/icons/" + myId + ".svg"; }
     std::string Description() const override
     {
         return "Allow " + myTitle + " to be picked in the viewport";
@@ -1115,7 +1113,6 @@ private:
     EntityType  myType;
     std::string myId;
     std::string myTitle;
-    std::string myIcon;
 };
 
 // Fusion's Select Body / Face / Edge Priority. One family, so the ribbon
@@ -1137,7 +1134,7 @@ public:
     std::string Title() const override { return myTitle; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return "Select"; }
-    std::string Icon() const override { return "🎯"; }
+    std::string Icon() const override { return ":/icons/" + myId + ".svg"; }
     std::string Description() const override
     {
         return "Only " + myNoun + " can be picked until this is turned off again";
@@ -1204,13 +1201,13 @@ void RegisterFeatureCommands(CommandRegistry& theRegistry)
     theRegistry.Add(std::make_unique<AxisPlanePointCommand>());
 
     theRegistry.Add(std::make_unique<SelectionFilterCommand>(
-        EntityType::BRepBody, "select.bodies", "Bodies", "🧊"));
+        EntityType::BRepBody, "select.bodies", "Bodies"));
     theRegistry.Add(std::make_unique<SelectionFilterCommand>(
-        EntityType::BRepFace, "select.faces", "Faces", "◧"));
+        EntityType::BRepFace, "select.faces", "Faces"));
     theRegistry.Add(std::make_unique<SelectionFilterCommand>(
-        EntityType::BRepEdge, "select.edges", "Edges", "╲"));
+        EntityType::BRepEdge, "select.edges", "Edges"));
     theRegistry.Add(std::make_unique<SelectionFilterCommand>(
-        EntityType::BRepVertex, "select.vertices", "Vertices", "◦"));
+        EntityType::BRepVertex, "select.vertices", "Vertices"));
 
     theRegistry.Add(std::make_unique<SelectionPriorityCommand>(
         EntityType::BRepBody, "select.priority.body", "Select Body Priority", "bodies"));

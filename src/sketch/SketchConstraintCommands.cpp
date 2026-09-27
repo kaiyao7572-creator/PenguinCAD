@@ -322,13 +322,13 @@ protected:
 };
 
 // Little template-free boilerplate saver: every relation differs only in
-// its type, id and icon.
-#define LCAD_CONSTRAINT_COMMAND(ClassName, TypeValue, IdText, IconText)                \
+// its type and id -- its icon is the SVG named after the id.
+#define LCAD_CONSTRAINT_COMMAND(ClassName, TypeValue, IdText)                          \
     class ClassName : public SketchConstraintCommand                                    \
     {                                                                                   \
     public:                                                                             \
         std::string Id() const override { return IdText; }                              \
-        std::string Icon() const override { return IconText; }                           \
+        std::string Icon() const override { return ":/icons/" IdText ".svg"; }           \
         std::string Description() const override                                        \
         {                                                                               \
             return std::string("Apply a ") + SketchConstraint::TypeName(TypeValue)       \
@@ -340,27 +340,27 @@ protected:
     }
 
 LCAD_CONSTRAINT_COMMAND(CoincidentCommand, SketchConstraintType::Coincident,
-                        "sketch.constraint.coincident", "\xE2\x97\x89");
+                        "sketch.constraint.coincident");
 LCAD_CONSTRAINT_COMMAND(HorizontalCommand, SketchConstraintType::Horizontal,
-                        "sketch.constraint.horizontal", "\xE2\x94\x81");
+                        "sketch.constraint.horizontal");
 LCAD_CONSTRAINT_COMMAND(VerticalCommand, SketchConstraintType::Vertical,
-                        "sketch.constraint.vertical", "\xE2\x94\x83");
+                        "sketch.constraint.vertical");
 LCAD_CONSTRAINT_COMMAND(ParallelCommand, SketchConstraintType::Parallel,
-                        "sketch.constraint.parallel", "\xE2\x88\xA5");
+                        "sketch.constraint.parallel");
 LCAD_CONSTRAINT_COMMAND(PerpendicularCommand, SketchConstraintType::Perpendicular,
-                        "sketch.constraint.perpendicular", "\xE2\x8A\xA5");
+                        "sketch.constraint.perpendicular");
 LCAD_CONSTRAINT_COMMAND(EqualCommand, SketchConstraintType::Equal,
-                        "sketch.constraint.equal", "\xF0\x9F\x9F\xB0");
+                        "sketch.constraint.equal");
 LCAD_CONSTRAINT_COMMAND(TangentCommand, SketchConstraintType::Tangent,
-                        "sketch.constraint.tangent", "\xE2\x97\xA0");
+                        "sketch.constraint.tangent");
 LCAD_CONSTRAINT_COMMAND(MidpointCommand, SketchConstraintType::Midpoint,
-                        "sketch.constraint.midpoint", "\xC2\xBD");
+                        "sketch.constraint.midpoint");
 LCAD_CONSTRAINT_COMMAND(ConcentricCommand, SketchConstraintType::Concentric,
-                        "sketch.constraint.concentric", "\xE2\x97\x8E");
+                        "sketch.constraint.concentric");
 LCAD_CONSTRAINT_COMMAND(CollinearCommand, SketchConstraintType::Collinear,
-                        "sketch.constraint.collinear", "\xE2\x8B\xAF");
+                        "sketch.constraint.collinear");
 LCAD_CONSTRAINT_COMMAND(SymmetricCommand, SketchConstraintType::Symmetric,
-                        "sketch.constraint.symmetry", "\xE2\x87\x94");
+                        "sketch.constraint.symmetry");
 
 #undef LCAD_CONSTRAINT_COMMAND
 
@@ -370,7 +370,7 @@ class FixCommand : public SketchConstraintCommand
 {
 public:
     std::string Id() const override { return "sketch.constraint.fix"; }
-    std::string Icon() const override { return "\xF0\x9F\x93\x8C"; }  // pushpin
+    std::string Icon() const override { return ":/icons/sketch.constraint.fix.svg"; }
 
     std::string Title() const override { return "Fix / Unfix"; }
 
@@ -444,7 +444,7 @@ public:
     std::string Title() const override { return "Sketch Dimension"; }
     std::string Group() const override { return kSketchGroup; }
     std::string Section() const override { return "Inspect"; }
-    std::string Icon() const override { return "\xF0\x9F\x94\xA2"; }  // input numbers
+    std::string Icon() const override { return ":/icons/sketch.dimension.svg"; }
     std::string Shortcut() const override { return "D"; }
 
     std::string Description() const override
@@ -478,7 +478,7 @@ public:
     std::string Title() const override { return "Delete Constraints"; }
     std::string Group() const override { return kSketchGroup; }
     std::string Section() const override { return "Inspect"; }
-    std::string Icon() const override { return "\xF0\x9F\x97\x91"; }  // wastebasket
+    std::string Icon() const override { return ":/icons/sketch.dimension.clear.svg"; }
 
     std::string Description() const override
     {

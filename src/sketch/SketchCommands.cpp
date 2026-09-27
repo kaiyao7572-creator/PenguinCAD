@@ -107,7 +107,7 @@ public:
     std::string Title() const override { return "Create Sketch"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kCreateSection; }
-    std::string Icon() const override { return "📐"; }  // triangular ruler
+    std::string Icon() const override { return ":/icons/sketch.create.svg"; }
     // No key, as in Fusion: Ctrl+Shift+S was one here until File > Save As
     // needed the key every other desktop app gives it.
 
@@ -155,7 +155,7 @@ public:
     std::string Title() const override { return "Edit Sketch"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kCreateSection; }
-    std::string Icon() const override { return "✏️"; }
+    std::string Icon() const override { return ":/icons/sketch.edit.svg"; }
     std::string Shortcut() const override { return "Ctrl+Shift+E"; }
     std::string Description() const override
     {
@@ -211,7 +211,7 @@ public:
     std::string Id() const override { return "sketch.finish"; }
     std::string Title() const override { return "Finish Sketch"; }
     std::string Group() const override { return kSketchGroup; }
-    std::string Icon() const override { return "✅"; }  // check mark button
+    std::string Icon() const override { return ":/icons/sketch.finish.svg"; }
     std::string Shortcut() const override { return "Ctrl+Return"; }
     std::string Description() const override
     {
@@ -245,7 +245,7 @@ public:
     std::string Title() const override { return "Show Sketches"; }
     std::string Group() const override { return "View"; }
     std::string Section() const override { return "Show"; }
-    std::string Icon() const override { return "👁"; }  // eye
+    std::string Icon() const override { return ":/icons/sketch.visible.svg"; }
     std::string Description() const override { return "Show or hide all sketch geometry"; }
 
     bool IsCheckable() const override { return true; }
@@ -270,7 +270,7 @@ public:
     std::string Id() const override { return "sketch.constraints.visible"; }
     std::string Title() const override { return "Show Constraints"; }
     std::string Group() const override { return kSketchGroup; }
-    std::string Icon() const override { return "🔗"; }  // link
+    std::string Icon() const override { return ":/icons/sketch.constraints.visible.svg"; }
     std::string Description() const override
     {
         return "Show or hide the constraint marks and dimensions on the active sketch";
@@ -352,13 +352,13 @@ public:
     }
 };
 
-#define LCAD_TOOL_COMMAND(ClassName, BaseClass, IdText, TitleText, IconText, ToolCall, Text) \
+#define LCAD_TOOL_COMMAND(ClassName, BaseClass, IdText, TitleText, ToolCall, Text)           \
     class ClassName : public BaseClass                                                        \
     {                                                                                         \
     public:                                                                                   \
         std::string Id() const override { return IdText; }                                    \
         std::string Title() const override { return TitleText; }                              \
-        std::string Icon() const override { return IconText; }                                 \
+        std::string Icon() const override { return ":/icons/" IdText ".svg"; }                 \
         std::string Description() const override { return Text; }                             \
                                                                                               \
     protected:                                                                                \
@@ -372,7 +372,7 @@ class LineToolCommand : public SketchToolCommand
 public:
     std::string Id() const override { return "sketch.line"; }
     std::string Title() const override { return "Line"; }
-    std::string Icon() const override { return "📏"; }  // straight ruler
+    std::string Icon() const override { return ":/icons/sketch.line.svg"; }
     std::string Shortcut() const override { return "L"; }
     std::string Description() const override
     {
@@ -388,7 +388,7 @@ class RectangleToolCommand : public SketchToolCommand
 public:
     std::string Id() const override { return "sketch.rectangle"; }
     std::string Title() const override { return "2-Point Rectangle"; }
-    std::string Icon() const override { return "⬜"; }  // white large square
+    std::string Icon() const override { return ":/icons/sketch.rectangle.svg"; }
     std::string Shortcut() const override { return "R"; }
     std::string Description() const override
     {
@@ -400,10 +400,10 @@ protected:
 };
 
 LCAD_TOOL_COMMAND(CentreRectangleCommand, SketchToolCommand, "sketch.rectangle.centre",
-                  "Center Rectangle", "◻", CentreRectangleTool(),
+                  "Center Rectangle", CentreRectangleTool(),
                   "Draw a rectangle from its centre and one corner");
 LCAD_TOOL_COMMAND(ThreePointRectangleCommand, SketchToolCommand, "sketch.rectangle.three",
-                  "3-Point Rectangle", "◰", ThreePointRectangleTool(),
+                  "3-Point Rectangle", ThreePointRectangleTool(),
                   "Draw a rectangle at any angle from one edge and a width");
 
 class CircleToolCommand : public SketchToolCommand
@@ -411,7 +411,7 @@ class CircleToolCommand : public SketchToolCommand
 public:
     std::string Id() const override { return "sketch.circle"; }
     std::string Title() const override { return "Center Diameter Circle"; }
-    std::string Icon() const override { return "⭕"; }  // heavy large circle
+    std::string Icon() const override { return ":/icons/sketch.circle.svg"; }
     std::string Shortcut() const override { return "C"; }
     std::string Description() const override
     {
@@ -423,13 +423,13 @@ protected:
 };
 
 LCAD_TOOL_COMMAND(TwoPointCircleCommand, SketchToolCommand, "sketch.circle.two",
-                  "2-Point Circle", "🔘", TwoPointCircleTool(),
+                  "2-Point Circle", TwoPointCircleTool(),
                   "Draw a circle from the two ends of a diameter");
 LCAD_TOOL_COMMAND(ThreePointCircleCommand, SketchToolCommand, "sketch.circle.three",
-                  "3-Point Circle", "◍", ThreePointCircleTool(),
+                  "3-Point Circle", ThreePointCircleTool(),
                   "Draw a circle through three points");
 LCAD_TOOL_COMMAND(ThreePointArcCommand, SketchToolCommand, "sketch.arc.three",
-                  "3-Point Arc", "◠", ThreePointArcTool(),
+                  "3-Point Arc", ThreePointArcTool(),
                   "Draw an arc from its two ends and a point it passes through");
 
 class ArcToolCommand : public SketchToolCommand
@@ -437,7 +437,7 @@ class ArcToolCommand : public SketchToolCommand
 public:
     std::string Id() const override { return "sketch.arc"; }
     std::string Title() const override { return "Center Point Arc"; }
-    std::string Icon() const override { return "🌙"; }  // crescent moon
+    std::string Icon() const override { return ":/icons/sketch.arc.svg"; }
     std::string Shortcut() const override { return "A"; }
     std::string Description() const override
     {
@@ -449,7 +449,7 @@ protected:
 };
 
 LCAD_TOOL_COMMAND(TangentArcCommand, SketchToolCommand, "sketch.arc.tangent",
-                  "Tangent Arc", "↷", TangentArcTool(),
+                  "Tangent Arc", TangentArcTool(),
                   "Continue an existing curve with an arc tangent to it");
 
 // The polygon tools need a side count before they can preview anything.
@@ -471,13 +471,13 @@ protected:
     virtual SketchPolygonTool& PolygonTool() const = 0;
 };
 
-#define LCAD_POLYGON_COMMAND(ClassName, IdText, TitleText, IconText, ToolCall, Text) \
+#define LCAD_POLYGON_COMMAND(ClassName, IdText, TitleText, ToolCall, Text)           \
     class ClassName : public PolygonCommand                                           \
     {                                                                                 \
     public:                                                                           \
         std::string Id() const override { return IdText; }                            \
         std::string Title() const override { return TitleText; }                      \
-        std::string Icon() const override { return IconText; }                         \
+        std::string Icon() const override { return ":/icons/" IdText ".svg"; }         \
         std::string Description() const override { return Text; }                     \
                                                                                       \
     protected:                                                                        \
@@ -485,36 +485,35 @@ protected:
     }
 
 LCAD_POLYGON_COMMAND(CircumscribedPolygonCommand, "sketch.polygon.circumscribed",
-                     "Circumscribed Polygon", "⬡", CircumscribedPolygonTool(),
+                     "Circumscribed Polygon", CircumscribedPolygonTool(),
                      "Draw a regular polygon around a circle, sized by an edge midpoint");
 LCAD_POLYGON_COMMAND(InscribedPolygonCommand, "sketch.polygon.inscribed",
-                     "Inscribed Polygon", "⬢", InscribedPolygonTool(),
+                     "Inscribed Polygon", InscribedPolygonTool(),
                      "Draw a regular polygon inside a circle, sized by a vertex");
-LCAD_POLYGON_COMMAND(EdgePolygonCommand, "sketch.polygon.edge", "Edge Polygon", "⬣",
+LCAD_POLYGON_COMMAND(EdgePolygonCommand, "sketch.polygon.edge", "Edge Polygon",
                      EdgePolygonTool(), "Draw a regular polygon from one of its edges");
 
 #undef LCAD_POLYGON_COMMAND
 
-LCAD_TOOL_COMMAND(EllipseCommand, SketchToolCommand, "sketch.ellipse", "Ellipse", "⬭",
+LCAD_TOOL_COMMAND(EllipseCommand, SketchToolCommand, "sketch.ellipse", "Ellipse",
                   EllipseTool(), "Draw an ellipse from its centre and both axes");
 LCAD_TOOL_COMMAND(SlotCommand, SketchToolCommand, "sketch.slot", "Center to Center Slot",
-                  "🏟", SlotTool(),
-                  "Draw a slot from the two ends of its centre line and a width");
+                  SlotTool(), "Draw a slot from the two ends of its centre line and a width");
 LCAD_TOOL_COMMAND(SplineCommand, SketchToolCommand, "sketch.spline", "Fit Point Spline",
-                  "〰", SplineTool(),
+                  SplineTool(),
                   "Draw a spline through fit points; Enter or double-click finishes it");
 LCAD_TOOL_COMMAND(ControlPointSplineCommand, SketchToolCommand, "sketch.spline.control_point",
-                  "Control Point Spline", "⌇", ControlPointSplineTool(),
+                  "Control Point Spline", ControlPointSplineTool(),
                   "Draw a spline shaped by control points rather than through them");
-LCAD_TOOL_COMMAND(ConicCommand, SketchToolCommand, "sketch.conic", "Conic Curve", "◠",
+LCAD_TOOL_COMMAND(ConicCommand, SketchToolCommand, "sketch.conic", "Conic Curve",
                   ConicTool(),
                   "Draw a conic from two ends and a point on it; [ and ] change rho");
-LCAD_TOOL_COMMAND(PointCommand, SketchToolCommand, "sketch.point", "Point", "⏺",
+LCAD_TOOL_COMMAND(PointCommand, SketchToolCommand, "sketch.point", "Point",
                   PointTool(), "Place a sketch point to constrain other geometry to");
 
 // ---- Modify ----
 
-LCAD_TOOL_COMMAND(FilletCommand, SketchModifyCommand, "sketch.fillet", "Fillet", "⌒",
+LCAD_TOOL_COMMAND(FilletCommand, SketchModifyCommand, "sketch.fillet", "Fillet",
                   SketchFilletTool(),
                   "Round the corner between two lines with a tangent arc");
 
@@ -523,7 +522,7 @@ class TrimCommand : public SketchModifyCommand
 public:
     std::string Id() const override { return "sketch.trim"; }
     std::string Title() const override { return "Trim"; }
-    std::string Icon() const override { return "✂"; }  // scissors
+    std::string Icon() const override { return ":/icons/sketch.trim.svg"; }
     std::string Shortcut() const override { return "T"; }
     std::string Description() const override
     {
@@ -534,7 +533,7 @@ protected:
     SketchTool& Tool() const override { return SketchTrimTool(); }
 };
 
-LCAD_TOOL_COMMAND(ExtendCommand, SketchModifyCommand, "sketch.extend", "Extend", "↔",
+LCAD_TOOL_COMMAND(ExtendCommand, SketchModifyCommand, "sketch.extend", "Extend",
                   SketchExtendTool(), "Run a curve on until it meets another one");
 
 class OffsetCommand : public SketchModifyCommand
@@ -542,7 +541,7 @@ class OffsetCommand : public SketchModifyCommand
 public:
     std::string Id() const override { return "sketch.offset"; }
     std::string Title() const override { return "Offset"; }
-    std::string Icon() const override { return "⧉"; }
+    std::string Icon() const override { return ":/icons/sketch.offset.svg"; }
     std::string Shortcut() const override { return "O"; }
     std::string Description() const override
     {
@@ -553,7 +552,7 @@ protected:
     SketchTool& Tool() const override { return SketchOffsetTool(); }
 };
 
-LCAD_TOOL_COMMAND(MirrorCommand, SketchSelectionCommand, "sketch.mirror", "Mirror", "🪞",
+LCAD_TOOL_COMMAND(MirrorCommand, SketchSelectionCommand, "sketch.mirror", "Mirror",
                   SketchMirrorTool(), "Mirror the selected sketch geometry about a line");
 
 class RectangularPatternCommand : public SketchSelectionCommand
@@ -561,7 +560,7 @@ class RectangularPatternCommand : public SketchSelectionCommand
 public:
     std::string Id() const override { return "sketch.pattern.rectangular"; }
     std::string Title() const override { return "Rectangular Pattern"; }
-    std::string Icon() const override { return "▦"; }
+    std::string Icon() const override { return ":/icons/sketch.pattern.rectangular.svg"; }
     std::string Description() const override
     {
         return "Copy the selected sketch geometry into a grid";
@@ -587,7 +586,7 @@ class CircularPatternCommand : public SketchSelectionCommand
 public:
     std::string Id() const override { return "sketch.pattern.circular"; }
     std::string Title() const override { return "Circular Pattern"; }
-    std::string Icon() const override { return "❋"; }
+    std::string Icon() const override { return ":/icons/sketch.pattern.circular.svg"; }
     std::string Description() const override
     {
         return "Copy the selected sketch geometry around a centre point";
@@ -619,7 +618,7 @@ public:
     std::string Title() const override { return "Construction"; }
     std::string Group() const override { return kSketchGroup; }
     std::string Section() const override { return kModifySection; }
-    std::string Icon() const override { return "🚧"; }
+    std::string Icon() const override { return ":/icons/sketch.construction.svg"; }
     std::string Description() const override
     {
         return "Turn the selected sketch geometry into construction lines, or back again";

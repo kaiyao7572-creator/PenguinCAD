@@ -139,7 +139,7 @@ public:
     std::string Title() const override { return "Sweep"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return "Create"; }
-    std::string Icon() const override { return "〰"; }
+    std::string Icon() const override { return ":/icons/solid.sweep.svg"; }
     std::string Shortcut() const override { return "Shift+W"; }
     std::string Description() const override
     {

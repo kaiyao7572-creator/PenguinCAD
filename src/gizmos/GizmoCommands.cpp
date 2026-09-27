@@ -122,7 +122,7 @@ public:
     std::string Title() const override { return "Move/Rotate"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifyGroup; }
-    std::string Icon() const override { return "🕹️"; }  // joystick: direct manipulation
+    std::string Icon() const override { return ":/icons/gizmo.move.svg"; }
     std::string Shortcut() const override { return "M"; }
     std::string Description() const override
     {
@@ -176,7 +176,7 @@ public:
     std::string Title() const override { return "Rotate"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifyGroup; }
-    std::string Icon() const override { return "🔃"; }  // a turn
+    std::string Icon() const override { return ":/icons/gizmo.rotate.svg"; }
     std::string Shortcut() const override { return "Ctrl+R"; }
     std::string Description() const override
     {
@@ -224,7 +224,7 @@ public:
     std::string Title() const override { return "Scale"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifyGroup; }
-    std::string Icon() const override { return "⤢"; }  // resize
+    std::string Icon() const override { return ":/icons/gizmo.scale.svg"; }
     std::string Shortcut() const override { return "S"; }
     std::string Description() const override
     {
@@ -268,7 +268,7 @@ public:
     std::string Title() const override { return "Move/Rotate (Numeric)"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifyGroup; }
-    std::string Icon() const override { return "🔢"; }
+    std::string Icon() const override { return ":/icons/gizmo.moveRotateDialog.svg"; }
     std::string Shortcut() const override { return "Ctrl+M"; }
     std::string Description() const override
     {
@@ -317,7 +317,7 @@ public:
     std::string Title() const override { return "Press Pull Arrow"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifyGroup; }
-    std::string Icon() const override { return "🔼"; }
+    std::string Icon() const override { return ":/icons/gizmo.press_pull.svg"; }
     std::string Shortcut() const override { return "Shift+Q"; }
     std::string Description() const override
     {

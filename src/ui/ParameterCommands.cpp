@@ -24,7 +24,7 @@ public:
     std::string Title() const override { return "Change Parameters"; }
     std::string Group() const override { return kSolidGroup; }
     std::string Section() const override { return kModifySection; }
-    std::string Icon() const override { return "🧮"; }
+    std::string Icon() const override { return ":/icons/modify.change_parameters.svg"; }
     std::string Description() const override
     {
         return "Define named parameters and drive feature dimensions with expressions";

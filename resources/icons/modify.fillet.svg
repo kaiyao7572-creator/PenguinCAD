@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
+<polygon points="3.27,9.78 10.62,14.02 11.61,14.69 12.58,15.52 13.5,16.49 14.36,17.58 15.12,18.77 15.76,20.02 16.29,21.31 16.67,22.59 16.9,23.85 16.98,25.04 16.98,29 3.27,21.09" fill="#AAB7C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="28.73,18.26 16.98,25.04 16.98,29 28.73,22.22" fill="#6E7F90" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="15.02,3 22.36,7.24 10.62,14.02 3.27,9.78" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7CC6EA"/>
+<stop offset="0.55" stop-color="#0696D7"/>
+<stop offset="1" stop-color="#0473A6"/>
+</linearGradient></defs><polygon points="10.62,14.02 11.61,14.69 12.58,15.52 13.5,16.49 14.36,17.58 15.12,18.77 15.76,20.02 16.29,21.31 16.67,22.59 16.9,23.85 16.98,25.04 28.73,18.26 28.65,17.07 28.42,15.81 28.03,14.52 27.51,13.24 26.86,11.99 26.1,10.8 25.25,9.71 24.33,8.73 23.36,7.9 22.36,7.24" fill="url(#g)" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+</svg>

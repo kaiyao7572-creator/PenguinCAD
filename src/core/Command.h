@@ -66,8 +66,11 @@ public:
     // Longer text for tooltips/status bar.
     virtual std::string Description() const { return Title(); }
 
-    // Emoji or short text used as the button icon (no binary icon assets
-    // in this project yet).
+    // The button's icon: a bundled SVG named after the id,
+    // ":/icons/solid.extrude.svg", drawn to the house style in
+    // docs/ARCHITECTURE.md and listed in resources/icons.qrc. Anything not
+    // starting with ":/" is shown as text instead. `penguincad --check-icons`
+    // fails the test suite for a command whose icon does not load.
     virtual std::string Icon() const { return std::string(); }
 
     // Keyboard shortcut in Qt sequence syntax, e.g. "E" or "Ctrl+Return".
