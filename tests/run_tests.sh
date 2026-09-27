@@ -131,6 +131,19 @@ build_profiles() {
     "$OUT/profile_test"
 }
 
+# ---- profile picking: a finished sketch's regions, clicked from the model view ----
+build_profilepick() {
+    g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
+        "$ROOT/tests/profilepick_test.cpp" \
+        "$SRC/sketch/ProfilePicking.cpp" "$SRC/core/ProfileSelection.cpp" \
+        "$SRC/core/ProfileProvider.cpp" "$SRC/core/Units.cpp" \
+        "$SRC/sketch/SketchFeature.cpp" "$SRC/sketch/SketchEntity.cpp" \
+        "$SRC/sketch/SketchGeometry.cpp" "$SRC/sketch/SketchConstraints.cpp" \
+        "$SRC/sketch/SketchProfiles.cpp" "$SRC/core/Origin.cpp" \
+        -L/usr/lib64 $OCCT_LIBS -lQt6Core -o "$OUT/profilepick_test" || return 1
+    "$OUT/profilepick_test"
+}
+
 # ---- press/pull gizmo: where the drag arrow sits and how far a drag went ----
 build_gizmo() {
     g++ -std=c++17 -fPIC -I"$SRC" -I"$OCCT_INC" $QT_INC \
@@ -322,6 +335,7 @@ run "Widget: unit-aware input field" build_widget
 run "Pipeline: sketch -> extrude -> edit -> undo" build_pipeline
 run "Sketch: axis inference and snapping" build_inference
 run "Sketch: profile regions and references" build_profiles
+run "Sketch: picking finished profiles from the model view" build_profilepick
 run "Entities: bodies, faces and the Fusion taxonomy" build_entities
 run "Construction: origin folder, planes, axes and points" build_construction
 run "Sketch types: the Fusion curve taxonomy" build_sketchtypes

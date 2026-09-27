@@ -3,6 +3,7 @@
 #include "core/ProfileProvider.h"
 
 #include <cstddef>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -57,11 +58,24 @@ public:
     // answer that was already sitting in the caller's hand.
     void Prune(const std::vector<ProfileRegion>& theRegions);
 
+    // Called after every change to what is picked. Whoever draws the picks
+    // has to hear about changes made by code that knows nothing about
+    // drawing: Extrude spends the picks it has just built on, and without
+    // this the highlight went on claiming them until something unrelated
+    // happened to redraw. One handler, because there is one display.
+    void SetChangeHandler(std::function<void()> theHandler)
+    {
+        myOnChanged = std::move(theHandler);
+    }
+
 private:
     ProfileSelection() = default;
 
+    void NotifyChanged();
+
     std::string             mySketchName;
     std::vector<ProfileRef> myItems;
+    std::function<void()>   myOnChanged;
 };
 
 } // namespace lcad
