@@ -20,6 +20,9 @@ class QString;
 //                           right-click marking menu)
 //   popup move|click <dx> <dy>
 //                           point or click at an offset from its centre
+//   popup release <dx> <dy> let the held right button go there, delivered
+//                           to the ring the way a real display does once
+//                           the ring has grabbed the pointer
 //   menu <Menu> > <Item>    trigger a menu-bar item by its text, e.g.
 //                           "menu File > Export..." or "menu Edit > Undo"
 //   arm <ms> accept|cancel  answer the next modal dialog after <ms>. Arm

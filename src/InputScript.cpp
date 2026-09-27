@@ -535,16 +535,29 @@ void RunInputScript(MainWindow* theWindow, const QString& thePath)
                                   << (i == ring->HighlightedWedge() ? "  <- lit" : "") << std::endl;
                     }
                 }
-            } else if ((what == "move" || what == "click") && parts.size() >= 4) {
+            } else if ((what == "move" || what == "click" || what == "release")
+                       && parts.size() >= 4) {
                 // Offsets from the ring's centre, where the right-click was.
                 QPoint centre = popup->rect().center();
                 if (auto* ring = qobject_cast<lcad::MarkingMenu*>(popup)) {
                     centre = ring->Centre();
                 }
                 const QPointF at(centre.x() + number(2), centre.y() + number(3));
+                // A move during a "release" still has the right button down:
+                // it stands for the hand travelling to a wedge of a ring a
+                // HOLD brought up.
+                const Qt::MouseButtons down = what == "release" ? Qt::RightButton : Qt::NoButton;
                 QMouseEvent moveEvent(QEvent::MouseMove, at, popup->mapToGlobal(at), Qt::NoButton,
-                                      Qt::NoButton, Qt::NoModifier);
+                                      down, Qt::NoModifier);
                 QCoreApplication::sendEvent(popup, &moveEvent);
+                if (what == "release") {
+                    // The release a real display delivers to the RING, which
+                    // grabbed the pointer as it opened -- where the script's
+                    // own `release` goes to the viewport instead.
+                    QMouseEvent release(QEvent::MouseButtonRelease, at, popup->mapToGlobal(at),
+                                        Qt::RightButton, Qt::NoButton, Qt::NoModifier);
+                    QCoreApplication::sendEvent(popup, &release);
+                }
                 if (what == "click") {
                     QPointer<QWidget> alive(popup);
                     QMouseEvent press(QEvent::MouseButtonPress, at, popup->mapToGlobal(at),
