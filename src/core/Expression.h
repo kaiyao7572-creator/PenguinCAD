@@ -21,12 +21,22 @@ struct ExpressionResult
     bool        ok = false;
     double      value = 0.0;
     std::string error;
+
+    // What the value measures, as powers of length and of angle: a length
+    // is 1/0, an angle 0/1, an area 2/0, a plain number 0/0.
+    int lengthPower = 0;
+    int anglePower = 0;
 };
 
 // How a name in an expression becomes a number. Return false for a name
 // you don't know: that becomes a readable error rather than a silent
 // zero standing in for a parameter the user thought they had defined.
 using VariableLookup = std::function<bool(const std::string& theName, double& theValue)>;
+
+// A lookup that also says what each name MEASURES, so an expression can be
+// checked for units: "plate_t" is a length, "draft" an angle, "n" a count.
+using TypedVariableLookup =
+    std::function<bool(const std::string& theName, double& theValue, UnitKind& theKind)>;
 
 // Evaluate "plate_width / 4", "2 * sin(30) + 1/2in", "(a + b) * PI".
 //
@@ -55,8 +65,30 @@ using VariableLookup = std::function<bool(const std::string& theName, double& th
 // quietly produce geometry 25.4x wrong. Applying a unit to a value the
 // user typed as a plain number is therefore the caller's job, and
 // ParameterTable does it only where it is unambiguous.
+//
+// UNITS ARE CHECKED through the whole expression, the way Fusion checks
+// them. A literal with a unit is a length or an angle; a TypedVariable-
+// Lookup says what each name is; * and / multiply and divide the units
+// ("w * h" is an area); + and - need the same unit on both sides, except
+// that a plain number takes the unit of what it is added to ("plate_t + 2"
+// is plate_t + 2 mm, which is what anyone typing it means). Trig takes an
+// angle or a plain number and gives a plain number; asin/acos/atan give an
+// angle; sqrt halves the powers. "10 mm + 5 deg" is an error, not 15.
+//
+// An untyped VariableLookup reports its names as plain numbers, so a
+// caller that never cared about units sees no change.
 ExpressionResult EvaluateExpression(const std::string&    theText,
                                     const VariableLookup& theLookup = VariableLookup());
+ExpressionResult EvaluateTypedExpression(const std::string&         theText,
+                                         const TypedVariableLookup& theLookup);
+
+// "a length", "an angle", "an area", "a plain number" -- for messages.
+std::string DescribeDimension(int theLengthPower, int theAnglePower);
+
+// Whether a result may go into a field or parameter of theKind: a length
+// into a length, an angle into an angle, and a plain number anywhere --
+// the bare-literal rule gives it the field's own unit.
+bool FitsKind(const ExpressionResult& theResult, UnitKind theKind);
 
 // Every name the expression reads, in order of first appearance, with
 // function names and constants left out. This is what a dependency graph

@@ -99,6 +99,7 @@ struct Token
     TokenKind   kind = TokenKind::End;
     double      value = 0.0;   // Number: already in internal units
     bool        hasUnit = false;   // Number: the literal carried a unit suffix
+    bool        isAngle = false;   // Number with a unit: an angle, not a length
     std::string text;          // Name, or a literal's source text
     std::size_t start = 0;     // byte range in the source, so a rename can
     std::size_t end = 0;       // put the new name back exactly where the old was
@@ -318,6 +319,10 @@ bool TakeNumber(const std::string& theText, std::size_t& thePos, Token& theToken
     theToken.kind = TokenKind::Number;
     theToken.value = parsed.value;
     theToken.hasUnit = !suffix.empty();
+    {
+        AngleUnit angleUnit = AngleUnit::Degree;
+        theToken.isAngle = theToken.hasUnit && AngleUnitFromText(suffix, angleUnit);
+    }
     theToken.text = literal;
     theToken.start = start;
     theToken.end = thePos;
@@ -418,51 +423,99 @@ const FunctionDef* FindFunction(const std::string& theLoweredName)
     return nullptr;
 }
 
-bool ApplyFunction(const std::string& theLoweredName, const std::vector<double>& theArgs,
-                   double& theValue, std::string& theError)
+// A value and what it measures, as powers of length and angle. Plain
+// numbers are 0/0, and are the one kind that fits anywhere (see Combine).
+struct Quantity
+{
+    double value = 0.0;
+    int    length = 0;
+    int    angle = 0;
+
+    bool IsPlain() const { return length == 0 && angle == 0; }
+};
+
+Quantity Plain(double theValue)
+{
+    Quantity q;
+    q.value = theValue;
+    return q;
+}
+
+bool ApplyFunction(const std::string& theLoweredName, const std::vector<Quantity>& theArgs,
+                   Quantity& theResult, std::string& theError)
 {
     const std::string& f = theLoweredName;
-    const double a = theArgs[0];
+    const Quantity& arg = theArgs[0];
+    const double a = arg.value;
+    Quantity out;
 
-    if (f == "sin") {
-        theValue = std::sin(RadiansOf(a));
-    } else if (f == "cos") {
-        theValue = std::cos(RadiansOf(a));
-    } else if (f == "tan") {
+    if (f == "sin" || f == "cos" || f == "tan") {
+        // An angle, or a plain number read as degrees -- never a length.
+        if (arg.length != 0 || (arg.angle != 0 && arg.angle != 1)) {
+            theError = f + "() takes an angle, not " + DescribeDimension(arg.length, arg.angle);
+            return false;
+        }
         const double radians = RadiansOf(a);
-        if (std::fabs(std::cos(radians)) < kTanPole) {
+        if (f == "tan" && std::fabs(std::cos(radians)) < kTanPole) {
             theError = "tan is undefined at " + FormatValue(a, UnitKind::Angle);
             return false;
         }
-        theValue = std::tan(radians);
-    } else if (f == "asin" || f == "acos") {
-        if (a < -1.0 || a > 1.0) {
+        out.value = f == "sin" ? std::sin(radians) : f == "cos" ? std::cos(radians) : std::tan(radians);
+    } else if (f == "asin" || f == "acos" || f == "atan") {
+        if (!arg.IsPlain()) {
+            theError = f + "() takes a plain number, not " + DescribeDimension(arg.length, arg.angle);
+            return false;
+        }
+        if (f != "atan" && (a < -1.0 || a > 1.0)) {
             theError = f + " is only defined between -1 and 1";
             return false;
         }
-        theValue = DegreesOf(f == "asin" ? std::asin(a) : std::acos(a));
-    } else if (f == "atan") {
-        theValue = DegreesOf(std::atan(a));
+        out.value = DegreesOf(f == "asin" ? std::asin(a) : f == "acos" ? std::acos(a) : std::atan(a));
+        out.angle = 1;
     } else if (f == "sqrt") {
         if (a < 0.0) {
             theError = "sqrt of a negative number";
             return false;
         }
-        theValue = std::sqrt(a);
-    } else if (f == "abs") {
-        theValue = std::fabs(a);
-    } else if (f == "floor") {
-        theValue = std::floor(a);
-    } else if (f == "ceil") {
-        theValue = std::ceil(a);
-    } else if (f == "round") {
-        theValue = std::round(a);
+        if (arg.length % 2 != 0 || arg.angle % 2 != 0) {
+            theError = "sqrt() of " + DescribeDimension(arg.length, arg.angle)
+                       + " has no unit this document can hold";
+            return false;
+        }
+        out.value = std::sqrt(a);
+        out.length = arg.length / 2;
+        out.angle = arg.angle / 2;
+    } else if (f == "abs" || f == "floor" || f == "ceil" || f == "round") {
+        out = arg;
+        out.value = f == "abs" ? std::fabs(a) : f == "floor" ? std::floor(a)
+                  : f == "ceil" ? std::ceil(a) : std::round(a);
     } else if (f == "pow") {
-        theValue = std::pow(a, theArgs[1]);
-    } else if (f == "min") {
-        theValue = std::min(a, theArgs[1]);
-    } else if (f == "max") {
-        theValue = std::max(a, theArgs[1]);
+        const Quantity& exponent = theArgs[1];
+        if (!exponent.IsPlain()) {
+            theError = "pow() needs a plain number as its exponent";
+            return false;
+        }
+        out.value = std::pow(a, exponent.value);
+        if (!arg.IsPlain()) {
+            const double whole = std::round(exponent.value);
+            if (std::fabs(exponent.value - whole) > 1.0e-9) {
+                theError = "pow() of " + DescribeDimension(arg.length, arg.angle)
+                           + " needs a whole-number exponent";
+                return false;
+            }
+            out.length = arg.length * static_cast<int>(whole);
+            out.angle = arg.angle * static_cast<int>(whole);
+        }
+    } else if (f == "min" || f == "max") {
+        const Quantity& other = theArgs[1];
+        if (!arg.IsPlain() && !other.IsPlain()
+            && (arg.length != other.length || arg.angle != other.angle)) {
+            theError = f + "() of " + DescribeDimension(arg.length, arg.angle) + " and "
+                       + DescribeDimension(other.length, other.angle);
+            return false;
+        }
+        out = arg.IsPlain() ? other : arg;
+        out.value = f == "min" ? std::min(a, other.value) : std::max(a, other.value);
     } else {
         theError = "\"" + f + "\" is not a function";
         return false;
@@ -470,7 +523,8 @@ bool ApplyFunction(const std::string& theLoweredName, const std::vector<double>&
 
     // pow(-8, 0.5) and pow(0, -1) are both perfectly ordinary typos that
     // come back as NaN and infinity respectively.
-    return Finite(theValue, f + "()", theError);
+    theResult = out;
+    return Finite(theResult.value, f + "()", theError);
 }
 
 // ---------------------------------------------------------------------
@@ -485,13 +539,13 @@ bool ApplyFunction(const std::string& theLoweredName, const std::vector<double>&
 class Evaluator
 {
 public:
-    Evaluator(const std::vector<Token>& theTokens, const VariableLookup& theLookup)
+    Evaluator(const std::vector<Token>& theTokens, const TypedVariableLookup& theLookup)
         : myTokens(theTokens),
           myLookup(theLookup)
     {
     }
 
-    bool Run(double& theValue)
+    bool Run(Quantity& theValue)
     {
         if (!Sum(theValue, 0)) {
             return false;
@@ -515,7 +569,27 @@ private:
         return false;
     }
 
-    bool Sum(double& theValue, int theDepth)
+    // The unit rule for + and -: the same unit on both sides, except that
+    // a plain number takes the unit of what it is added to -- "plate_t + 2"
+    // is plate_t + 2 mm, as anyone typing it means.
+    bool MatchUnits(Quantity& theLeft, const Quantity& theRight, bool theAdd)
+    {
+        if (theLeft.IsPlain()) {
+            theLeft.length = theRight.length;
+            theLeft.angle = theRight.angle;
+            return true;
+        }
+        if (theRight.IsPlain()
+            || (theLeft.length == theRight.length && theLeft.angle == theRight.angle)) {
+            return true;
+        }
+        return Fail(std::string(theAdd ? "cannot add " : "cannot subtract ")
+                    + DescribeDimension(theRight.length, theRight.angle)
+                    + (theAdd ? " to " : " from ")
+                    + DescribeDimension(theLeft.length, theLeft.angle));
+    }
+
+    bool Sum(Quantity& theValue, int theDepth)
     {
         if (!Product(theValue, theDepth)) {
             return false;
@@ -523,19 +597,22 @@ private:
         while (Peek().kind == TokenKind::Plus || Peek().kind == TokenKind::Minus) {
             const bool add = Peek().kind == TokenKind::Plus;
             ++myPos;
-            double rhs = 0.0;
+            Quantity rhs;
             if (!Product(rhs, theDepth)) {
                 return false;
             }
-            theValue = add ? theValue + rhs : theValue - rhs;
-            if (!Finite(theValue, add ? "addition" : "subtraction", myError)) {
+            if (!MatchUnits(theValue, rhs, add)) {
+                return false;
+            }
+            theValue.value = add ? theValue.value + rhs.value : theValue.value - rhs.value;
+            if (!Finite(theValue.value, add ? "addition" : "subtraction", myError)) {
                 return false;
             }
         }
         return true;
     }
 
-    bool Product(double& theValue, int theDepth)
+    bool Product(Quantity& theValue, int theDepth)
     {
         if (!Unary(theValue, theDepth)) {
             return false;
@@ -543,24 +620,26 @@ private:
         while (Peek().kind == TokenKind::Star || Peek().kind == TokenKind::Slash) {
             const bool multiply = Peek().kind == TokenKind::Star;
             ++myPos;
-            double rhs = 0.0;
+            Quantity rhs;
             if (!Unary(rhs, theDepth)) {
                 return false;
             }
-            if (!multiply && rhs == 0.0) {
+            if (!multiply && rhs.value == 0.0) {
                 // Caught here rather than by the finite check below, so
                 // the message says what the user actually did.
                 return Fail("division by zero");
             }
-            theValue = multiply ? theValue * rhs : theValue / rhs;
-            if (!Finite(theValue, multiply ? "multiplication" : "division", myError)) {
+            theValue.value = multiply ? theValue.value * rhs.value : theValue.value / rhs.value;
+            theValue.length += multiply ? rhs.length : -rhs.length;
+            theValue.angle += multiply ? rhs.angle : -rhs.angle;
+            if (!Finite(theValue.value, multiply ? "multiplication" : "division", myError)) {
                 return false;
             }
         }
         return true;
     }
 
-    bool Unary(double& theValue, int theDepth)
+    bool Unary(Quantity& theValue, int theDepth)
     {
         // Tested here as well as in Primary: a run of leading signs
         // recurses through Unary without ever reaching Primary, so the
@@ -575,7 +654,7 @@ private:
             if (!Unary(theValue, theDepth + 1)) {
                 return false;
             }
-            theValue = -theValue;
+            theValue.value = -theValue.value;
             return true;
         }
         if (Peek().kind == TokenKind::Plus) {
@@ -585,7 +664,7 @@ private:
         return Primary(theValue, theDepth);
     }
 
-    bool Primary(double& theValue, int theDepth)
+    bool Primary(Quantity& theValue, int theDepth)
     {
         if (theDepth >= kMaxDepth) {
             return Fail("the expression is nested too deeply");
@@ -594,7 +673,11 @@ private:
         const Token& token = Peek();
 
         if (token.kind == TokenKind::Number) {
-            theValue = token.value;
+            theValue = Plain(token.value);
+            if (token.hasUnit) {
+                theValue.length = token.isAngle ? 0 : 1;
+                theValue.angle = token.isAngle ? 1 : 0;
+            }
             ++myPos;
             return true;
         }
@@ -618,7 +701,7 @@ private:
         return Fail("expected a value but found " + Describe(token));
     }
 
-    bool Named(const Token& theToken, double& theValue, int theDepth)
+    bool Named(const Token& theToken, Quantity& theValue, int theDepth)
     {
         const std::string name = theToken.text;
         const std::string lowered = Lowered(name);
@@ -633,7 +716,7 @@ private:
             }
             // 180 degrees in radians IS pi, and taking it that way means
             // PI and the trig functions cannot disagree about its value.
-            theValue = RadiansOf(180.0);
+            theValue = Plain(RadiansOf(180.0));
             return true;
         }
 
@@ -646,13 +729,16 @@ private:
                 return Fail("there is no parameter named \"" + name + "\"");
             }
             double value = 0.0;
-            if (!myLookup(name, value)) {
+            UnitKind kind = UnitKind::Unitless;
+            if (!myLookup(name, value, kind)) {
                 return Fail("there is no parameter named \"" + name + "\"");
             }
             if (!Finite(value, "\"" + name + "\"", myError)) {
                 return false;
             }
-            theValue = value;
+            theValue = Plain(value);
+            theValue.length = kind == UnitKind::Length ? 1 : 0;
+            theValue.angle = kind == UnitKind::Angle ? 1 : 0;
             return true;
         }
 
@@ -661,10 +747,10 @@ private:
         }
 
         ++myPos;   // past '('
-        std::vector<double> args;
+        std::vector<Quantity> args;
         if (Peek().kind != TokenKind::RParen) {
             for (;;) {
-                double arg = 0.0;
+                Quantity arg;
                 if (!Sum(arg, theDepth + 1)) {
                     return false;
                 }
@@ -690,10 +776,10 @@ private:
         return ApplyFunction(lowered, args, theValue, myError);
     }
 
-    const std::vector<Token>& myTokens;
-    const VariableLookup&     myLookup;
-    std::size_t               myPos = 0;
-    std::string               myError;
+    const std::vector<Token>&  myTokens;
+    const TypedVariableLookup& myLookup;
+    std::size_t                myPos = 0;
+    std::string                myError;
 };
 
 // True when the name at theIndex is being called rather than read.
@@ -704,7 +790,8 @@ bool IsCall(const std::vector<Token>& theTokens, std::size_t theIndex)
 
 } // namespace
 
-ExpressionResult EvaluateExpression(const std::string& theText, const VariableLookup& theLookup)
+ExpressionResult EvaluateTypedExpression(const std::string&         theText,
+                                         const TypedVariableLookup& theLookup)
 {
     ExpressionResult result;
 
@@ -718,7 +805,7 @@ ExpressionResult EvaluateExpression(const std::string& theText, const VariableLo
     }
 
     Evaluator evaluator(tokens, theLookup);
-    double value = 0.0;
+    Quantity value;
     if (!evaluator.Run(value)) {
         result.error = evaluator.Error();
         if (result.error.empty()) {
@@ -727,13 +814,68 @@ ExpressionResult EvaluateExpression(const std::string& theText, const VariableLo
         return result;
     }
 
-    if (!Finite(value, "the expression", result.error)) {
+    if (!Finite(value.value, "the expression", result.error)) {
         return result;
     }
 
     result.ok = true;
-    result.value = value;
+    result.value = value.value;
+    result.lengthPower = value.length;
+    result.anglePower = value.angle;
     return result;
+}
+
+ExpressionResult EvaluateExpression(const std::string& theText, const VariableLookup& theLookup)
+{
+    // Names from an untyped lookup are plain numbers, which fit anywhere,
+    // so a caller that never cared about units sees exactly what it did.
+    TypedVariableLookup typed;
+    if (theLookup) {
+        typed = [&theLookup](const std::string& theName, double& theValue, UnitKind& theKind) {
+            theKind = UnitKind::Unitless;
+            return theLookup(theName, theValue);
+        };
+    }
+    return EvaluateTypedExpression(theText, typed);
+}
+
+std::string DescribeDimension(int theLengthPower, int theAnglePower)
+{
+    if (theAnglePower == 0) {
+        switch (theLengthPower) {
+            case 0: return "a plain number";
+            case 1: return "a length";
+            case 2: return "an area";
+            case 3: return "a volume";
+            default: break;
+        }
+    } else if (theLengthPower == 0 && theAnglePower == 1) {
+        return "an angle";
+    }
+    std::string unit;
+    if (theLengthPower != 0) {
+        unit += "mm^" + std::to_string(theLengthPower);
+    }
+    if (theAnglePower != 0) {
+        unit += (unit.empty() ? "" : " ") + std::string("deg^") + std::to_string(theAnglePower);
+    }
+    return "a quantity in " + unit;
+}
+
+bool FitsKind(const ExpressionResult& theResult, UnitKind theKind)
+{
+    if (theResult.lengthPower == 0 && theResult.anglePower == 0) {
+        return true;
+    }
+    switch (theKind) {
+        case UnitKind::Length:
+            return theResult.lengthPower == 1 && theResult.anglePower == 0;
+        case UnitKind::Angle:
+            return theResult.lengthPower == 0 && theResult.anglePower == 1;
+        case UnitKind::Unitless:
+            return false;
+    }
+    return false;
 }
 
 std::vector<std::string> ExpressionVariables(const std::string& theText)
