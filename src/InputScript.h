@@ -11,7 +11,7 @@ class QString;
 // at the mouse. This exists because sketching is all feel -- chaining,
 // previews, snapping -- and none of it can be judged from source code.
 //
-// Run with:  linuxcad --script path/to/script.txt
+// Run with:  penguincad --script path/to/script.txt
 //
 // Commands, one per line, '#' starts a comment:
 //

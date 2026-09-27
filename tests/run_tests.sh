@@ -318,13 +318,13 @@ build_inspect() {
 # says so loudly rather than pass quietly when the app is missing or older
 # than the source it would be checking.
 check_shortcuts() {
-    local app="$ROOT/build/linuxcad"
+    local app="$ROOT/build/penguincad"
     if [ ! -x "$app" ]; then
-        echo "  SKIPPED: build/linuxcad does not exist -- run cmake --build build first"
+        echo "  SKIPPED: build/penguincad does not exist -- run cmake --build build first"
         return 0
     fi
     if [ -n "$(find "$SRC" \( -name '*.cpp' -o -name '*.h' \) -newer "$app" | head -1)" ]; then
-        echo "  SKIPPED: build/linuxcad is older than src/ -- rebuild, or this checks old code"
+        echo "  SKIPPED: build/penguincad is older than src/ -- rebuild, or this checks old code"
         return 0
     fi
     QT_QPA_PLATFORM=offscreen "$app" --check-shortcuts

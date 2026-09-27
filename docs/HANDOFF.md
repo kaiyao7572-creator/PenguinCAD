@@ -1,4 +1,4 @@
-# linuxCAD — handoff to the next session
+# PenguinCAD — handoff to the next session
 
 Read this, then `docs/ARCHITECTURE.md`, before writing any code.
 
@@ -83,7 +83,7 @@ hotkey is never read as a dead binding.
   2.5M-pixel image. Sanity-check any count against the image size.
 - A shortcut checker that **scanned the source** saw 56 commands; the
   registry holds 102 (tables of views, filters, priorities). It now asks
-  the registry (`linuxcad --check-shortcuts`). Check the thing itself,
+  the registry (`penguincad --check-shortcuts`). Check the thing itself,
   not a text picture of it.
 - A tool call that was interrupted by the user **had already run**: the
   test block it added appeared twice when it was re-applied. After any
@@ -164,7 +164,7 @@ shot.
   link, confusingly.
 - Phantom "undefined reference to vtable" after adding a Q_OBJECT class
   usually means a stale autogen cache:
-  `rm -rf build/linuxcad_autogen build/CMakeFiles/linuxcad_autogen.dir && cmake -B build`
+  `rm -rf build/penguincad_autogen build/CMakeFiles/penguincad_autogen.dir && cmake -B build`
 - OCCT 7.9 renamed data-exchange libs: `TKSTEP` → `TKDESTEP`,
   `TKStl` → `TKDESTL`.
 
@@ -266,7 +266,7 @@ screen end to end: `plate_t` edited 5 → 10 mm doubled an extrude from
 | **Construction geometry is drawn** (planes, axes, points) | `MainWindow::redisplayConstruction` | offset plane at 30 mm, point at (40,0,0), axis at X=40 all appear |
 | One body from an extrude of **adjoining** profiles; separate for disjoint | `FuseProfileSolids` | ring + disc → one 6-face body; two circles → two bodies |
 | **One** body-pick resolver (there were three) | `FindBodyForRef` in `CombineFeature.h` | rule pinned by 9 assertions |
-| Shortcut clashes fail the suite | `linuxcad --check-shortcuts` | catches `F` bound twice |
+| Shortcut clashes fail the suite | `penguincad --check-shortcuts` | catches `F` bound twice |
 | F6 = Fit All, I = Measure (F = Fillet, M = Move, as Fusion) | view/inspect commands | all four fired on screen |
 
 **Units** (`src/core/Units.h`) — mm internally, always. Type `12.9in`,
@@ -575,7 +575,7 @@ Visual, only when the logic is genuinely visual:
 
 ```bash
 DISPLAY=:0 QT_QPA_PLATFORM=xcb QT_QPA_PLATFORMTHEME=xdgdesktopportal \
-  ./build/linuxcad --script yourscript.txt
+  ./build/penguincad --script yourscript.txt
 ```
 
 A script that reaches a drawn sketch (viewport-local logical pixels;
@@ -704,7 +704,7 @@ passing (`./tests/run_tests.sh`), 102 registered commands.
 ### What was asked
 
 Close the gaps in `docs/FUSION360_COMPARISON.md` using many parallel
-agents, so linuxCAD matches Fusion except where the difference is the
+agents, so PenguinCAD matches Fusion except where the difference is the
 point (local vs cloud, OCCT vs ASM, free/Linux vs paid/absent).
 
 ### How it went

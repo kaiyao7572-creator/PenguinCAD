@@ -1,4 +1,4 @@
-# linuxCAD architecture & contribution contract
+# PenguinCAD architecture & contribution contract
 
 A Fusion-360-style parametric CAD app: Qt6 UI, OpenCASCADE (OCCT) 7.9.3
 geometry kernel. This document is the contract every subsystem builds
@@ -297,7 +297,7 @@ theRegistry.Add(std::make_unique<ExtrudeCommand>());
 Group names become ribbon tabs automatically, in registration order. Every
 `Register*Commands` is called from **one** list, `RegisterAllCommands` in
 `src/Registration.cpp` — the window registers from it, and so does
-`linuxcad --check-shortcuts`, which fails the test suite if any key is
+`penguincad --check-shortcuts`, which fails the test suite if any key is
 bound to two commands (Qt fires neither on an ambiguous shortcut). Ids
 sharing their first two dotted parts (`select.priority.face`,
 `select.priority.edge`) become one ribbon button with a flyout.
@@ -426,9 +426,9 @@ it done.
 ### Flags
 
 ```
-linuxcad --screenshot out.png [--screenshot-delay 2500] [--screenshot-tab Solid]
-linuxcad --run-command sketch.create --screenshot out.png
-linuxcad --script path/to/script.txt
+penguincad --screenshot out.png [--screenshot-delay 2500] [--screenshot-tab Solid]
+penguincad --run-command sketch.create --screenshot out.png
+penguincad --script path/to/script.txt
 ```
 
 `--screenshot` writes two files: `out.png` (the Qt UI — ribbon, panels,
@@ -488,7 +488,7 @@ contextual Sketch tab to confirm a sketch actually opened.
 
 ```
 DISPLAY=:0 QT_QPA_PLATFORM=xcb QT_QPA_PLATFORMTHEME=xdgdesktopportal \
-  ./build/linuxcad --script yourscript.txt
+  ./build/penguincad --script yourscript.txt
 ```
 
 Then crop/zoom the result to inspect it:

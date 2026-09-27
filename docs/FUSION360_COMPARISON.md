@@ -1,4 +1,4 @@
-# linuxCAD vs Fusion 360 — honest audit
+# PenguinCAD vs Fusion 360 — honest audit
 
 Written 2026-09-20, re-verified against the tree on 2026-09-21 by reading the
 actual code (`src/*`, `docs/ARCHITECTURE.md`, registered `Command` IDs, and
@@ -97,8 +97,8 @@ happy path* — see below.
   STEP files eventually, and there is no fallback/healing strategy visible
   beyond `TKShHealing` being linked.
 - **Delivery:** one native binary vs. Autodesk's cloud-hybrid SaaS. This is a
-  real advantage for linuxCAD (offline, no account, no telemetry) but also
-  means linuxCAD gets none of what the cloud buys Fusion — cross-device
+  real advantage for PenguinCAD (offline, no account, no telemetry) but also
+  means PenguinCAD gets none of what the cloud buys Fusion — cross-device
   continuity, server-side compute for render/sim/generative, team
   collaboration.
 - **Cost / platform:** free and Linux-native vs. paid and Linux-absent. Also

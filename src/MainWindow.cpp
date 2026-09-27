@@ -160,7 +160,7 @@ MainWindow::MainWindow(QWidget* parent)
     lcad::InstallModelProfilePicker(makeContext());
 
     resize(1400, 900);
-    setWindowTitle("linuxCAD");
+    setWindowTitle("PenguinCAD");
     statusBar()->showMessage("Ready");
 
     // Button states depend on things that appear after this constructor

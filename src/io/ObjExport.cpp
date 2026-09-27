@@ -115,7 +115,7 @@ bool ExportShapeToObj(const TopoDS_Shape&             theShape,
         out.imbue(std::locale::classic());
         out << std::fixed << std::setprecision(kCoordinateDigits);
 
-        out << "# Wavefront OBJ written by linuxCAD\n";
+        out << "# Wavefront OBJ written by PenguinCAD\n";
         out << "# units: millimetres\n";
 
         // OBJ vertex indices are 1-based and count from the top of the

@@ -1,4 +1,4 @@
-# linuxCAD
+# PenguinCAD
 
 A parametric solid modeller for Linux, built along the lines Fusion 360 draws:
 a linear feature timeline, a constrained sketcher that drives it, and a browser
@@ -224,7 +224,7 @@ files are picked up without editing the build file.
 ## Run
 
 ```bash
-./build/linuxcad
+./build/penguincad
 ```
 
 If `QT_QPA_PLATFORM` is unset, the app sets it to `xcb` before Qt starts:
@@ -253,9 +253,9 @@ The app can replay synthetic input and photograph itself, which is how UI work
 gets verified on a headless or sleeping machine:
 
 ```bash
-linuxcad --screenshot out.png [--screenshot-delay 2500] [--screenshot-tab Solid]
-linuxcad --run-command sketch.create --screenshot out.png
-linuxcad --script path/to/script.txt
+penguincad --screenshot out.png [--screenshot-delay 2500] [--screenshot-tab Solid]
+penguincad --run-command sketch.create --screenshot out.png
+penguincad --script path/to/script.txt
 ```
 
 `--screenshot` writes two files: `out.png` (the Qt UI) and `out-viewport.png`
