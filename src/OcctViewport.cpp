@@ -222,6 +222,10 @@ void OcctNativeWindow::initializeOcctViewer()
     m_viewer->SetRectangularGridValues(0.0, 0.0, 10.0, 10.0, 0.0);
     m_viewer->SetRectangularGridGraphicValues(150.0, 150.0, 0.0);
     m_viewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
+    // No grid echo: OCCT otherwise draws a small star at the grid point
+    // under the cursor whenever it is over empty space. Fusion has no such
+    // marker, and the sketch tools draw their own snap feedback.
+    m_viewer->SetGridEcho(Standard_False);
     // Minor lines barely above the background; every tenth line clearly
     // brighter, so scale is readable at a glance without the grid
     // competing with the model.
