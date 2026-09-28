@@ -58,20 +58,33 @@ Flathub is what makes PenguinCAD searchable and installable from inside
 GNOME Software and Discover, with automatic updates. Submitting is a pull
 request to [flathub/flathub](https://github.com/flathub/flathub) following
 [its submission guide](https://docs.flathub.org/docs/for-app-authors/submission).
-For that copy of the manifest, replace the last module's `dir` source with the
-tagged release:
 
-```yaml
-    sources:
-      - type: git
-        url: https://github.com/kaiyao7572-creator/PenguinCAD.git
-        tag: v0.1.0
-        commit: <the tag's full commit hash>
+Read Flathub's [Generative AI policy](https://docs.flathub.org/docs/for-app-authors/requirements)
+first. Flathub manifests must not contain AI-generated or AI-assisted
+content, and the manifest in this directory was written with an AI tool, so
+**do not submit it or a copy of it**: the Flathub manifest has to be written
+by hand, from Flathub's own documentation. The same policy forbids
+AI-generated commit messages and automated pull requests for the submission,
+and requires disclosing AI-generated material in the application itself,
+which applies to PenguinCAD.
+
+What this directory does make ready is everything the manifest installs: the
+desktop entry, metainfo, icon, MIME type and screenshots. A build made with
+Flathub's flags passes `flatpak-builder-lint` with no errors:
+
+```bash
+flatpak run org.flatpak.Builder --user --force-clean --compose-url-policy=full \
+    --mirror-screenshots-url=https://dl.flathub.org/media --repo=repo build-dir <manifest>
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
 ```
 
-Flathub's reviewers will ask why the app needs `--socket=x11` rather than
-Wayland: OpenCASCADE's viewer draws into an X11 window (`Xw_Window`), and
-PenguinCAD has no native Wayland path yet.
+Facts a manifest for PenguinCAD needs: it builds with CMake; OpenCASCADE
+7.8 or newer must be built alongside it, since no runtime ships it; it uses
+Qt 6 Widgets (the KDE runtime); its viewer draws into an X11 window
+(`Xw_Window`), so it needs X11 and has no native Wayland path yet; it needs
+the GPU for OpenGL; and it needs no filesystem access, because files go
+through the portal. Flathub builds x86-64 and aarch64; if aarch64 fails, a
+`flathub.json` next to the manifest can limit the build to x86-64.
 
 When releasing, add a `<release>` entry to the metainfo first; software
 centres show those as the changelog.
