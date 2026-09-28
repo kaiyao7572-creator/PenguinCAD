@@ -12,9 +12,11 @@
 #include <QKeySequence>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QMenu>
 #include <QPalette>
 #include <QPixmap>
 #include <QProcess>
+#include <QProxyStyle>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QSet>
@@ -30,6 +32,26 @@
 
 namespace {
 
+// Menus draw their icons at the style's small size, 16 px, whatever the
+// font. This desktop sets 17 pt text, so every menu entry had a speck
+// beside a 28 px line. Fusion's own menus keep the icon about as tall as
+// the line; from a 22 px line up the menus take the 24 px drawing, the
+// next size the icons are made for (docs/ARCHITECTURE.md, "Toolbar icons").
+class MenuIconStyle : public QProxyStyle
+{
+public:
+    using QProxyStyle::QProxyStyle;
+
+    int pixelMetric(PixelMetric theMetric, const QStyleOption* theOption,
+                    const QWidget* theWidget) const override
+    {
+        if (theMetric == PM_SmallIconSize && qobject_cast<const QMenu*>(theWidget) != nullptr) {
+            return theWidget->fontMetrics().height() >= 22 ? 24 : 16;
+        }
+        return QProxyStyle::pixelMetric(theMetric, theOption, theWidget);
+    }
+};
+
 // Qt's default style doesn't repaint itself dark just because the desktop
 // asks for a dark scheme, so a GNOME-dark user was getting a glaring white
 // app. Fusion does follow the scheme, so switch to it and hand it an
@@ -37,7 +59,7 @@ namespace {
 // stays correct for a light desktop too.
 void ApplySystemColorScheme(QApplication& theApp)
 {
-    theApp.setStyle(QStyleFactory::create("Fusion"));
+    theApp.setStyle(new MenuIconStyle(QStyleFactory::create("Fusion")));
 
     Qt::ColorScheme scheme = QGuiApplication::styleHints()->colorScheme();
     if (scheme == Qt::ColorScheme::Unknown) {
