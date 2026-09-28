@@ -13,6 +13,7 @@
 #include <QGuiApplication>
 #include <QIcon>
 #include <QMenu>
+#include <QPainter>
 #include <QPalette>
 #include <QPixmap>
 #include <QProcess>
@@ -326,6 +327,93 @@ int CheckIcons()
     return 1;
 }
 
+// --icon-sheet <out.png>: every command's icon at 16, 24 and 32 px on the
+// light and the dark toolbar colour, grouped by ribbon tab and section and
+// drawn through the app's own loader. It is docs/img/icons-contact-sheet.png,
+// and the way to judge a redrawn icon beside its neighbours: an icon that
+// reads alone at 256 px can still be its neighbour's twin at 16.
+int WriteIconSheet(const QString& thePath)
+{
+    lcad::CommandRegistry& registry = lcad::CommandRegistry::Instance();
+    lcad::RegisterAllCommands(registry);
+
+    struct Section
+    {
+        QString heading;
+        std::vector<lcad::Command*> commands;
+    };
+    std::vector<Section> sections;
+    for (const std::string& group : registry.Groups()) {
+        for (const std::string& section : registry.SectionsInGroup(group)) {
+            const QString heading = QString::fromStdString(group)
+                                    + (section.empty() ? QString() : " - " + QString::fromStdString(section));
+            sections.push_back({heading, registry.InSection(group, section)});
+        }
+    }
+
+    const int sizes[] = {16, 24, 32};
+    const int columns = 4, margin = 12, headH = 30, labelH = 16, gap = 6;
+    const int stripW = gap + 16 + gap + 24 + gap + 32 + gap;
+    const int cellW = 2 * stripW + 20, cellH = labelH + 32 + 2 * gap + 10;
+    int height = margin;
+    for (const Section& section : sections) {
+        height += headH + cellH * static_cast<int>((section.commands.size() + columns - 1) / columns);
+    }
+    height += margin;
+
+    QImage sheet(2 * margin + columns * cellW, height, QImage::Format_ARGB32);
+    sheet.fill(QColor(0xFA, 0xFA, 0xFA));
+    QPainter painter(&sheet);
+    QFont headFont = painter.font();
+    headFont.setPixelSize(15);
+    headFont.setBold(true);
+    QFont labelFont = painter.font();
+    labelFont.setPixelSize(11);
+
+    int y = margin;
+    int unreadable = 0;
+    for (const Section& section : sections) {
+        painter.setFont(headFont);
+        painter.setPen(QColor(0x2B, 0x3A, 0x48));
+        painter.drawText(QRect(margin, y, sheet.width(), headH), Qt::AlignVCenter, section.heading);
+        y += headH;
+        for (std::size_t i = 0; i < section.commands.size(); ++i) {
+            const lcad::Command* command = section.commands[i];
+            const int x = margin + static_cast<int>(i % columns) * cellW;
+            const int top = y + static_cast<int>(i / columns) * cellH;
+            painter.setFont(labelFont);
+            painter.setPen(QColor(0x40, 0x40, 0x40));
+            painter.drawText(QRect(x + 2, top, cellW - 4, labelH), Qt::AlignLeft | Qt::AlignVCenter,
+                             QString::fromStdString(command->Id()));
+            for (int dark = 0; dark < 2; ++dark) {
+                const QRect strip(x + dark * (stripW + 4), top + labelH, stripW, 32 + 2 * gap);
+                painter.fillRect(strip, dark ? QColor(0x35, 0x35, 0x35) : QColor(0xEF, 0xEF, 0xEF));
+                int ix = strip.x() + gap;
+                for (const int size : sizes) {
+                    const QImage icon = lcad::RenderCommandIcon(
+                        QString::fromStdString(command->Icon()), size, dark == 1);
+                    if (icon.isNull()) {
+                        ++unreadable;
+                        painter.fillRect(QRect(ix, strip.y() + gap, size, size), Qt::red);
+                    } else {
+                        painter.drawImage(ix, strip.y() + (strip.height() - size) / 2, icon);
+                    }
+                    ix += size + gap;
+                }
+            }
+        }
+        y += cellH * static_cast<int>((section.commands.size() + columns - 1) / columns);
+    }
+    painter.end();
+    if (!sheet.save(thePath)) {
+        std::cerr << "cannot write " << thePath.toStdString() << std::endl;
+        return 2;
+    }
+    std::cout << "  " << thePath.toStdString() << ": " << sheet.width() << " x " << sheet.height()
+              << (unreadable ? ", with icons that did not draw in red" : "") << std::endl;
+    return unreadable == 0 ? 0 : 1;
+}
+
 int main(int argc, char* argv[])
 {
     // OCCT's window integration on Linux (Xw_Window) needs an X11 window
@@ -356,6 +444,10 @@ int main(int argc, char* argv[])
     }
     if (app.arguments().contains("--check-icons")) {
         return CheckIcons();
+    }
+    const int sheetIndex = app.arguments().indexOf("--icon-sheet");
+    if (sheetIndex >= 0 && sheetIndex + 1 < app.arguments().size()) {
+        return WriteIconSheet(app.arguments().at(sheetIndex + 1));
     }
 
     ApplySystemColorScheme(app);

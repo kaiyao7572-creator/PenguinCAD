@@ -463,7 +463,7 @@ def _():
     # They are L-shaped, tall away from the plane, because a mirrored box
     # is only a second box. Placed along one isometric axis instead, the
     # two overlapped and the pair read as a clump.
-    near, far, w, tall, low = 7.5, 17, 5.5, 10, 4
+    near, far, w, tall, low = 6.5, 15, 5, 13, 5.5
     P = fit(corners(0, near, 0, w, far, tall) + corners(near, 0, 0, far, w, tall), 2.5, 3, 29.5, 29, snap=0)
     split = near + (far - near) * 0.5
     s = step_block(P, 0, w, near, far, tall, low, split, True, GREY)
