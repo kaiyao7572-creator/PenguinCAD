@@ -7,6 +7,45 @@ an OpenCASCADE kernel. The user judges this by feel, not by feature
 checklists. "It builds" is not the bar; "it behaves the way Fusion does"
 is.
 
+## 0. The project is public now (2026-09-27/28)
+
+- **GitHub:** `github.com/kaiyao7572-creator/PenguinCAD`, GPL-3.0-or-later
+  (`LICENSE`). Push with
+  `git push git@github.com:kaiyao7572-creator/PenguinCAD.git main`; the
+  `origin` push URL also names the user's LAN Gitea, which asks for a
+  password and fails in a script.
+- **History was rewritten once**, before anyone had forked it: every
+  author email went from `you@example.com` to the user's GitHub noreply
+  address, and the old history is on the local branch
+  `backup/pre-author-rewrite`. Never rewrite pushed history again.
+- **The pitch is "help build it", not "use it".** The website
+  (`website/src/page.html`, built into one self-contained
+  `website/index.html` by `python3 website/build.py`) shows the real app
+  with its rough edges numbered as first issues, compares honestly with
+  FreeCAD, Fusion, Onshape and others, and routes people into
+  `CONTRIBUTING.md`. Keep that tone: the user asked for it explicitly,
+  after rejecting a prouder first draft and an interactive 3D demo.
+  GitHub Pages deploys it (`.github/workflows/pages.yml`) once Pages is
+  enabled in the repo settings (Source: GitHub Actions).
+- **Packaging** is under `packaging/`: app ID
+  `io.github.kaiyao7572_creator.PenguinCAD`, desktop entry, AppStream
+  metainfo, icon, the `.pcad` MIME type and the Flatpak manifest (KDE 6.11
+  runtime, OpenCASCADE 7.9.3 built from source). `cmake --install` installs
+  the desktop files too. `.github/workflows/flatpak.yml` builds the bundle
+  on every push; a `v*` tag attaches `PenguinCAD-x86_64.flatpak` to that
+  release, which is what the website's download button fetches.
+  `packaging/README.md` covers local builds and the Flathub submission.
+- **Releasing:** add a `<release>` to the metainfo, then
+  `git tag -a vX.Y.Z` and push the tag. The first CI build of OpenCASCADE
+  took about an hour; later ones reuse the cache while `packaging/*.yml`
+  is unchanged.
+- **Local Flatpak builds** use Flathub's builder, installed for the user:
+  `flatpak run org.flatpak.Builder --user --install --force-clean
+  build-dir packaging/io.github.kaiyao7572_creator.PenguinCAD.yml`, run
+  from a directory on disk, never under `/tmp` (tmpfs, so RAM).
+  `flatpak run --filesystem=<dir> io.github.kaiyao7572_creator.PenguinCAD
+  --script <dir>/s.txt` drives the sandboxed app with the harness.
+
 ---
 
 ## 1. Read these before you touch anything
@@ -839,6 +878,23 @@ Delete themselves.
 
 **Assemblies / components** and **2D drawings** (§3.7). Each is a
 document-model project with its own session and plan. Not side-quests.
+
+### 7.7 After the first release
+
+- **Save/open never had its adversarial review.** Two review-and-fix
+  workflows died on usage limits before a reviewer reported. The
+  orchestrator verified it on screen: a fresh window reopens a saved plate
+  with the same features and the same 28,850.2 mm³, the title carries the
+  unsaved-changes asterisk, and New Design with unsaved work asks Save /
+  Don't Save / Cancel, where Cancel really cancels. Round-trip breaking
+  (every feature type with odd values, locales, hand-edited files) and
+  file-handling edge cases (truncated, newer-version, read-only) are still
+  worth a dedicated pass.
+- **Flathub.** Everything it needs is in `packaging/`; the submission is a
+  pull request from the user's account (`packaging/README.md`).
+- **Run the test suites in CI**, next to the Flatpak build.
+- The rest of the open work is listed for contributors in
+  `CONTRIBUTING.md`; keep it and this file in step.
 
 ### If you use agents again
 
