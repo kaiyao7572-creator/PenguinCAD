@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
-<path d="M20.2,29.2 L16,20" fill="none" stroke="#0696D7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1.8 1.6"/>
-<polygon points="16,13 28.12,20 16,27 3.88,20" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<path d="M16,20 L7.5,2.5" fill="none" stroke="#0696D7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="16" cy="20" r="3.1" fill="#2B3A48"/>
-<circle cx="16" cy="20" r="1.6" fill="#0696D7"/>
+<path d="M20.7,29.2 L16.5,20" fill="none" stroke="#0696D7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1.8 1.6"/>
+<polygon points="16.5,13.07 28.5,20 16.5,26.93 4.5,20" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<path d="M16.5,20 L8,2.5" fill="none" stroke="#0696D7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="16.5" cy="20" r="3.1" fill="#2B3A48"/>
+<circle cx="16.5" cy="20" r="1.6" fill="#0696D7"/>
 </svg>

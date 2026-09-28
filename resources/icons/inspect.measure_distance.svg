@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
 <polygon points="3,23 29,23 29,29 3,29" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.1" stroke-linejoin="round"/>
-<path d="M5.89,23 L5.89,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M8.78,23 L8.78,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M11.67,23 L11.67,26.8" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M14.56,23 L14.56,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M17.44,23 L17.44,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M20.33,23 L20.33,26.8" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M23.22,23 L23.22,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M26.11,23 L26.11,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
-<path d="M5,5 L5,18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M27,5 L27,18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8.88,11 L23.12,11" fill="none" stroke="#0696D7" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
-<polygon points="26.8,11 22.2,13.18 22.2,8.82" fill="#0696D7" stroke="#0696D7" stroke-width="0.6" stroke-linejoin="round"/>
-<polygon points="5.2,11 9.8,8.82 9.8,13.18" fill="#0696D7" stroke="#0696D7" stroke-width="0.6" stroke-linejoin="round"/>
+<path d="M5.5,23 L5.5,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M8.5,23 L8.5,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M11.5,23 L11.5,26.8" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M14.5,23 L14.5,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M17.5,23 L17.5,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M20.5,23 L20.5,26.8" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M23.5,23 L23.5,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M26.5,23 L26.5,25.2" fill="none" stroke="#2B3A48" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round"/>
+<path d="M5.5,5 L5.5,18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M26.5,5 L26.5,18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M9.38,11 L22.62,11" fill="none" stroke="#0696D7" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
+<polygon points="26.3,11 21.7,13.18 21.7,8.82" fill="#0696D7" stroke="#0696D7" stroke-width="0.6" stroke-linejoin="round"/>
+<polygon points="5.7,11 10.3,8.82 10.3,13.18" fill="#0696D7" stroke="#0696D7" stroke-width="0.6" stroke-linejoin="round"/>
 </svg>

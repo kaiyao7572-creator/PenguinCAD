@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
-<polygon points="13.58,16.24 24.67,22.64 29.5,9.36 18.42,2.96" fill="#7CC6EA" fill-opacity="0.85" stroke="#0696D7" stroke-width="1.35" stroke-linejoin="round"/>
-<polygon points="13.58,16.24 24.67,22.64 13.58,29.04 2.5,22.64" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<path d="M19.52,25.61 L19.55,24.98 L19.63,24.31 L19.77,23.63 L19.97,22.94 L20.21,22.24 L20.5,21.55 L20.84,20.87 L21.22,20.21 L21.64,19.58 L22.09,18.98 L22.57,18.42 L23.08,17.91 L23.6,17.45 L24.13,17.04 L24.67,16.7 L25.21,16.42 L25.74,16.21 L26.26,16.07 L26.76,16 L27.08,16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="13.17,16.23 23.85,22.4 28.5,9.6 17.83,3.44" fill="#7CC6EA" fill-opacity="0.85" stroke="#0696D7" stroke-width="1.35" stroke-linejoin="round"/>
+<polygon points="13.17,16.23 23.85,22.4 13.17,28.56 2.5,22.4" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<path d="M18.89,25.26 L18.92,24.64 L19,24 L19.13,23.35 L19.32,22.68 L19.56,22.01 L19.84,21.35 L20.16,20.69 L20.53,20.06 L20.93,19.45 L21.37,18.87 L21.83,18.33 L22.32,17.84 L22.82,17.39 L23.33,17 L23.85,16.67 L24.37,16.41 L24.88,16.2 L25.38,16.07 L25.86,16 L26.17,16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

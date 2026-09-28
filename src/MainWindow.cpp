@@ -400,25 +400,30 @@ namespace {
 // not fit widens its button rather than being cut (see buildRibbon).
 QString WrapButtonLabel(const QString& theTitle, int theMaxChars)
 {
+    // "Move/Rotate" may break after its slash, but on one line it keeps no
+    // space there: splitting at " /" drew "Move /Rotate" on the ribbon.
     QString spaced = theTitle;
-    spaced.replace('/', " /");          // let "Move/Rotate" break after the slash
+    spaced.replace('/', "/ ");
     const QStringList words = spaced.split(' ', Qt::SkipEmptyParts);
-    const QString oneLine = words.join(' ');
+    const auto joined = [](const QStringList& theWords) {
+        return theWords.join(' ').replace("/ ", "/");
+    };
+    const QString oneLine = joined(words);
     if (words.size() < 2 || oneLine.length() <= theMaxChars) {
         return oneLine;
     }
     qsizetype best = 1;
     qsizetype bestLongest = oneLine.length();
     for (qsizetype split = 1; split < words.size(); ++split) {
-        const qsizetype longest = std::max(words.mid(0, split).join(' ').length(),
-                                           words.mid(split).join(' ').length());
+        const qsizetype longest = std::max(joined(words.mid(0, split)).length(),
+                                           joined(words.mid(split)).length());
         // On a tie the later break, so "Press Pull / Arrow" keeps its pair.
         if (longest <= bestLongest) {
             bestLongest = longest;
             best = split;
         }
     }
-    return words.mid(0, best).join(' ') + '\n' + words.mid(best).join(' ');
+    return joined(words.mid(0, best)) + '\n' + joined(words.mid(best));
 }
 
 } // namespace

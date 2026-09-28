@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
-<path d="M4,11 L4,4 L11,4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M28,11 L28,4 L21,4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M4,21 L4,28 L11,28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M28,21 L28,28 L21,28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<polygon points="9.5,12.25 16,16 16,23.5 9.5,19.75" fill="#0696D7" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="22.5,12.25 16,16 16,23.5 22.5,19.75" fill="#0473A6" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="16,8.5 22.5,12.25 16,16 9.5,12.25" fill="#7CC6EA" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<path d="M3,10 L3,3 L10,3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29,10 L29,3 L22,3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M3,22 L3,29 L10,29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29,22 L29,29 L22,29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="10.5,12.54 16.5,16 16.5,22.93 10.5,19.46" fill="#0696D7" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="22.5,12.54 16.5,16 16.5,22.93 22.5,19.46" fill="#0473A6" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="16.5,9.07 22.5,12.54 16.5,16 10.5,12.54" fill="#7CC6EA" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
 </svg>

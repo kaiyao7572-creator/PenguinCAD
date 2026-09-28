@@ -62,14 +62,24 @@ class Iso:
         return (self.cx + (x - y) * C30 * self.k, self.cy + (x + y) * 0.5 * self.k - z * self.k)
 
 
-def fit(points3d, x0=2.5, y0=2.5, x1=29.5, y1=29.5, kmax=1.6):
-    """An Iso that centres the given world points in the box."""
+def fit(points3d, x0=2.5, y0=2.5, x1=29.5, y1=29.5, kmax=1.6, snap=0.5):
+    """An Iso that centres the given world points in the box.
+
+    The leftmost and rightmost points -- on a box, its outer vertical
+    edges -- land on x = n + snap, and a symmetric shape's middle edge
+    with them: 0.5 suits a 1.25 px outline, 0 a stroke of 1.5 or more.
+    Left anywhere, a vertical edge renders as two half-grey columns."""
     probe = Iso(0, 0, 1)
     sp = [probe(*p) for p in points3d]
     minx, maxx = min(p[0] for p in sp), max(p[0] for p in sp)
     miny, maxy = min(p[1] for p in sp), max(p[1] for p in sp)
     k = min((x1 - x0) / max(maxx - minx, 1e-6), (y1 - y0) / max(maxy - miny, 1e-6), kmax)
+    if snap is not None and maxx - minx > 1e-6:
+        k = 2 * math.floor(k * (maxx - minx) / 2) / (maxx - minx)
     cx = (x0 + x1) / 2 - k * (minx + maxx) / 2
+    if snap is not None:
+        left = cx + k * minx
+        cx += math.floor(left - snap + 0.5) + snap - left
     cy = (y0 + y1) / 2 - k * (miny + maxy) / 2
     return Iso(cx, cy, k)
 
@@ -257,7 +267,8 @@ def sketch_on_plane(outline_colour, pencil_body, pencil_band):
     """A rectangle being drawn on a sheet, the pencil at its last corner."""
     on = sheet()
     s = poly([on(0, 0), on(1, 0), on(1, 1), on(0, 1)], LIGHT)
-    rect = [on(0.18, 0.2), on(0.72, 0.2), on(0.72, 0.8), on(0.18, 0.8)]
+    near, far = 4 / 14.5, 12 / 14.5      # its long sides on the rows y = 25 and 17
+    rect = [on(0.18, near), on(0.72, near), on(0.72, far), on(0.18, far)]
     s += path(d_of(rect, True), stroke=outline_colour, w=2.0)
     tip = rect[2]
     s += dot(*tip, r=2.1)
@@ -334,6 +345,7 @@ def _():
     s += box(P, 4, 4, 0, 12, 12, 8, BLUES)
     x, y = P(8, 8, 8)
     x2, y2 = P(8, 8, 19)
+    x = x2 = round(x)     # a 2 px shaft on whole columns, not straddling three
     s += arrow(x, y, x2, y2, w=2.0, size=5.0)
     return s
 
@@ -435,30 +447,29 @@ def _():
     return s
 
 
-def wedge(P, x0, x1, tall_at_x0, shades, D, H, h):
-    """A ramp, H high at one end and h at the other: a mirror has to be
-    shown on something lopsided, or its copy is only a second identical
-    box beside the first. The slope stays under 45 degrees so its face
-    turns toward the viewer on both sides of the plane."""
-    top, left, right = shades
-    za, zb = (H, h) if tall_at_x0 else (h, H)
-    s = poly([P(x0, D, za), P(x1, D, zb), P(x1, D, 0), P(x0, D, 0)], left)
-    s += poly([P(x1, 0, zb), P(x1, D, zb), P(x1, D, 0), P(x1, 0, 0)], right)
-    return s + poly([P(x0, 0, za), P(x1, 0, zb), P(x1, D, zb), P(x0, D, za)], top)
+def step_block(P, x0, x1, y0, y1, tall, low, split, along_y, shades):
+    """An L-shaped block, low up to split along its long axis and tall
+    beyond it. along_y picks which axis is the long one."""
+    if along_y:
+        return box(P, x0, y0, 0, x1, split, low, shades) + box(P, x0, split, 0, x1, y1, tall, shades)
+    return box(P, x0, y0, 0, split, y1, low, shades) + box(P, split, y0, 0, x1, y1, tall, shades)
 
 
 @icon('solid.mirror')
 def _():
-    # Grey original, blue copy, the plane between them. They sit far
-    # enough apart along x that neither hides the other: in isometric that
-    # axis runs down to the right, so blocks close together overlap.
-    X, M, D, H, h, g = 9, 3.4, 5.5, 8.5, 2.5, 2.0
-    P = fit(corners(0, -g, -g, 2 * X + 2 * M, D + g, H + g), 2.5, 2.5, 29.5, 29.5)
-    s = wedge(P, 0, X, True, GREY, D, H, h)
-    s += ('<polygon points="%s" fill="%s" fill-opacity="0.55" stroke="%s" stroke-width="1.3" '
-          'stroke-linejoin="round"/>' % (
-              pts([P(X + M, -g, -g), P(X + M, D + g, -g), P(X + M, D + g, H + g), P(X + M, -g, H + g)]), LBLUE, BLUE))
-    s += wedge(P, X + 2 * M, 2 * X + 2 * M, False, BLUES, D, H, h)
+    # The mirror plane is x = y, which isometric shows edge-on as the
+    # vertical through the middle: the grey original and its blue copy
+    # stand either side of it as each other's reflection on screen too.
+    # They are L-shaped, tall away from the plane, because a mirrored box
+    # is only a second box. Placed along one isometric axis instead, the
+    # two overlapped and the pair read as a clump.
+    near, far, w, tall, low = 7.5, 17, 5.5, 10, 4
+    P = fit(corners(0, near, 0, w, far, tall) + corners(near, 0, 0, far, w, tall), 2.5, 3, 29.5, 29, snap=0)
+    split = near + (far - near) * 0.5
+    s = step_block(P, 0, w, near, far, tall, low, split, True, GREY)
+    s += step_block(P, near, far, 0, w, tall, low, split, False, BLUES)
+    x, _y = P(0, 0, 0)
+    s += line([(x, 2.5), (x, 29.5)], stroke=BLUE, w=2, dash='5 1.6 1.2 1.6', cap='butt')
     return s
 
 
@@ -470,6 +481,7 @@ def _():
     s = box(P, 0, 0, 0, 14, 14, 7, (BLUE, MID, DARK))
     x, y = P(7, 7, 7)
     x2, y2 = P(7, 7, 19.5)
+    x = x2 = round(x)
     s += arrow(x, y - 1.2, x2, y2, stroke='currentColor', w=2.0, size=5.0, double=True)
     return s
 
@@ -539,7 +551,7 @@ def _():
     s = ''
     c = 16
     for (dx, dy) in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-        s += arrow(c + dx * 4, c + dy * 4, c + dx * 13.6, c + dy * 13.6, stroke=BLUE, w=2.1, size=5.0)
+        s += arrow(c + dx * 4, c + dy * 4, c + dx * 13.6, c + dy * 13.6, stroke=BLUE, w=2, size=5.0)
     P = Iso(16, 12.2, 0.95)
     s += small_cube(P, 7.8)
     return s
@@ -565,9 +577,11 @@ def _():
     s = ''
     # The scaled result: a larger blue wire box.
     big = [P(0, 0, 14), P(14, 0, 14), P(14, 14, 14), P(0, 14, 14)]
-    s += poly([P(0, 14, 14), P(14, 14, 14), P(14, 14, 0), P(0, 14, 0)], LBLUE, stroke=False, extra=' fill-opacity="0.35"')
-    s += poly([P(14, 0, 14), P(14, 14, 14), P(14, 14, 0), P(14, 0, 0)], BLUE, stroke=False, extra=' fill-opacity="0.3"')
-    s += poly(big, LBLUE, stroke=False, extra=' fill-opacity="0.45"')
+    # Faint enough on white to show the grey cube it grew from, but no
+    # fainter: at a third opaque the result went navy on the dark toolbar.
+    s += poly([P(0, 14, 14), P(14, 14, 14), P(14, 14, 0), P(0, 14, 0)], LBLUE, stroke=False, extra=' fill-opacity="0.6"')
+    s += poly([P(14, 0, 14), P(14, 14, 14), P(14, 14, 0), P(14, 0, 0)], BLUE, stroke=False, extra=' fill-opacity="0.55"')
+    s += poly(big, LBLUE, stroke=False, extra=' fill-opacity="0.7"')
     s += box(P, 0, 7, 0, 7, 14, 7)
     edges = [[P(0, 0, 14), P(14, 0, 14), P(14, 14, 14), P(0, 14, 14), P(0, 0, 14)],
              [P(14, 0, 14), P(14, 0, 0), P(14, 14, 0), P(7, 14, 0)],
@@ -585,11 +599,11 @@ def _():
     s = ''
     for (dx, dy) in ((0, -1), (1, 0), (0, 1), (-1, 0)):
         s += arrow(11 + dx * 3, 11 + dy * 3, 11 + dx * 9.4, 11 + dy * 9.4, stroke=BLUE, w=1.9, size=4.2)
-    s += '<rect x="13.5" y="15.5" width="16" height="13.5" rx="1.5" fill="%s" %s/>' % (LIGHT, outline())
-    s += '<rect x="16" y="18.5" width="11" height="3.2" fill="#FFFFFF" stroke="%s" stroke-width="0.9"/>' % INK
-    s += '<rect x="16" y="23.4" width="11" height="3.2" fill="#FFFFFF" stroke="%s" stroke-width="0.9"/>' % INK
-    s += line([(17.6, 20.1), (21.5, 20.1)], stroke=BLUE, w=1.3, cap='butt')
-    s += line([(17.6, 25), (23.5, 25)], stroke=BLUE, w=1.3, cap='butt')
+    s += '<rect x="13.5" y="15.5" width="16" height="14" rx="1.5" fill="%s" %s/>' % (LIGHT, outline())
+    s += '<rect x="16.5" y="18.5" width="10" height="4" fill="#FFFFFF" stroke="%s" stroke-width="1"/>' % INK
+    s += '<rect x="16.5" y="23.5" width="10" height="4" fill="#FFFFFF" stroke="%s" stroke-width="1"/>' % INK
+    s += line([(18, 20.5), (22, 20.5)], stroke=BLUE, w=1.3, cap='butt')
+    s += line([(18, 25.5), (24, 25.5)], stroke=BLUE, w=1.3, cap='butt')
     return s
 
 
@@ -608,7 +622,7 @@ def _():
 @icon('modify.change_parameters')
 def _():
     s = path('M15.6,6.2 C13.4,4.6 11.2,5.6 10.8,8.6 L8.8,24.6 C8.4,27.6 6.4,28.2 4.4,26.8', w=2.2)
-    s += line([(6.6, 12.6), (14.4, 12.6)], w=2.0)
+    s += line([(6.6, 13), (14.4, 13)], w=2.0)
     s += path('M19.6,9.6 C16.4,13.2 16.4,21.6 19.6,25.2', w=1.9)
     s += path('M26.6,9.6 C29.8,13.2 29.8,21.6 26.6,25.2', w=1.9)
     s += line([(20.6, 13.8), (25.6, 21.2)], stroke=BLUE, w=2.2)
@@ -704,8 +718,10 @@ def _():
     P = fit(corners(0, 0, 0, 16, 16, 0), 2.5, 16, 29.5, 29)
     s = poly([P(0, 0, 0), P(16, 0, 0), P(16, 16, 0), P(0, 16, 0)], LIGHT)
     x, y = P(8, 8, 0)
-    s += line([(x, y), (x, 2.5)], stroke=BLUE, w=2.2)
-    s += line([P(8, 11, 0), (P(8, 11, 0)[0], P(8, 11, 0)[1] - 3.2), (x, y - 3.2)], stroke=INK, w=1.1, cap='butt')
+    x = round(x)
+    s += line([(x, y), (x, 2.5)], stroke=BLUE, w=2)
+    foot = P(8, 11, 0)
+    s += line([foot, (math.floor(foot[0]) + 0.5, foot[1] - 3.2), (x, y - 3.2)], stroke=INK, w=1.1, cap='butt')
     s += dot(x, y, r=1.8, fill=BLUE)
     return s
 
@@ -716,7 +732,7 @@ def _():
     s = arrow(o[0], o[1], o[0], 5, w=1.5, size=3.6)
     s += arrow(o[0], o[1], 27, o[1] + 0.01, w=1.5, size=3.6)
     s += arrow(o[0], o[1], 3.2, 28.2, w=1.5, size=3.4)
-    p = (21, 10)
+    p = (21.5, 10.5)
     s += line([(p[0], p[1]), (p[0], o[1])], w=1.1, dash='1.8 1.4')
     s += line([(p[0], p[1]), (o[0], p[1])], w=1.1, dash='1.8 1.4')
     s += dot(p[0], p[1], r=3.0, fill=BLUE)
@@ -764,14 +780,15 @@ def select_part(P, what):
     return s
 
 
-def part_fit(x0, y0, x1, y1):
+def part_fit(x0, y0, x1, y1, what=None):
     A, B, h, H = PART
-    return fit(corners(0, 0, 0, A, A, H), x0, y0, x1, y1)
+    # Body's heavier blue outline wants whole columns, the ink one halves.
+    return fit(corners(0, 0, 0, A, A, H), x0, y0, x1, y1, snap=0 if what == 'body' else 0.5)
 
 
 @icon('select.bodies')
 def _():
-    return select_part(part_fit(3, 3, 29, 29), 'body')
+    return select_part(part_fit(3, 3, 29, 29, 'body'), 'body')
 
 
 @icon('select.faces')
@@ -790,7 +807,7 @@ def _():
 
 
 def priority(what):
-    return select_part(part_fit(2, 2.5, 25, 25), what) + pointer(19.5, 16.2, 1.02)
+    return select_part(part_fit(2, 2.5, 25, 25, what), what) + pointer(19.5, 16.2, 1.02)
 
 
 @icon('select.priority.body')
@@ -816,7 +833,8 @@ def _():
     # Fusion's green tick over it.
     on = sheet(2.5, 29, 17, 12.5, 5)
     s = poly([on(0, 0), on(1, 0), on(1, 1), on(0, 1)], LIGHT)
-    s += path(d_of([on(0.18, 0.22), on(0.7, 0.22), on(0.7, 0.78), on(0.18, 0.78)], True), stroke=INK, w=1.5)
+    near, far = 3 / 12.5, 10 / 12.5     # rows y = 26 and 19
+    s += path(d_of([on(0.18, near), on(0.7, near), on(0.7, far), on(0.18, far)], True), stroke=INK, w=1.5)
     tick = [(10.5, 16.5), (16.5, 23), (27.5, 6.5)]
     s += line(tick, stroke=INK, w=6.6)
     s += line(tick, stroke=GREEN, w=4.2)
@@ -840,8 +858,8 @@ def _():
 @icon('sketch.visible')
 def _():
     s = eye(14, 12)
-    s += path('M19,28.5 L19,20 L28.5,20 L28.5,28.5 Z', stroke='currentColor', w=1.5)
-    s += dot(19, 28.5, r=1.9) + dot(28.5, 20, r=1.9)
+    s += path('M19,29 L19,21 L28,21 L28,29 Z', stroke='currentColor', w=1.5)
+    s += dot(19, 29, r=1.9) + dot(28, 21, r=1.9)
     return s
 
 
@@ -852,15 +870,15 @@ def _():
 
 @icon('sketch.rectangle')
 def _():
-    s = path('M5,8 L27,8 L27,24 L5,24 Z')
-    return s + dot(5, 8, 2.6) + dot(27, 24, 2.6)
+    s = path('M5,9 L27,9 L27,23 L5,23 Z')
+    return s + dot(5, 9, 2.6) + dot(27, 23, 2.6)
 
 
 @icon('sketch.rectangle.centre')
 def _():
-    s = path('M5,8 L27,8 L27,24 L5,24 Z')
-    s += line([(16, 16), (27, 24)], w=1.2, dash='1.8 1.5')
-    return s + dot(16, 16, 2.6) + dot(27, 24, 2.6)
+    s = path('M5,9 L27,9 L27,23 L5,23 Z')
+    s += line([(16, 16), (27, 23)], w=1.2, dash='1.8 1.5')
+    return s + dot(16, 16, 2.6) + dot(27, 23, 2.6)
 
 
 @icon('sketch.rectangle.three')
@@ -942,26 +960,28 @@ def polygon_pts(cx, cy, r, n=6, rot=0):
 
 @icon('sketch.polygon.circumscribed')
 def _():
-    r = 9.2
+    r = 9      # the flat sides land on x = 7 and 25
     R = r / math.cos(math.radians(30))
     hexa = polygon_pts(16, 16, R, 6, 30)
-    s = circle(16, 16, r, stroke=LBLUE, w=1.4)
+    # The reference circle is a tinted disc: as a thin ring it hid under
+    # the very sides it touches, and the icon read as a bare hexagon.
+    s = circle(16, 16, r, stroke=None, fill=LBLUE).replace('/>', ' fill-opacity="0.55"/>')
     s += path(d_of(hexa, True))
-    return s + dot(16, 16, 2.4) + dot(16, 16 + r, 2.6)
+    return s + dot(16, 16, 2.4) + dot(16 + r, 16, 2.6)
 
 
 @icon('sketch.polygon.inscribed')
 def _():
-    R = 12
+    R = 11 / math.sin(math.radians(60))    # flat sides on y = 5 and 27
     hexa = polygon_pts(16, 16, R, 6, 0)
-    s = circle(16, 16, R, stroke=LBLUE, w=1.4)
+    s = circle(16, 16, R, stroke=None, fill=LBLUE).replace('/>', ' fill-opacity="0.55"/>')
     s += path(d_of(hexa, True))
     return s + dot(16, 16, 2.4) + dot(16 + R, 16, 2.6)
 
 
 @icon('sketch.polygon.edge')
 def _():
-    R = 11
+    R = 9 / math.cos(math.radians(30))     # flat sides on x = 7 and 25
     hexa = polygon_pts(16, 15, R, 6, 30)
     s = path(d_of(hexa, True))
     a, b = hexa[1], hexa[2]
@@ -971,17 +991,21 @@ def _():
 
 @icon('sketch.ellipse')
 def _():
-    s = ellipse(16, 16, 13, 8, stroke='currentColor', w=1.75)
-    s += line([(3, 16), (29, 16)], w=1.1, dash='1.8 1.5')
-    s += line([(16, 8), (16, 24)], w=1.1, dash='1.8 1.5')
-    return s + dot(16, 16, 2.4) + dot(29, 16, 2.4) + dot(16, 8, 2.4)
+    # Centred on a half coordinate, so its thin dashed axes land on pixels.
+    c, rx, ry = 15.5, 13, 8
+    s = ellipse(c, c, rx, ry, stroke='currentColor', w=1.75)
+    s += line([(c - rx, c), (c + rx, c)], w=1.1, dash='1.8 1.5')
+    s += line([(c, c - ry), (c, c + ry)], w=1.1, dash='1.8 1.5')
+    return s + dot(c, c, 2.4) + dot(c + rx, c, 2.4) + dot(c, c - ry, 2.4)
 
 
 @icon('sketch.slot')
 def _():
-    s = path('M9,9.5 L23,9.5 A6.5,6.5 0 0 1 23,22.5 L9,22.5 A6.5,6.5 0 0 1 9,9.5 Z')
-    s += line([(9, 16), (23, 16)], w=1.2, dash='1.8 1.5')
-    return s + dot(9, 16, 2.4) + dot(23, 16, 2.4)
+    # Straight sides on whole rows, so the dashed centre line between them
+    # falls on a half one: both then land on pixels.
+    s = path('M9,9 L23,9 A6.5,6.5 0 0 1 23,22 L9,22 A6.5,6.5 0 0 1 9,9 Z')
+    s += line([(9, 15.5), (23, 15.5)], w=1.2, dash='1.8 1.5')
+    return s + dot(9, 15.5, 2.4) + dot(23, 15.5, 2.4)
 
 
 def through(ps):
@@ -1030,18 +1054,18 @@ def _():
 
 @icon('sketch.fillet')
 def _():
-    s = line([(6, 7), (6, 16), ], w=1.2, dash='1.8 1.5') + line([(6, 7), (15, 7)], w=1.2, dash='1.8 1.5')
-    s += line([(6, 28), (6, 16)])
-    s += line([(15, 7), (28, 7)])
-    s += path('M6,16 A9,9 0 0 1 15,7', stroke=BLUE, w=2.3)
-    return s + dot(6, 16, 2.3) + dot(15, 7, 2.3)
+    s = line([(7, 7), (7, 16)], w=1.5, dash='1.8 1.5') + line([(7, 7), (16, 7)], w=1.5, dash='1.8 1.5')
+    s += line([(7, 28), (7, 16)])
+    s += line([(16, 7), (28, 7)])
+    s += path('M7,16 A9,9 0 0 1 16,7', stroke=BLUE, w=2.3)
+    return s + dot(7, 16, 2.3) + dot(16, 7, 2.3)
 
 
 @icon('sketch.trim')
 def _():
-    s = line([(3, 8), (10, 8)]) + line([(22, 8), (29, 8)])
-    s += line([(10, 8), (22, 8)], stroke=BLUE, w=1.75, dash='2 1.6')
-    s += line([(10, 3), (10, 13)], w=1.4) + line([(22, 3), (22, 13)], w=1.4)
+    s = line([(3, 9), (10, 9)]) + line([(22, 9), (29, 9)])
+    s += line([(10, 9), (22, 9)], stroke=BLUE, w=1.75, dash='2 1.6')
+    s += line([(10.5, 3.5), (10.5, 14.5)], w=1.4) + line([(21.5, 3.5), (21.5, 14.5)], w=1.4)
     # Scissors, blades up.
     s += line([(12.4, 21.5), (19.8, 11.6)], w=1.8)
     s += line([(19.6, 21.5), (12.2, 11.6)], w=1.8)
@@ -1053,10 +1077,10 @@ def _():
 @icon('sketch.extend')
 def _():
     s = line([(27, 4), (27, 28)], w=1.75)
-    s += line([(4, 20), (13, 20)])
-    s += line([(13, 20), (20.5, 20)], stroke=BLUE, w=1.75, dash='2 1.6', cap='butt')
-    s += arrowhead(13, 20, 26, 20, BLUE, size=5, width=5)
-    return s + dot(4, 20, 2.0, fill='currentColor')
+    s += line([(4, 19), (13, 19)])
+    s += line([(13, 19), (20.5, 19)], stroke=BLUE, w=1.75, dash='2 1.6', cap='butt')
+    s += arrowhead(13, 19, 26, 19, BLUE, size=5, width=5)
+    return s + dot(4, 19, 2.0, fill='currentColor')
 
 
 @icon('sketch.offset')
@@ -1068,9 +1092,9 @@ def _():
 
 @icon('sketch.mirror')
 def _():
-    s = line([(16, 3), (16, 29)], w=1.4, dash='5 1.6 1.2 1.6')
-    s += path('M12.5,8 L12.5,24 L3.5,24 Z', w=1.75)
-    s += path('M19.5,8 L19.5,24 L28.5,24 Z', stroke=BLUE, w=1.9)
+    s = line([(16, 3), (16, 29)], w=1.5, dash='5 1.6 1.2 1.6')
+    s += path('M13,8 L13,25 L3.5,25 Z', w=1.75)
+    s += path('M19,8 L19,25 L28.5,25 Z', stroke=BLUE, w=1.9)
     return s
 
 
@@ -1079,7 +1103,7 @@ def _():
     s = ''
     for i in range(3):
         for j in range(3):
-            x, y = 4 + i * 9, 4 + j * 9
+            x, y = 3 + i * 10, 3 + j * 10     # every side on an odd column or row
             col = 'currentColor' if i == 0 and j == 0 else BLUE
             s += '<rect x="%s" y="%s" width="6" height="6" fill="none" stroke="%s" stroke-width="1.6"/>' % (
                 f(x), f(y), col)
@@ -1113,15 +1137,15 @@ def _():
 @icon('sketch.constraint.horizontal')
 def _():
     s = line([(5, 24), (27, 20)], w=1.2, dash='1.8 1.5')
-    s += line([(5, 12), (27, 12)], stroke=BLUE, w=2.2)
-    return s + dot(5, 12, 2.4, fill='currentColor') + dot(27, 12, 2.4, fill='currentColor')
+    s += line([(5, 11), (27, 11)], stroke=BLUE, w=2)
+    return s + dot(5, 11, 2.4, fill='currentColor') + dot(27, 11, 2.4, fill='currentColor')
 
 
 @icon('sketch.constraint.vertical')
 def _():
     s = line([(24, 5), (20, 27)], w=1.2, dash='1.8 1.5')
-    s += line([(12, 5), (12, 27)], stroke=BLUE, w=2.2)
-    return s + dot(12, 5, 2.4, fill='currentColor') + dot(12, 27, 2.4, fill='currentColor')
+    s += line([(11, 5), (11, 27)], stroke=BLUE, w=2)
+    return s + dot(11, 5, 2.4, fill='currentColor') + dot(11, 27, 2.4, fill='currentColor')
 
 
 @icon('sketch.constraint.parallel')
@@ -1132,30 +1156,32 @@ def _():
 @icon('sketch.constraint.perpendicular')
 def _():
     s = line([(5, 27), (27, 27)])
-    s += line([(14, 27), (14, 5)], stroke=BLUE, w=2.2)
-    s += line([(14, 21), (20, 21), (20, 27)], w=1.2, cap='butt')
+    s += line([(15, 27), (15, 5)], stroke=BLUE, w=2)
+    s += line([(15, 21.5), (20.5, 21.5), (20.5, 27)], w=1.2, cap='butt')
     return s
 
 
 @icon('sketch.constraint.equal')
 def _():
-    s = line([(6, 5), (6, 27)]) + line([(26, 5), (26, 27)], stroke=BLUE, w=2.2)
-    s += line([(11.5, 13.5), (20.5, 13.5)], w=2.0) + line([(11.5, 18.5), (20.5, 18.5)], w=2.0)
+    s = line([(7, 5), (7, 27)]) + line([(25, 5), (25, 27)], stroke=BLUE, w=2)
+    s += line([(11.5, 13), (20.5, 13)], w=2.0) + line([(11.5, 19), (20.5, 19)], w=2.0)
     return s
 
 
 @icon('sketch.constraint.tangent')
 def _():
-    s = circle(14, 19, 9)
-    s += line([(3, 10), (29, 10)], stroke=BLUE, w=2.2)
-    return s + dot(14, 10, 2.6, fill='currentColor')
+    s = circle(15, 20, 9)
+    s += line([(3, 11), (29, 11)], stroke=BLUE, w=2)
+    return s + dot(15, 11, 2.6, fill='currentColor')
 
 
 @icon('sketch.constraint.midpoint')
 def _():
-    s = line([(4, 24), (28, 8)])
-    s += poly([(16, 9.2), (21, 17.6), (11, 17.6)], BLUE, stroke=False)
-    return s + dot(4, 24, 2.0, fill='currentColor') + dot(28, 8, 2.0, fill='currentColor')
+    # Level, with a big triangle: drawn on a slant with a small one, it was
+    # Collinear's twin in the 16 px flyout.
+    s = line([(4, 25), (28, 25)])
+    s += poly([(16, 12.5), (22.5, 23), (9.5, 23)], BLUE, stroke=False)
+    return s + dot(4, 25, 2.2, fill='currentColor') + dot(28, 25, 2.2, fill='currentColor')
 
 
 @icon('sketch.constraint.concentric')
@@ -1165,10 +1191,11 @@ def _():
 
 @icon('sketch.constraint.collinear')
 def _():
-    s = line([(11.5, 18.8), (20.5, 11.2)], w=1.1, dash='1.6 1.6')
-    s += line([(3.5, 25.5), (11.5, 18.8)]) + line([(20.5, 11.2), (28.5, 4.5)], stroke=BLUE, w=2.2)
-    s += dot(3.5, 25.5, 2.1, fill='currentColor') + dot(11.5, 18.8, 2.1, fill='currentColor')
-    return s + dot(20.5, 11.2, 2.3) + dot(28.5, 4.5, 2.3)
+    # Two segments on one line with a clear gap between them; a dotted
+    # bridge filled the gap in at 16 px.
+    s = line([(3.5, 25.5), (13, 17.5)]) + line([(19, 12.5), (28.5, 4.5)], stroke=BLUE, w=2.2)
+    s += dot(3.5, 25.5, 2.2, fill='currentColor') + dot(13, 17.5, 2.2, fill='currentColor')
+    return s + dot(19, 12.5, 2.4) + dot(28.5, 4.5, 2.4)
 
 
 @icon('sketch.constraint.fix')
@@ -1181,7 +1208,7 @@ def _():
 
 @icon('sketch.constraint.symmetry')
 def _():
-    s = line([(16, 3), (16, 29)], w=1.4, dash='5 1.6 1.2 1.6')
+    s = line([(16, 3), (16, 29)], w=1.5, dash='5 1.6 1.2 1.6')
     s += line([(4, 24), (11, 8)]) + line([(28, 24), (21, 8)], stroke=BLUE, w=2.2)
     return s + dot(4, 24, 2.2, fill='currentColor') + dot(28, 24, 2.4)
 
@@ -1194,10 +1221,10 @@ def _():
     # lines, a dimension line with both arrows in the open, and the value's
     # box. The box used to sit ON the dimension line and hid its arrows.
     s = line([(5, 27), (27, 27)])
-    s += line([(5, 24.5), (5, 12.5)], w=1.2) + line([(27, 24.5), (27, 12.5)], w=1.2)
-    s += arrow(5.6, 17.5, 26.4, 17.5, w=1.5, size=4.4, double=True)
-    s += '<rect x="10" y="4" width="12" height="8.5" rx="1.6" fill="%s"/>' % BLUE
-    s += line([(13.2, 8.25), (18.8, 8.25)], stroke='#FFFFFF', w=1.7, cap='butt')
+    s += line([(5.5, 24.5), (5.5, 12.5)], w=1.2) + line([(26.5, 24.5), (26.5, 12.5)], w=1.2)
+    s += arrow(6.1, 17, 25.9, 17, w=1.5, size=4.4, double=True)
+    s += '<rect x="10" y="3" width="12" height="8" rx="1.6" fill="%s"/>' % BLUE
+    s += line([(13, 7), (19, 7)], stroke='#FFFFFF', w=2, cap='butt')
     return s + dot(5, 27, 2.3) + dot(27, 27, 2.3)
 
 
@@ -1206,16 +1233,17 @@ def constraint_badge(x, y, a=11):
     carrying Perpendicular's mark."""
     s = '<rect x="%s" y="%s" width="%s" height="%s" rx="1.6" fill="%s" stroke="%s" stroke-width="1.1"/>' % (
         f(x), f(y), f(a), f(a), LIGHT, INK)
-    s += line([(x + 2.5, y + a - 2.2), (x + a - 2.5, y + a - 2.2)], stroke=INK, w=1.5, cap='butt')
-    return s + line([(x + a / 2, y + a - 2.2), (x + a / 2, y + 2.5)], stroke=INK, w=1.5, cap='butt')
+    base = y + a - 2.5
+    s += line([(x + 2.5, base), (x + a - 2.5, base)], stroke=INK, w=1.5, cap='butt')
+    return s + line([(x + a / 2, base), (x + a / 2, y + 2.5)], stroke=INK, w=1.5, cap='butt')
 
 
 @icon('sketch.dimension.clear')
 def _():
     # Every constraint and every dimension goes: one of each, and the red
     # mark Fusion puts on a delete.
-    s = line([(4, 13), (4, 4)], w=1.2) + line([(22, 13), (22, 4)], w=1.2)
-    s += arrow(13, 8.5, 4.4, 8.5, w=1.4, size=4) + arrow(13, 8.5, 21.6, 8.5, w=1.4, size=4)
+    s = line([(4.5, 13), (4.5, 4)], w=1.2) + line([(21.5, 13), (21.5, 4)], w=1.2)
+    s += arrow(13, 8.5, 4.9, 8.5, w=1.4, size=4) + arrow(13, 8.5, 21.1, 8.5, w=1.4, size=4)
     s += constraint_badge(3.5, 16.5)
     s += circle(23, 22.5, 6.2, stroke=None, fill=RED)
     s += line([(20.3, 19.8), (25.7, 25.2)], stroke='#FFFFFF', w=1.8)
@@ -1227,8 +1255,8 @@ def _():
 
 def view_cube(face):
     a = 12
-    P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29)
     hidden = face in ('back', 'left', 'bottom')
+    P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29, snap=0 if hidden else 0.5)
     s = ''
     faces = {
         'top': [P(0, 0, a), P(a, 0, a), P(a, a, a), P(0, a, a)],
@@ -1270,7 +1298,7 @@ def _():
 @icon('view.fit_all')
 def _():
     s = ''
-    for (x, y, dx, dy) in ((4, 4, 1, 1), (28, 4, -1, 1), (4, 28, 1, -1), (28, 28, -1, -1)):
+    for (x, y, dx, dy) in ((3, 3, 1, 1), (29, 3, -1, 1), (3, 29, 1, -1), (29, 29, -1, -1)):
         s += line([(x, y + dy * 7), (x, y), (x + dx * 7, y)], w=2.0, cap='round')
     P = fit(corners(0, 0, 0, 9, 9, 9), 9.5, 8.5, 22.5, 23.5)
     s += box(P, 0, 0, 0, 9, 9, 9, BLUES)
@@ -1303,14 +1331,14 @@ def _():
 @icon('view.display_shaded_edges')
 def _():
     a = 12
-    P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29)
+    P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29, snap=0)
     return box(P, 0, 0, 0, a, a, a, BLUES, w=1.7, ink='currentColor')
 
 
 @icon('view.display_wireframe')
 def _():
     a = 12
-    P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29)
+    P = fit(corners(0, 0, 0, a, a, a), 4, 3, 28, 29, snap=0)
     return wire_cube(P, a)
 
 
@@ -1367,10 +1395,10 @@ def _():
 def _():
     s = poly([(3, 23), (29, 23), (29, 29), (3, 29)], LIGHT, w=1.1)
     for i in range(1, 9):
-        x = 3 + i * 26 / 9
+        x = math.floor(3 + i * 26 / 9) + 0.5
         s += line([(x, 23), (x, 25.2 if i % 3 else 26.8)], stroke=INK, w=1.0, cap='butt')
-    s += line([(5, 5), (5, 18)], w=1.2) + line([(27, 5), (27, 18)], w=1.2)
-    s += arrow(5.2, 11, 26.8, 11, stroke=BLUE, w=2.0, size=4.6, double=True)
+    s += line([(5.5, 5), (5.5, 18)], w=1.2) + line([(26.5, 5), (26.5, 18)], w=1.2)
+    s += arrow(5.7, 11, 26.3, 11, stroke=BLUE, w=2.0, size=4.6, double=True)
     return s
 
 
@@ -1435,7 +1463,92 @@ def render(name):
             'color="%s">\n%s\n</svg>\n' % (INK, body.replace('/><', '/>\n<')))
 
 
+# ---------------------------------------------------------------- audit
+
+def straight_strokes(svg):
+    """Every horizontal or vertical stroked segment in an SVG as
+    (axis, position, width, element), axis 'x' for a vertical line at
+    x = position. Curves are skipped; their ends still move the pen."""
+    import re
+    out = []
+    for tag in re.findall(r'<(?:path|polygon|rect|line)\b[^>]*>', svg):
+        attr = dict(re.findall(r'([\w-]+)="([^"]*)"', tag))
+        if attr.get('stroke', 'none') == 'none' or 'stroke-width' not in attr:
+            continue
+        w = float(attr['stroke-width'])
+        segs = []
+        if tag.startswith('<rect'):
+            x, y = float(attr['x']), float(attr['y'])
+            x1, y1 = x + float(attr['width']), y + float(attr['height'])
+            if float(attr.get('rx', 0)) == 0:
+                segs = [((x, y), (x1, y)), ((x1, y), (x1, y1)), ((x1, y1), (x, y1)), ((x, y1), (x, y))]
+        elif tag.startswith('<polygon'):
+            p = [tuple(map(float, q.split(','))) for q in attr['points'].split()]
+            segs = list(zip(p, p[1:] + p[:1]))
+        elif tag.startswith('<path'):
+            toks = re.findall(r'[MLHVZACQSmlhvzacqs]|-?[\d.]+', attr['d'])
+            pen = start = (0.0, 0.0)
+            i, cmd = 0, 'M'
+            while i < len(toks):
+                if toks[i].isalpha():
+                    cmd = toks[i]
+                    i += 1
+                    if cmd in 'Zz':
+                        segs.append((pen, start))
+                        pen = start
+                    continue
+                n = {'M': 2, 'L': 2, 'H': 1, 'V': 1, 'A': 7, 'C': 6, 'Q': 4, 'S': 4}[cmd.upper()]
+                v = [float(t) for t in toks[i:i + n]]
+                i += n
+                if cmd == 'M':
+                    pen = start = (v[0], v[1])
+                    cmd = 'L'
+                    continue
+                nxt = {'L': lambda: (v[0], v[1]), 'H': lambda: (v[0], pen[1]),
+                       'V': lambda: (pen[0], v[0])}.get(cmd, lambda: (v[-2], v[-1]))()
+                if cmd in 'LHV':
+                    segs.append((pen, nxt))
+                pen = nxt
+        for (x0, y0), (x1, y1) in segs:
+            if abs(x0 - x1) < 0.01 and abs(y0 - y1) >= 3:
+                out.append(('x', x0, w, tag))
+            elif abs(y0 - y1) < 0.01 and abs(x0 - x1) >= 3:
+                out.append(('y', y0, w, tag))
+    return out
+
+
+def audit():
+    """Straight lines that fall between pixels, where they render as two
+    half-grey rows instead of one dark one. At 32 px -- the ribbon, and the
+    menus on a 2x screen -- a stroke of 1.5 or more has to sit on a whole
+    coordinate and a thinner one on a half. An ODD whole coordinate is
+    also whole at 16 px, the menus on a 1x screen; an even one blurs there,
+    which is only noted, since a line through the centre of a symmetric
+    icon has no odd place to go. The sloping edges of the isometric solids
+    are not checked: nothing can put those on the grid."""
+    bad = notes = 0
+    for name in sorted(ICONS):
+        for axis, pos, w, tag in straight_strokes(render(name)):
+            if w < 0.8 or 'stroke-dasharray' in tag or (w <= 1.4 and (
+                    tag.startswith('<polygon') or 'fill="none"' not in tag)):
+                continue   # an arrowhead's rim, a dashed line, or a filled face's outline
+            where = 'vertical at x' if axis == 'x' else 'horizontal at y'
+            if w >= 1.5 and abs(pos - round(pos)) > 0.01:
+                bad += 1
+                print('  FIX   %-32s %s = %s, %s wide: needs a whole coordinate' % (name, where, f(pos), f(w)))
+            elif w < 1.5 and abs(pos % 1 - 0.5) > 0.01:
+                bad += 1
+                print('  FIX   %-32s %s = %s, %s wide: needs a half coordinate' % (name, where, f(pos), f(w)))
+            elif w >= 1.5 and round(pos) % 2 == 0 and '--notes' in sys.argv:
+                notes += 1
+                print('  note  %-32s %s = %s: even, so it blurs at 16 px' % (name, where, f(pos)))
+    print('%d straight strokes between pixels%s' % (bad, ', %d notes' % notes if notes else ''))
+    return 1 if bad else 0
+
+
 def main():
+    if '--audit' in sys.argv:
+        sys.exit(audit())
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources')
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'icons')
     os.makedirs(out, exist_ok=True)

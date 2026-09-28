@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
-<polygon points="3.43,15.48 16,22.74 16,30 3.43,22.74" fill="#AAB7C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="28.57,15.48 16,22.74 16,30 28.57,22.74" fill="#6E7F90" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="16,8.22 28.57,15.48 16,22.74 3.43,15.48" fill="#0696D7" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<path d="M16,10.28 L16,6.52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
-<polygon points="16,2.52 18.38,7.52 13.62,7.52" fill="currentColor" stroke="currentColor" stroke-width="0.6" stroke-linejoin="round"/>
-<polygon points="16,14.28 13.62,9.28 18.38,9.28" fill="currentColor" stroke="currentColor" stroke-width="0.6" stroke-linejoin="round"/>
+<polygon points="4.5,15.51 16.5,22.43 16.5,29.36 4.5,22.43" fill="#AAB7C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="28.5,15.51 16.5,22.43 16.5,29.36 28.5,22.43" fill="#6E7F90" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="16.5,8.58 28.5,15.51 16.5,22.43 4.5,15.51" fill="#0696D7" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<path d="M16,10.31 L16,7.13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/>
+<polygon points="16,3.13 18.38,8.13 13.62,8.13" fill="currentColor" stroke="currentColor" stroke-width="0.6" stroke-linejoin="round"/>
+<polygon points="16,14.31 13.62,9.31 18.38,9.31" fill="currentColor" stroke="currentColor" stroke-width="0.6" stroke-linejoin="round"/>
 </svg>
