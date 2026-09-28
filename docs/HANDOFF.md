@@ -890,6 +890,13 @@ document-model project with its own session and plan. Not side-quests.
   (every feature type with odd values, locales, hand-edited files) and
   file-handling edge cases (truncated, newer-version, read-only) are still
   worth a dedicated pass.
+- **Body names do not survive a modifying feature.** Found driving the
+  Flatpak: a box filleted at 3 mm (8000 -> 7572.6 mm³, 5.3%) becomes Body2,
+  because `BodyTable::Update` matches on size within 2% and position.
+  Save/open preserves whatever name the body has; the rename happens before.
+  Fusion tracks bodies through the feature history. Changing it touches the
+  reference-safety rules the entity and selection suites pin, so it is a
+  design task, listed in CONTRIBUTING.md under modelling gaps.
 - **Flathub.** Everything it needs is in `packaging/`; the submission is a
   pull request from the user's account (`packaging/README.md`).
 - **Run the test suites in CI**, next to the Flatpak build.

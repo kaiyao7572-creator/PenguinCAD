@@ -71,6 +71,13 @@ Medium-sized, and they mean learning a little OpenCASCADE.
   says so. `src/features/SweepFeature.*`.
 - **Patterns and mirror that copy features**, not only bodies, and that use
   any axis or plane rather than the world ones.
+- **Bodies that keep their names through edits.** A body is matched to its
+  previous self by size and position, so a fillet that changes its volume
+  by more than 2% turns Body1 into Body2 (and drops picks made against it).
+  Fusion follows a body through the feature history instead: whatever a
+  feature modifies keeps its name. `BodyTable::Update` in
+  `src/core/Body.cpp`; `tests/entity_test.cpp` and `tests/selection_test.cpp`
+  pin today's rules and say why, so read them before changing them.
 
 ## Big projects
 
