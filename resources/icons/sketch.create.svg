@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" color="#2B3A48">
-<polygon points="14,14.2 25.52,20.85 14,27.5 2.48,20.85" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<path d="M14,17.05 L20.58,20.85 L14,24.65 L7.42,20.85 Z" fill="none" stroke="#0696D7" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="20.58" cy="20.85" r="2" fill="#0696D7"/>
-<polygon points="20.63,15.21 25.09,6.83 29.68,9.27 25.22,17.66" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="23.59,9.65 25.09,6.83 29.68,9.27 28.18,12.09" fill="#AAB7C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="20.58,20.85 20.63,15.21 25.22,17.66" fill="#F2E3C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
-<polygon points="20.58,20.85 20.6,18.71 22.35,19.64" fill="#2B3A48"/>
+<polygon points="2.5,29 21.5,29 27,14.5 8,14.5" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<path d="M7.02,26.1 L17.28,26.1 L20.58,17.4 L10.32,17.4 Z" fill="none" stroke="#0696D7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="20.58" cy="17.4" r="2.1" fill="#0696D7"/>
+<polygon points="20.17,11.63 24.77,2.2 29.98,4.74 25.38,14.18" fill="#DDE6EE" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="23.37,5.07 24.77,2.2 29.98,4.74 28.58,7.62" fill="#AAB7C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="20.58,17.4 20.17,11.63 25.38,14.18" fill="#F2E3C4" stroke="#2B3A48" stroke-width="1.25" stroke-linejoin="round"/>
+<polygon points="20.58,17.4 20.42,15.21 22.4,16.18" fill="#2B3A48"/>
 </svg>

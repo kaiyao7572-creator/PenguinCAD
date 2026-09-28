@@ -246,14 +246,22 @@ def sketch_plane(P, a=16):
     return poly([P(0, 0, 0), P(a, 0, 0), P(a, a, 0), P(0, a, 0)], LIGHT)
 
 
+def sheet(u0=2.5, v0=29, w=19, h=14.5, lean=5.5):
+    """A sketch sheet seen steeply from above: a map from (u, v), both 0..1
+    across and into it, to the box. Not isometric -- an isometric plane is
+    a flat diamond, which left a speck beside its own pencil on the ribbon."""
+    return lambda u, v: (u0 + w * u + lean * v, v0 - h * v)
+
+
 def sketch_on_plane(outline_colour, pencil_body, pencil_band):
-    """A rectangle being drawn on a plane, the pencil at its last corner."""
-    P = Iso(14, 14.2, 0.95)
-    s = sketch_plane(P, 14)
-    rect = [P(3, 3, 0), P(11, 3, 0), P(11, 11, 0), P(3, 11, 0)]
-    s += path(d_of(rect, True), stroke=outline_colour, w=1.9)
-    s += dot(*P(11, 3, 0), r=2.0)
-    return s + pencil(*P(11, 3, 0), length=14.5, width=5.2, angle=-62, body=pencil_body, band=pencil_band)
+    """A rectangle being drawn on a sheet, the pencil at its last corner."""
+    on = sheet()
+    s = poly([on(0, 0), on(1, 0), on(1, 1), on(0, 1)], LIGHT)
+    rect = [on(0.18, 0.2), on(0.72, 0.2), on(0.72, 0.8), on(0.18, 0.8)]
+    s += path(d_of(rect, True), stroke=outline_colour, w=2.0)
+    tip = rect[2]
+    s += dot(*tip, r=2.1)
+    return s + pencil(*tip, length=15.5, width=5.8, angle=-64, body=pencil_body, band=pencil_band)
 
 
 @icon('sketch.create')
@@ -298,20 +306,24 @@ def _():
 
 @icon('solid.torus')
 def _():
-    cx, cy = 16, 16.8
-    R, r = 13.8, 8.6       # outer ellipse radii
-    hx, hy = 5.6, 2.7      # the hole
-    hcy = cy - 1.6
-    s = defs(rad_grad('g', [(0, '#D2EEFB'), (0.38, '#45B3E6'), (0.8, BLUE), (1, DBLUE)], 0.42, 0.22, 0.95))
-    outer = arc_pts(cx, cy, R, r, 0, 360, n=48)
+    # A ring seen from 30 degrees up is taller than a flat washer: the tube
+    # stands above and below its own centre circle. Drawn flatter, it read
+    # as a washer at 24 px. The hole shows the far inner wall in shadow.
+    cx, cy = 16, 16.4
+    R, ry = 13.4, 9.8      # outer silhouette
+    hx, hy = 5.0, 2.6      # the hole
+    hcy = cy - 2.3
+    s = defs(lin_grad('g', [(0, '#9ED6F1'), (0.3, '#3FAEE3'), (0.72, BLUE), (1, DBLUE)], 0, 0, 0, 1))
+    outer = arc_pts(cx, cy, R, ry, 0, 360, n=48)
     hole = arc_pts(cx, hcy, hx, hy, 0, 360, n=32)
     s += path(d_of(outer, True) + ' ' + d_of(hole, True), stroke=INK, w=1.25, fill='url(#g)',
               extra=' fill-rule="evenodd"')
-    # The far inner wall of the tube -- the only part of the inside the eye
-    # reaches through the hole -- fills its upper half.
     wall = arc_pts(cx, hcy, hx, hy, 180, 360, n=16) + list(
-        reversed(arc_pts(cx, hcy + 0.2, hx, hy * 0.35, 180, 360, n=16)))
+        reversed(arc_pts(cx, hcy + 0.6, hx, hy * 0.25, 180, 360, n=16)))
     s += poly(wall, DBLUE, w=1.0)
+    # The lit crown of the tube, where a torus catches the light first.
+    s += path(d_of(arc_pts(cx, hcy + 0.4, 9.2, 5.4, 200, 340, n=20)), stroke='#D6F0FC', w=1.6,
+              extra=' stroke-opacity="0.9"')
     return s
 
 
@@ -394,22 +406,27 @@ def disc(P, cx, cy, z0, z1, r, top=LIGHT, side=MID):
 SEED = (LIGHT, MID)
 
 
+# The two patterns have to part at 16 px, where the menus draw them, and
+# tall pegs merged both into one blue clump there. So the features are
+# squat and the plate carries the difference: a square plate is a diamond,
+# a round one an oval. Square studs in rows against round studs in a ring
+# say it a second time.
 @icon('solid.pattern.rectangular')
 def _():
-    A, t, h, r = 16, 2.2, 6.0, 2.9
+    A, t, h, a = 16, 3.0, 4.5, 5.0
     P = fit(corners(0, 0, 0, A, A, t + h), 2.5, 2.5, 29.5, 29.5)
     s = box(P, 0, 0, 0, A, A, t)
-    for x, y in sorted([(u, v) for u in (4, 12) for v in (4, 12)], key=lambda q: q[0] + q[1]):
-        s += boss(P, x, y, t, h, r, SEED if (x, y) == (4, 4) else (LBLUE, BLUE))
+    for x, y in sorted([(u, v) for u in (2, 9) for v in (2, 9)], key=lambda q: q[0] + q[1]):
+        shades = GREY if (x, y) == (2, 2) else BLUES
+        s += box(P, x, y, t, x + a, y + a, t + h, shades, w=1.0)
     return s
 
 
 @icon('solid.pattern.circular')
 def _():
-    R, t, h, r, pitch = 11, 2.2, 6.0, 2.5, 7.4
+    R, t, h, r, pitch = 11, 3.0, 4.5, 2.4, 7.4
     P = fit([(R * math.cos(math.radians(a)), R * math.sin(math.radians(a)), z)
-             for a in range(0, 360, 10) for z in (0, t)] + [(0, -R, t + h), (-R, 0, t + h)],
-            2.5, 2.5, 29.5, 29.5)
+             for a in range(0, 360, 10) for z in (0, t + h)], 2.5, 2.5, 29.5, 29.5)
     s = disc(P, 0, 0, 0, t, R)
     places = [(pitch * math.cos(math.radians(a)), pitch * math.sin(math.radians(a)), a == 225)
               for a in range(45, 405, 60)]
@@ -418,14 +435,30 @@ def _():
     return s
 
 
+def wedge(P, x0, x1, tall_at_x0, shades, D, H, h):
+    """A ramp, H high at one end and h at the other: a mirror has to be
+    shown on something lopsided, or its copy is only a second identical
+    box beside the first. The slope stays under 45 degrees so its face
+    turns toward the viewer on both sides of the plane."""
+    top, left, right = shades
+    za, zb = (H, h) if tall_at_x0 else (h, H)
+    s = poly([P(x0, D, za), P(x1, D, zb), P(x1, D, 0), P(x0, D, 0)], left)
+    s += poly([P(x1, 0, zb), P(x1, D, zb), P(x1, D, 0), P(x1, 0, 0)], right)
+    return s + poly([P(x0, 0, za), P(x1, 0, zb), P(x1, D, zb), P(x0, D, za)], top)
+
+
 @icon('solid.mirror')
 def _():
-    P = fit(corners(0, -2, -1.5, 15, 9, 11), 2.5, 2.5, 29.5, 29.5)
-    s = box(P, 0, 0, 0, 5.5, 7, 9)
-    s += ('<polygon points="%s" fill="%s" fill-opacity="0.45" stroke="%s" stroke-width="1.3" '
+    # Grey original, blue copy, the plane between them. They sit far
+    # enough apart along x that neither hides the other: in isometric that
+    # axis runs down to the right, so blocks close together overlap.
+    X, M, D, H, h, g = 9, 3.4, 5.5, 8.5, 2.5, 2.0
+    P = fit(corners(0, -g, -g, 2 * X + 2 * M, D + g, H + g), 2.5, 2.5, 29.5, 29.5)
+    s = wedge(P, 0, X, True, GREY, D, H, h)
+    s += ('<polygon points="%s" fill="%s" fill-opacity="0.55" stroke="%s" stroke-width="1.3" '
           'stroke-linejoin="round"/>' % (
-              pts([P(7.5, -2, -1.5), P(7.5, 9, -1.5), P(7.5, 9, 11), P(7.5, -2, 11)]), LBLUE, BLUE))
-    s += box(P, 9.5, 0, 0, 15, 7, 9, BLUES)
+              pts([P(X + M, -g, -g), P(X + M, D + g, -g), P(X + M, D + g, H + g), P(X + M, -g, H + g)]), LBLUE, BLUE))
+    s += wedge(P, X + 2 * M, 2 * X + 2 * M, False, BLUES, D, H, h)
     return s
 
 
@@ -594,7 +627,9 @@ def plane(P, z, a=14, fill=LIGHT, blue=False, x0=0, y0=0):
 
 
 def blue_plane(ps):
-    return '<polygon points="%s" fill="%s" fill-opacity="0.7" stroke="%s" stroke-width="1.35" stroke-linejoin="round"/>' % (
+    # Opaque enough to stay light blue on the dark toolbar: at 0.7 the
+    # grey showed through and turned it a muddy steel colour.
+    return '<polygon points="%s" fill="%s" fill-opacity="0.85" stroke="%s" stroke-width="1.35" stroke-linejoin="round"/>' % (
         pts(ps), LBLUE, BLUE)
 
 
@@ -611,30 +646,35 @@ def _():
 
 @icon('construct.plane_angle')
 def _():
-    a = math.radians(58)
-    L = 13
-    P = fit(corners(0, 0, 0, 15, 14, 0) + [(L * math.cos(a), 0, L * math.sin(a)), (L * math.cos(a), 14, L * math.sin(a))], 3, 3, 29, 29)
-    s = poly([P(0, 0, 0), P(15, 0, 0), P(15, 14, 0), P(0, 14, 0)], LIGHT)
-    tip = lambda y: P(L * math.cos(a), y, L * math.sin(a))
-    s += blue_plane([P(0, 0, 0), tip(0), tip(14), P(0, 14, 0)])
-    # The angle, drawn at the near end of the hinge.
-    arc = [P(6 * math.cos(math.radians(t)), 14, 6 * math.sin(math.radians(t))) for t in range(0, 59, 6)]
-    s += line(arc, w=1.4)
+    # The new plane leans back from the far edge of the given one, like the
+    # lid of a laptop, so its face turns toward the viewer: hinged on the
+    # near side it stood edge-on, a blue sliver.
+    a = math.radians(62)
+    A, L = 14, 13
+    lid = lambda x: P(x, -L * math.cos(a), L * math.sin(a))
+    P = fit(corners(0, 0, 0, A, A, 0) + [(0, -L * math.cos(a), L * math.sin(a)), (A, -L * math.cos(a), L * math.sin(a))],
+            2.5, 2.5, 29.5, 29.5)
+    s = blue_plane([P(0, 0, 0), P(A, 0, 0), lid(A), lid(0)])
+    s += poly([P(0, 0, 0), P(A, 0, 0), P(A, A, 0), P(0, A, 0)], LIGHT)
+    # The angle between them, at the near end of the hinge.
+    r = 6.5
+    arc = [P(A, r * math.cos(math.radians(t)), r * math.sin(math.radians(t))) for t in range(0, 181 - 62, 6)]
+    arc += [P(A, -r * math.cos(a), r * math.sin(a))]
+    s += line(arc, w=1.5)
     return s
 
 
 @icon('construct.plane_midplane')
 def _():
-    # Standing planes side by side, where Offset Plane stacks them flat:
-    # the two grey ones given, the new one halfway and larger than both.
-    D, H, g, X = 10, 10, 1.8, 9
-    P = fit(corners(0, -g, -g, 2 * X, D + g, H + g), 2.5, 2.5, 29.5, 29.5)
-
-    def card(x, y0, y1, z0, z1):
-        return [P(x, y0, z1), P(x, y1, z1), P(x, y1, z0), P(x, y0, z0)]
-    s = poly(card(0, 0, D, 0, H), LIGHT)
-    s += blue_plane(card(X, -g, D + g, -g, H + g))
-    s += poly(card(2 * X, 0, D, 0, H), MID)
+    # A grey block and the plane halfway between its two end faces,
+    # reaching past it all round. Three free-standing cards said the same
+    # at 32 px and nothing at 16.
+    A, D, H, g = 16, 8, 9, 2.6
+    M = A / 2
+    P = fit(corners(0, -g, -g, A, D + g, H + g), 2.5, 2.5, 29.5, 29.5)
+    s = box(P, 0, 0, 0, M, D, H)
+    s += blue_plane([P(M, -g, H + g), P(M, D + g, H + g), P(M, D + g, -g), P(M, -g, -g)])
+    s += box(P, M, 0, 0, A, D, H)
     return s
 
 
@@ -643,9 +683,11 @@ def _():
     P = fit(corners(0, 0, 0, 16, 16, 0), 2.5, 7, 29.5, 26)
     s = blue_plane([P(0, 0, 0), P(16, 0, 0), P(16, 16, 0), P(0, 16, 0)])
     tri = [P(4, 3, 0), P(13.5, 5, 0), P(5, 13, 0)]
-    s += line(tri + [tri[0]], w=1.2, dash='2 1.6')
+    # Ink rather than currentColor: these sit on the plane, which stays
+    # light blue on either palette, so light points would vanish into it.
+    s += line(tri + [tri[0]], stroke=INK, w=1.2, dash='2 1.6')
     for x, y in tri:
-        s += dot(x, y, r=2.4, fill='currentColor')
+        s += dot(x, y, r=2.5, fill=INK)
     return s
 
 
@@ -688,7 +730,7 @@ def _():
     s = line([(x + 4.2, y + 9.2), (x, y)], stroke=BLUE, w=2.0, dash='1.8 1.6')
     s += poly([P(0, 0, 0), P(16, 0, 0), P(16, 16, 0), P(0, 16, 0)], LIGHT)
     s += line([(x, y), (x - 8.5, 2.5)], stroke=BLUE, w=2.2)
-    s += dot(x, y, r=3.1, fill='currentColor')
+    s += dot(x, y, r=3.1, fill=INK)
     s += dot(x, y, r=1.6, fill=BLUE)
     return s
 
@@ -770,11 +812,14 @@ def _():
 
 @icon('sketch.finish')
 def _():
-    P = Iso(12, 16, 0.95)
-    s = poly([P(0, 0, 0), P(13, 0, 0), P(13, 13, 0), P(0, 13, 0)], LIGHT)
-    s += path(d_of([P(3, 3, 0), P(9.5, 3, 0), P(9.5, 9.5, 0), P(3, 9.5, 0)], True), stroke=INK, w=1.2)
-    s += line([(11, 16.5), (17, 23), (26.8, 8.6)], stroke=INK, w=6.4)
-    s += line([(11, 16.5), (17, 23), (26.8, 8.6)], stroke=GREEN, w=4.0)
+    # The sketch sheet of Create Sketch, done: its rectangle in ink and
+    # Fusion's green tick over it.
+    on = sheet(2.5, 29, 17, 12.5, 5)
+    s = poly([on(0, 0), on(1, 0), on(1, 1), on(0, 1)], LIGHT)
+    s += path(d_of([on(0.18, 0.22), on(0.7, 0.22), on(0.7, 0.78), on(0.18, 0.78)], True), stroke=INK, w=1.5)
+    tick = [(10.5, 16.5), (16.5, 23), (27.5, 6.5)]
+    s += line(tick, stroke=INK, w=6.6)
+    s += line(tick, stroke=GREEN, w=4.2)
     return s
 
 
@@ -1145,12 +1190,15 @@ def _():
 
 @icon('sketch.dimension')
 def _():
-    s = line([(5, 27), (5, 12)], w=1.2) + line([(27, 27), (27, 12)], w=1.2)
-    s += arrow(9.5, 17, 5.4, 17, w=1.4, size=4) + arrow(22.5, 17, 26.6, 17, w=1.4, size=4)
-    s += '<rect x="9.5" y="12.5" width="13" height="9" rx="1.2" fill="%s"/>' % BLUE
-    s += line([(12.5, 17), (19.5, 17)], stroke='#FFFFFF', w=1.6, cap='butt')
-    s += line([(5, 27), (27, 27)], w=1.75)
-    return s
+    # A sketch line, and above it the dimension Fusion puts on it: extension
+    # lines, a dimension line with both arrows in the open, and the value's
+    # box. The box used to sit ON the dimension line and hid its arrows.
+    s = line([(5, 27), (27, 27)])
+    s += line([(5, 24.5), (5, 12.5)], w=1.2) + line([(27, 24.5), (27, 12.5)], w=1.2)
+    s += arrow(5.6, 17.5, 26.4, 17.5, w=1.5, size=4.4, double=True)
+    s += '<rect x="10" y="4" width="12" height="8.5" rx="1.6" fill="%s"/>' % BLUE
+    s += line([(13.2, 8.25), (18.8, 8.25)], stroke='#FFFFFF', w=1.7, cap='butt')
+    return s + dot(5, 27, 2.3) + dot(27, 27, 2.3)
 
 
 def constraint_badge(x, y, a=11):
@@ -1191,10 +1239,15 @@ def view_cube(face):
         'left': [P(0, 0, a), P(0, a, a), P(0, a, 0), P(0, 0, 0)],
     }
     if hidden:
-        s += poly(faces['front'], MID) + poly(faces['right'], DARK) + poly(faces['top'], LIGHT)
-        s += poly(faces[face], BLUE, stroke=False, extra=' fill-opacity="0.8"')
+        # A face the eye cannot reach is drawn through a glass cube: solid
+        # near faces with blue showing through them read, at 24 px, as a
+        # cube painted half blue -- Back and Left looked like Right.
+        s += poly(faces[face], BLUE, w=1.25, ink=DBLUE)
         for e in ([P(0, 0, 0), P(a, 0, 0)], [P(0, 0, 0), P(0, a, 0)], [P(0, 0, 0), P(0, 0, a)]):
-            s += line(e, stroke=INK, w=1.1, dash='1.6 1.3')
+            s += line(e, w=1.1, dash='1.6 1.3')
+        for k in ('front', 'right', 'top'):
+            s += poly(faces[k], LIGHT, stroke=False, extra=' fill-opacity="0.28"')
+        s += wire_cube(P, a, hidden=False)
     else:
         shade = {'top': LIGHT, 'front': MID, 'right': DARK}
         for k in ('front', 'right', 'top'):
@@ -1332,20 +1385,45 @@ def _():
     return s
 
 
+def hatch(P, rects, y, step=2.6):
+    """45-degree hatching over rectangles (x0, z0, x1, z1) of the plane at
+    y, clipped by hand: the SVG image plugin has no clip paths."""
+    out = []
+    for x0, z0, x1, z1 in rects:
+        c = x0 - (z1 - z0)
+        while c < x1:
+            # The line x - z = c - z0 inside the rectangle.
+            a = (max(x0, c), z0 + max(x0, c) - c)
+            b = (min(x1, c + (z1 - z0)), z0 + min(x1, c + (z1 - z0)) - c)
+            if b[0] - a[0] > 0.4:
+                out.append([P(a[0], y, a[1]), P(b[0], y, b[1])])
+            c += step
+    return out
+
+
 @icon('inspect.section_view')
 def _():
-    A, H, c, m = 14, 11, 7, 2.5
-    P = fit(corners(-m, 0, -m, A + m, c, H + m), 2.5, 2.5, 29.5, 29.5)
-    s = box(P, 0, 0, 0, A, c, H, (LIGHT, BLUE, DARK))
-    # Hatching on the cut face, as a drawing marks a section.
-    for i in range(1, 6):
-        t = i * (A + H) / 6
-        a = P(min(t, A), c, max(0, t - A)) if t > A else P(t, c, 0)
-        b = P(max(0, t - H), c, min(t, H))
-        s += line([a, b], stroke=LBLUE, w=1.1, cap='butt')
-    s += ('<polygon points="%s" fill="%s" fill-opacity="0.35" stroke="%s" stroke-width="1.35" '
-          'stroke-linejoin="round"/>' % (
-              pts([P(-m, c, H + m), P(A + m, c, H + m), P(A + m, c, -m), P(-m, c, -m)]), LBLUE, BLUE))
+    # A cup cut down the middle: the U of its walls and floor is the cut
+    # face, blue and hatched the way a drawing marks a section, with the
+    # inside of the cup in view behind it. A plain cut block said only
+    # "blue square".
+    A, D, H, t, m = 15, 8, 11, 4, 2.2
+    P = fit(corners(-m, 0, -m, A + m, D, H + m), 2.5, 2.5, 29.5, 29.5)
+    s = poly([P(t, t, t), P(A - t, t, t), P(A - t, t, H), P(t, t, H)], MID)
+    s += poly([P(t, t, H), P(t, D, H), P(t, D, t), P(t, t, t)], DARK)
+    s += poly([P(t, t, t), P(A - t, t, t), P(A - t, D, t), P(t, D, t)], LIGHT)
+    rim = [(0, 0), (A, 0), (A, D), (A - t, D), (A - t, t), (t, t), (t, D), (0, D)]
+    s += poly([P(x, y, H) for x, y in rim], LIGHT)
+    s += poly([P(A, 0, H), P(A, D, H), P(A, D, 0), P(A, 0, 0)], DARK)
+    cut = [(0, H), (t, H), (t, t), (A - t, t), (A - t, H), (A, H), (A, 0), (0, 0)]
+    s += poly([P(x, D, z) for x, z in cut], BLUE)
+    for seg in hatch(P, [(0, 0, t, H), (t, 0, A - t, t), (A - t, 0, A, H)], D, step=3.4):
+        s += line(seg, stroke=LBLUE, w=1.0, cap='butt')
+    s += poly([P(x, D, z) for x, z in cut], 'none', w=1.25)
+    # The section plane is only its frame: a tinted pane over the cut
+    # greyed the very face the icon is about.
+    s += ('<polygon points="%s" fill="none" stroke="%s" stroke-width="1.4" stroke-linejoin="round"/>' % (
+        pts([P(-m, D, H + m), P(A + m, D, H + m), P(A + m, D, -m), P(-m, D, -m)]), BLUE))
     return s
 
 
