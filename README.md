@@ -211,6 +211,28 @@ Named honestly, because the gaps are large and structural:
 `docs/FUSION360_COMPARISON.md` keeps the running list at finer grain, including
 which solid-modelling features exist and which do not.
 
+## Install
+
+PenguinCAD ships as a Flatpak, so it runs on any distribution with Flatpak
+and [Flathub set up](https://flathub.org/setup):
+
+1. Download `PenguinCAD-x86_64.flatpak` from the
+   [latest release](https://github.com/kaiyao7572-creator/PenguinCAD/releases/latest).
+2. Double-click it; GNOME Software or KDE Discover installs it, fetching the
+   Qt runtime it needs from Flathub.
+3. Search for PenguinCAD in your applications.
+
+Or from a terminal:
+
+```bash
+flatpak install --user PenguinCAD-x86_64.flatpak
+flatpak run io.github.kaiyao7572_creator.PenguinCAD
+```
+
+It isn't on Flathub yet, so it won't update itself; new versions are on the
+releases page. [`packaging/`](packaging/README.md) has the manifest and how to
+build the Flatpak yourself.
+
 ## Build
 
 Fedora package names:
@@ -231,6 +253,10 @@ cmake --build build -j$(nproc)
 
 `CMakeLists.txt` globs `src/**/*.cpp` with `CONFIGURE_DEPENDS`, so new source
 files are picked up without editing the build file.
+
+`sudo cmake --install build` installs the binary together with its desktop
+entry, AppStream metadata and icon, so PenguinCAD appears in the application
+menu.
 
 ## Run
 

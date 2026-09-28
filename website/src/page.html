@@ -564,6 +564,21 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 .reqs dd { color: var(--ink-2); }
 .reqs p { margin-top: 14px; color: var(--ink-3); font-size: 14.5px; }
 
+/* install */
+.install { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 940px) { .install { grid-template-columns: 1fr; } }
+.how { margin: 0; padding: 0; list-style: none; counter-reset: how; display: grid; gap: 0; border-left: 1.5px solid var(--line-2); }
+.how li { counter-increment: how; position: relative; display: grid; gap: 8px; justify-items: start; padding: 0 0 28px 30px; }
+.how li:last-child { padding-bottom: 0; }
+.how li::before {
+  content: counter(how); position: absolute; left: -14px; top: -2px;
+  width: 27px; height: 27px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg); border: 1.5px solid var(--beak); color: var(--beak); font: 700 13px/1 var(--f-body);
+}
+.how b { font: 700 19px/1.25 var(--f-display); font-stretch: 112%; }
+.how span { color: var(--ink-2); font-size: 15px; max-width: 52ch; }
+.how .btn { margin-top: 6px; }
+
 /* closing */
 .closing {
   margin-top: clamp(76px, 10vw, 132px);
@@ -612,6 +627,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
     </symbol>
     <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 16 16"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-arrow-down" viewBox="0 0 16 16"><path d="M8 3v10M4 9l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
@@ -629,7 +645,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <a href="#compare">Compare</a>
       <a href="#status">Status</a>
       <a href="#help">Help out</a>
-      <a href="#build">Build</a>
+      <a href="#install">Install</a>
     </nav>
     <div class="nav-end">
       <div class="theme-switch" role="group" aria-label="Colour theme">
@@ -651,7 +667,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <p class="lede">PenguinCAD copies the way Fusion&nbsp;360 works (the feature timeline, the marking menu, the shortcut keys) on OpenCASCADE, the open kernel FreeCAD also uses. Today you can sketch, extrude, fillet and drive it all from parameters. You can't make assemblies or drawings yet, and saving a design is still being built. If you want this to exist, the quickest way to get there is to help build it.</p>
       <div class="cta">
         <a class="btn primary" href="#help">Find something to work on <svg aria-hidden="true"><use href="#i-arrow-down"/></svg></a>
-        <a class="btn" href="https://github.com/kaiyao7572-creator/PenguinCAD"><svg aria-hidden="true"><use href="#i-github"/></svg>Read the code</a>
+        <a class="btn" href="#install"><svg aria-hidden="true"><use href="#i-download"/></svg>Install it (Flatpak)</a>
       </div>
       <ul class="facts">
         <li>GPL-3.0</li>
@@ -877,8 +893,9 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
           <li>A Hole command</li>
           <li>Sketching on construction planes</li>
           <li>Sweeps along open paths</li>
-          <li>Packages: Flatpak, AppImage, AUR, COPR</li>
-          <li>CI on every pull request</li>
+          <li>A Flathub listing, so it installs from GNOME Software and Discover</li>
+          <li>More packages: AppImage, AUR, COPR</li>
+          <li>Running the test suites in CI</li>
           <li>Native Wayland (it runs through XWayland)</li>
           <li>CAM</li>
         </ul>
@@ -955,7 +972,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <article class="track reveal">
         <div class="tags"><span class="tag easy">Linux packaging</span><span class="tag">CI</span></div>
         <h3>Get it onto people's machines</h3>
-        <p>There are no packages yet. Flatpak, AppImage, AUR and COPR would each lower the bar to trying it. So would a CI build that runs the test suites on every pull request.</p>
+        <p>There's a Flatpak you download by hand. Getting it onto Flathub, and into AppImage, AUR and COPR, would put it one search away. So would running the test suites in CI, next to the Flatpak build that already runs.</p>
         <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#packaging-and-ci">See the details →</a>
       </article>
       <article class="track reveal">
@@ -1009,11 +1026,48 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
   </div>
 </section>
 
+<section class="section" id="install">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Install</p>
+      <h2 data-dim="d8">Download, double-click, find it in your apps.</h2>
+      <p class="lede">PenguinCAD ships as a Flatpak, so it runs the same on Fedora, Ubuntu, Arch, Mint or anything else with Flatpak. Remember what it is: an early build, for trying out and for helping, not yet for work you need to keep.</p>
+    </div>
+    <div class="install">
+      <ol class="how reveal">
+        <li>
+          <b>Download the Flatpak</b>
+          <span>One file, about the size of a photo album. x86-64 only for now.</span>
+          <a class="btn primary" href="https://github.com/kaiyao7572-creator/PenguinCAD/releases/latest/download/PenguinCAD-x86_64.flatpak"><svg aria-hidden="true"><use href="#i-download"/></svg>Download PenguinCAD.flatpak</a>
+        </li>
+        <li>
+          <b>Double-click it</b>
+          <span>GNOME Software or KDE Discover opens and offers to install it. It fetches the Qt runtime it needs from Flathub on its own.</span>
+        </li>
+        <li>
+          <b>Search for “PenguinCAD”</b>
+          <span>It's in your app grid and launcher like any other application. Pin it to the dock if you like.</span>
+        </li>
+      </ol>
+      <div class="terminal reveal">
+        <div class="term-tabs" aria-hidden="true"><button type="button" aria-selected="true" tabindex="-1">Terminal instead</button></div>
+        <div class="term-body">
+          <div class="cmd"><code>flatpak install --user PenguinCAD-x86_64.flatpak</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>flatpak run io.github.kaiyao7572_creator.PenguinCAD</code><button class="copy" type="button">Copy</button></div>
+          <span class="term-note"># No Flatpak yet? flathub.org/setup has one page per distribution.</span>
+          <span class="term-note"># Not on Flathub yet, so it won't update itself: new versions are on the releases page.</span>
+        </div>
+      </div>
+    </div>
+    <p class="fine reveal">Every version is on the <a href="https://github.com/kaiyao7572-creator/PenguinCAD/releases">releases page</a>. Getting PenguinCAD onto Flathub, so it's one search away inside the software centre and updates itself, is <a href="#help">one of the open jobs</a>.</p>
+  </div>
+</section>
+
 <section class="section" id="build">
   <div class="wrap">
     <div class="section-head reveal">
       <p class="eyebrow">Build from source</p>
-      <h2 data-dim="d8">Three commands on Fedora.</h2>
+      <h2 data-dim="d9">Or build it: three commands on Fedora.</h2>
       <p class="lede">PenguinCAD needs Qt&nbsp;6 and OpenCASCADE 7.8 or newer. Fedora packages both. On other distributions, making this easy is one of the open jobs above.</p>
     </div>
     <div class="build">

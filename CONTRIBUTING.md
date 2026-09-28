@@ -86,12 +86,16 @@ an issue before writing code; `docs/HANDOFF.md` §7.6 has notes.
 
 ## Packaging and CI
 
-There are no packages yet, so trying PenguinCAD means building it.
+There is a Flatpak (`packaging/`, built by `.github/workflows/flatpak.yml`
+and attached to each release), but you have to download it by hand.
 
-- **Flatpak**, **AppImage**, an **AUR** package, a **COPR** repository.
-- **CI**: a GitHub Actions job that builds the app and runs
-  `tests/run_tests.sh` on every pull request. A Fedora container has every
-  dependency packaged.
+- **Flathub.** A listing makes PenguinCAD searchable and installable from
+  GNOME Software and KDE Discover, with updates. The metainfo and manifest
+  are ready; `packaging/README.md` describes the submission.
+- **AppImage**, an **AUR** package, a **COPR** repository.
+- **Tests in CI**: the Flatpak job builds the app on every pull request but
+  doesn't run `tests/run_tests.sh`. A Fedora container has every dependency
+  packaged.
 - **Other distributions and platforms**: a working build recipe for your
   distribution belongs in the README. Nobody has tried Windows or macOS;
   Qt and OpenCASCADE both run there.
