@@ -447,27 +447,32 @@ def _():
     return s
 
 
-def step_block(P, x0, x1, y0, y1, tall, low, split, along_y, shades):
-    """An L-shaped block, low up to split along its long axis and tall
-    beyond it. along_y picks which axis is the long one."""
-    if along_y:
-        return box(P, x0, y0, 0, x1, split, low, shades) + box(P, x0, split, 0, x1, y1, tall, shades)
-    return box(P, x0, y0, 0, split, y1, low, shades) + box(P, split, y0, 0, x1, y1, tall, shades)
+def ramp(P, x0, x1, y0, y1, low, high, rises, shades):
+    """A block whose top slopes from low to high; rises is 'x-' or 'y-',
+    the axis it climbs along toward x0 or y0. Sloping that way its top
+    faces the viewer however steep it is."""
+    top, left, right = shades
+
+    def up(x, y):
+        t = (x1 - x) / (x1 - x0) if rises == 'x-' else (y1 - y) / (y1 - y0)
+        return P(x, y, low + (high - low) * t)
+    s = poly([P(x0, y1, 0), P(x1, y1, 0), up(x1, y1), up(x0, y1)], left)
+    s += poly([P(x1, y0, 0), P(x1, y1, 0), up(x1, y1), up(x1, y0)], right)
+    return s + poly([up(x0, y0), up(x1, y0), up(x1, y1), up(x0, y1)], top)
 
 
 @icon('solid.mirror')
 def _():
     # The mirror plane is x = y, which isometric shows edge-on as the
     # vertical through the middle: the grey original and its blue copy
-    # stand either side of it as each other's reflection on screen too.
-    # They are L-shaped, tall away from the plane, because a mirrored box
-    # is only a second box. Placed along one isometric axis instead, the
-    # two overlapped and the pair read as a clump.
-    near, far, w, tall, low = 6.5, 15, 5, 13, 5.5
-    P = fit(corners(0, near, 0, w, far, tall) + corners(near, 0, 0, far, w, tall), 2.5, 3, 29.5, 29, snap=0)
-    split = near + (far - near) * 0.5
-    s = step_block(P, 0, w, near, far, tall, low, split, True, GREY)
-    s += step_block(P, near, far, 0, w, tall, low, split, False, BLUES)
+    # are each other's reflection on screen too, two ramps leaning in to
+    # the plane. Placed along one isometric axis instead, the pair
+    # overlapped into a clump; a mirrored box is only a second box, and
+    # stepped blocks read as a pair of pillars.
+    near, far, w, low, high = 6.5, 15, 5, 3, 13
+    P = fit(corners(0, near, 0, w, far, high) + corners(near, 0, 0, far, w, high), 2.5, 3, 29.5, 29, snap=0)
+    s = ramp(P, 0, w, near, far, low, high, 'y-', GREY)
+    s += ramp(P, near, far, 0, w, low, high, 'x-', BLUES)
     x, _y = P(0, 0, 0)
     s += line([(x, 2.5), (x, 29.5)], stroke=BLUE, w=2, dash='5 1.6 1.2 1.6', cap='butt')
     return s
@@ -963,9 +968,11 @@ def _():
     r = 9      # the flat sides land on x = 7 and 25
     R = r / math.cos(math.radians(30))
     hexa = polygon_pts(16, 16, R, 6, 30)
-    # The reference circle is a tinted disc: as a thin ring it hid under
-    # the very sides it touches, and the icon read as a bare hexagon.
-    s = circle(16, 16, r, stroke=None, fill=LBLUE).replace('/>', ' fill-opacity="0.55"/>')
+    # The reference circle is drawn a little inside the sides it really
+    # touches: drawn true, it hid under them and the icon read as a bare
+    # hexagon. (A tinted disc showed it, but made a filled nut of an icon
+    # that is line work like every other sketch tool.)
+    s = circle(16, 16, r - 1.9, stroke=BLUE, w=1.5)
     s += path(d_of(hexa, True))
     return s + dot(16, 16, 2.4) + dot(16 + r, 16, 2.6)
 
@@ -974,7 +981,7 @@ def _():
 def _():
     R = 11 / math.sin(math.radians(60))    # flat sides on y = 5 and 27
     hexa = polygon_pts(16, 16, R, 6, 0)
-    s = circle(16, 16, R, stroke=None, fill=LBLUE).replace('/>', ' fill-opacity="0.55"/>')
+    s = circle(16, 16, R, stroke=BLUE, w=1.5)
     s += path(d_of(hexa, True))
     return s + dot(16, 16, 2.4) + dot(16 + R, 16, 2.6)
 
