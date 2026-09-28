@@ -76,3 +76,5 @@ install(FILES packaging/${PENGUINCAD_APP_ID}.metainfo.xml
         DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
 install(FILES packaging/${PENGUINCAD_APP_ID}.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+install(FILES packaging/${PENGUINCAD_APP_ID}.xml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages)

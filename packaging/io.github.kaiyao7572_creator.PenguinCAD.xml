@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The .pcad design file, so file managers show it with PenguinCAD's icon
+     and open it in PenguinCAD on a double-click. It is JSON underneath
+     (docs/FILE_FORMAT.md), which lets text editors offer to open it too. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-penguincad">
+    <comment>PenguinCAD design</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.pcad"/>
+    <icon name="io.github.kaiyao7572_creator.PenguinCAD"/>
+  </mime-type>
+</mime-info>

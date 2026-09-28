@@ -10,3 +10,4 @@ Categories=Graphics;3DGraphics;Engineering;
 Keywords=CAD;3D;modeling;modelling;parametric;sketch;extrude;fillet;mechanical;engineering;STEP;Fusion;
 StartupNotify=true
 StartupWMClass=penguincad
+MimeType=application/x-penguincad;

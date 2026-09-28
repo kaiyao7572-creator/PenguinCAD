@@ -664,7 +664,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
     <div class="hero-copy">
       <p class="eyebrow">Open-source CAD for Linux <b>·</b> early <b>·</b> looking for help</p>
       <h1 data-dim="d1">A Fusion-style CAD for Linux, <span class="quiet">half‑built in the open.</span></h1>
-      <p class="lede">PenguinCAD copies the way Fusion&nbsp;360 works (the feature timeline, the marking menu, the shortcut keys) on OpenCASCADE, the open kernel FreeCAD also uses. Today you can sketch, extrude, fillet and drive it all from parameters. You can't make assemblies or drawings yet, and saving a design is still being built. If you want this to exist, the quickest way to get there is to help build it.</p>
+      <p class="lede">PenguinCAD copies the way Fusion&nbsp;360 works (the feature timeline, the marking menu, the shortcut keys) on OpenCASCADE, the open kernel FreeCAD also uses. Today you can sketch, extrude, fillet, drive it all from parameters and save your design. You can't make assemblies or drawings yet, and much of it is rough. If you want this to exist, the quickest way to get there is to help build it.</p>
       <div class="cta">
         <a class="btn primary" href="#help">Find something to work on <svg aria-hidden="true"><use href="#i-arrow-down"/></svg></a>
         <a class="btn" href="#install"><svg aria-hidden="true"><use href="#i-download"/></svg>Install it (Flatpak)</a>
@@ -672,7 +672,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <ul class="facts">
         <li>GPL-3.0</li>
         <li>C++17 · Qt 6 · OpenCASCADE 7.9</li>
-        <li>~45k lines · 24 test suites</li>
+        <li>~49k lines · 26 test suites</li>
         <li>1 maintainer so far</li>
       </ul>
     </div>
@@ -680,8 +680,8 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
     <figure class="shot-frame reveal" style="margin-bottom:0">
       <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>PenguinCAD, as it is today</span></div>
       <div class="canvas" id="annotated">
-        <img src="img/app.webp" width="1800" height="1096" alt="PenguinCAD's main window: a filleted plate with two holes in the 3D view, the browser tree on the left, a toolbar of commands along the top, the properties panel on the right and a timeline of three features along the bottom.">
-        <button class="pin" type="button" style="left:34%;top:11.5%;--n:0" data-flaw="0" aria-label="Rough edge 1">1</button>
+        <img src="img/app.webp" width="1800" height="1096" alt="PenguinCAD's main window: a filleted plate with two holes in the 3D view, the browser tree on the left, the ribbon of command icons along the top, the properties panel on the right and a timeline of three features along the bottom.">
+        <button class="pin" type="button" style="left:30%;top:20.2%;--n:0" data-flaw="0" aria-label="Rough edge 1">1</button>
         <button class="pin" type="button" style="left:97.9%;top:20.2%;--n:1" data-flaw="1" aria-label="Rough edge 2">2</button>
         <button class="pin" type="button" style="left:6.6%;top:17.8%;--n:2" data-flaw="2" aria-label="Rough edge 3">3</button>
         <button class="pin" type="button" style="left:24%;top:92.3%;--n:3" data-flaw="3" aria-label="Rough edge 4">4</button>
@@ -692,7 +692,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <span class="legend"><i></i>Rough edges, each a good first contribution</span>
     </div>
     <ol class="flaws" id="flaws">
-      <li data-flaw="0"><span><b>Emoji for icons.</b> A proper SVG icon set is being drawn now; it will need a designer's eye.</span></li>
+      <li data-flaw="0"><span><b>A stray scrollbar.</b> The ribbon grows a horizontal scrollbar under its buttons that Fusion doesn't have.</span></li>
       <li data-flaw="1"><span><b>Clipped fields.</b> The properties panel cuts off its own values: "nm" is really "mm".</span></li>
       <li data-flaw="2"><span><b>Truncated names.</b> The browser squeezes "Sketch1" down to "Sket…".</span></li>
       <li data-flaw="3"><span><b>A bare timeline.</b> Fusion's has feature icons and a marker you drag. Ours is text buttons.</span></li>
@@ -758,7 +758,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
             <td><span class="mark n" role="img" aria-label="No">✕</span></td>
             <td><span class="mark n" role="img" aria-label="No">✕</span></td>
             <td><span class="mark n" role="img" aria-label="No">✕</span></td>
-            <td class="note">Fusion's workflow, early. Single parts only; saving is in progress.</td>
+            <td class="note">Fusion's workflow, early. Single parts only, no drawings yet.</td>
           </tr>
           <tr>
             <th scope="row">FreeCAD<small>LGPL-2.0+ · OCCT</small></th>
@@ -878,10 +878,11 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
         </ul>
       </div>
       <div class="col now reveal">
-        <header><h3>Being built now</h3><span class="count">in progress</span></header>
+        <header><h3>Just landed</h3><span class="count">new</span></header>
         <ul>
-          <li><strong>Saving and opening designs</strong>: a native, human-readable .pcad format, with a round-trip test for every feature type</li>
-          <li><strong>A real icon set</strong> in place of the emoji</li>
+          <li><strong>Saving and opening designs</strong>: a native, human-readable .pcad format, with a round-trip test for every one of the 23 feature types</li>
+          <li><strong>A real icon set</strong>: about a hundred SVG icons in place of the emoji</li>
+          <li><strong>A Flatpak</strong> you can download and double-click to install</li>
         </ul>
       </div>
       <div class="col wanted reveal">
@@ -978,7 +979,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <article class="track reveal">
         <div class="tags"><span class="tag easy">No C++</span><span class="tag">Design · docs</span></div>
         <h3>Design and write</h3>
-        <p>Icons, a light theme, a first-model tutorial, this website, and the running audit of where PenguinCAD falls short of Fusion.</p>
+        <p>A light theme, a pass over the panels' spacing, a first-model tutorial, this website, and the running audit of where PenguinCAD falls short of Fusion.</p>
         <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/docs/FUSION360_COMPARISON.md">Read the audit →</a>
       </article>
     </div>
@@ -1001,7 +1002,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
     <div class="faq reveal">
       <details>
         <summary>Can I do real work in it?</summary>
-        <div><p>Not yet. Until saving lands you can't even keep a design, and there are no assemblies or drawings. Treat it as something to build on, not something to depend on. If you need a CAD tool for a project this month, use one from the comparison above.</p></div>
+        <div><p>Not yet. It can save and reopen a design now, but there are no assemblies or drawings, and plenty of rough edges. Treat it as something to build on, not something to depend on. If you need a CAD tool for a project this month, use one from the comparison above.</p></div>
       </details>
       <details>
         <summary>Why not contribute to FreeCAD instead?</summary>
@@ -1037,7 +1038,7 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       <ol class="how reveal">
         <li>
           <b>Download the Flatpak</b>
-          <span>One file, about the size of a photo album. x86-64 only for now.</span>
+          <span>One file of about 22 MB, for 64-bit PCs (x86-64).</span>
           <a class="btn primary" href="https://github.com/kaiyao7572-creator/PenguinCAD/releases/latest/download/PenguinCAD-x86_64.flatpak"><svg aria-hidden="true"><use href="#i-download"/></svg>Download PenguinCAD.flatpak</a>
         </li>
         <li>

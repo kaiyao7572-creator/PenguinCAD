@@ -20,6 +20,7 @@
     </p>
     <p>It is early software. Today it can:</p>
     <ul>
+      <li>Save and reopen designs as human-readable .pcad files, timeline and parameters included</li>
       <li>Sketch lines, rectangles, circles, arcs, splines and more, with constraints and driving dimensions</li>
       <li>Extrude, revolve, sweep and loft, joining, cutting or intersecting with existing bodies</li>
       <li>Fillet, chamfer, shell, pattern and mirror</li>
@@ -34,6 +35,7 @@
   <launchable type="desktop-id">io.github.kaiyao7572_creator.PenguinCAD.desktop</launchable>
   <provides>
     <binary>penguincad</binary>
+    <mediatype>application/x-penguincad</mediatype>
   </provides>
 
   <url type="homepage">https://kaiyao7572-creator.github.io/PenguinCAD/</url>
@@ -81,9 +83,17 @@
   </keywords>
 
   <releases>
-    <release version="0.1.0" date="2026-09-27">
+    <release version="0.1.0" date="2026-09-28">
       <description>
-        <p>The first public build: sketching with constraints, solid features, parameters and expressions, the marking menu, and STEP import and export.</p>
+        <p>The first public build.</p>
+        <ul>
+          <li>Sketching with constraints and driving dimensions</li>
+          <li>Extrude, revolve, sweep, loft, fillet, chamfer, shell, patterns and mirror</li>
+          <li>Named parameters and unit-checked expressions</li>
+          <li>Saving and opening designs as .pcad files</li>
+          <li>Fusion 360's marking menu, navigation and shortcut keys</li>
+          <li>STEP import and export; STL and OBJ export</li>
+        </ul>
       </description>
     </release>
   </releases>

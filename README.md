@@ -4,7 +4,7 @@ A parametric solid modeller for Linux, built along the lines Fusion 360 draws:
 a linear feature timeline, a constrained sketcher that drives it, and a browser
 that lists what a design *contains* separately from the timeline that records
 how it was *made*. Qt 6 for the UI, [OpenCASCADE][occt] 7.9 for geometry,
-C++17, about 45,000 lines of source and 8,000 of tests. No dependencies beyond
+C++17, about 49,000 lines of source and 9,000 of tests. No dependencies beyond
 Qt and OCCT.
 
 One native window. No account, no cloud, no telemetry.
@@ -16,8 +16,8 @@ know OpenCASCADE for most of it.
 
 ![PenguinCAD today: a filleted plate in the 3D view, the browser, the toolbar, the properties panel and the timeline](website/src/img/app.webp)
 
-*The app as it is today, unretouched. The emoji toolbar, the clipped
-properties field and the bare timeline are all good first issues.*
+*The app as it is today, unretouched. The clipped properties field, the
+truncated browser names and the bare timeline are all good first issues.*
 
 [occt]: https://dev.opencascade.org/
 
@@ -29,13 +29,13 @@ there, pattern and mirror it, fillet and shell it, and go back afterwards and
 change any number you typed. The timeline rebuilds, undo is exact, and the
 properties panel edits features in place.
 
-What it cannot do yet is **keep** anything. A native document format
-(`.pcad`) is being built now; until it lands, a design exists only while the
-process is running. Work can leave the app as STEP, OBJ or STL, but nothing
-that leaves can be brought back in for editing.
+Designs save and reopen as `.pcad` files: human-readable JSON holding the
+timeline, sketches, parameters and expressions, with a round-trip test for
+every feature type (`docs/FILE_FORMAT.md`). What it cannot do yet is most of
+what comes after a single part: assemblies, drawings, CAM.
 
 So: worth trying if you want to see how far a Fusion-shaped modeller gets on
-OCCT, or you want to help build one. Not yet something to do real work in.
+OCCT, or you want to help build one. Not yet something to depend on.
 
 `docs/FUSION360_COMPARISON.md` is a deliberately unsparing audit of where the
 app stands against Fusion 360, and is the best place to look for what is
@@ -179,6 +179,11 @@ one, click it, press E.
 
 ### Files
 
+`File > New Design`, `Open`, `Open Recent`, `Save` and `Save As` work on
+native `.pcad` designs, with the usual Save / Don't Save / Cancel before
+unsaved work is thrown away; `penguincad part.pcad` opens one from the command
+line, and an installed PenguinCAD opens one on a double-click.
+
 `File > Open STEP...` imports a `.step`/`.stp` file as a single timeline
 feature — geometry only, with no feature history behind it.
 `File > Export...` writes the evaluated model in the format chosen in the
@@ -195,15 +200,13 @@ dialog's type list, as Fusion's Export does:
 
 Named honestly, because the gaps are large and structural:
 
-- **No native save or open yet.** See Status above; it is being built now.
-  This is the limitation that most determines whether the app is useful to
-  you.
 - **No assemblies or components.** One document, one timeline, one body table.
   Multi-part designs are out of reach, not just awkward.
 - **No 2D drawings.** There is no dimensioned output a shop could act on.
 - **Parameters stop at the design.** Every dimension is a named, renamable
-  model parameter that expressions can read, with units checked, but with no
-  native file format they do not survive closing the app.
+  model parameter that expressions can read, with units checked, and they
+  save with the design, but nothing links one design's parameters to
+  another's.
 - **Import is STEP only** — no IGES, Parasolid, SAT, DXF, 3MF, and no STL in.
 - **Linux and X11 only.** OCCT's window integration wants an X11 window handle,
   so Wayland is reached through XWayland rather than natively.
@@ -307,17 +310,19 @@ it. Script syntax is documented in `src/InputScript.h` and
 ./tests/run_tests.sh
 ```
 
-Twenty-four suites, about 1,700 assertions. They compile the real source files
+Twenty-six suites, about 1,950 assertions. They compile the real source files
 directly rather than linking the app, so they need no window server and no full
 build. They cover units and the unit-aware input widget, the sketch-to-extrude
 pipeline against real OCCT volumes, sketch inference, profiles and picking,
 the sketch curve types, the entity taxonomy, construction geometry, press/pull,
 the gizmos, reference identity, the parameter and expression engine, the
-marking menu's geometry and gestures, the view commands, inspection, and a
-check that no key is bound to two commands.
+marking menu's geometry and gestures, the view commands, inspection, a
+save -> open -> save round trip of every feature type, and checks that no key
+is bound to two commands and every command's icon exists.
 
-Add to these when you add model-level behaviour. There is no CI yet, so running
-them is a thing you have to remember; a CI job is one of the open tasks in
+Add to these when you add model-level behaviour. CI builds the Flatpak on every
+push but doesn't run these yet, so running them is a thing you have to
+remember; wiring them into CI is one of the open tasks in
 [CONTRIBUTING.md](CONTRIBUTING.md#packaging-and-ci). The test runner also
 assumes Fedora's paths for Qt and OCCT.
 
@@ -362,8 +367,8 @@ STEP import and STL export predate the `src/io/` split and still live at
 Members are `myFoo` in core-style `lcad` classes and `m_foo` in Qt widget
 classes; parameters are `theFoo`. OCCT handles are never deleted and are
 checked with `.IsNull()`. Comments explain why, not what. A command's `Icon()`
-returns one emoji for now: a placeholder, and the app's weakest first
-impression. An SVG icon set is being drawn.
+returns an SVG in `resources/icons/`, drawn to the house style in
+`docs/ARCHITECTURE.md`; a check fails the test run if one is missing.
 
 ## License
 

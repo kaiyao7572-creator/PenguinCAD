@@ -8,10 +8,11 @@ here, keyed by its application ID, `io.github.kaiyao7572_creator.PenguinCAD`:
 | `*.desktop` | Puts PenguinCAD in the application menu and search |
 | `*.metainfo.xml` | Describes it to software centres (GNOME Software, Discover, Flathub) |
 | `*.svg` | The app icon |
+| `*.xml` | The `.pcad` file type, so a double-click opens a design in PenguinCAD |
 | `*.yml` | The Flatpak manifest |
 | `screenshots/` | The screenshots the metainfo points software centres at |
 
-`cmake --install build` installs the first three alongside the binary, so a
+`cmake --install build` installs the first four alongside the binary, so a
 plain `sudo cmake --install build` on any distribution also gives you a menu
 entry.
 
