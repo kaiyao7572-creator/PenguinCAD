@@ -724,12 +724,14 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
         </li>
       </ol>
       <div class="terminal reveal">
-        <div class="term-tabs" aria-hidden="true"><button type="button" aria-selected="true" tabindex="-1">Terminal instead</button></div>
+        <div class="term-tabs" aria-hidden="true"><button type="button" aria-selected="true" tabindex="-1">Or one terminal command</button></div>
         <div class="term-body">
+          <span class="term-note"># Everything in one line: installs Flatpak if you don't have it,</span>
+          <span class="term-note"># adds Flathub, then installs PenguinCAD.</span>
+          <div class="cmd"><code>curl -fsSL https://kaiyao7572-creator.github.io/PenguinCAD/install.sh | sh</code><button class="copy" type="button">Copy</button></div>
+          <span class="term-note"># Already have Flatpak? This is all it does for PenguinCAD:</span>
           <div class="cmd"><code>flatpak install --user https://kaiyao7572-creator.github.io/PenguinCAD/penguincad.flatpakref</code><button class="copy" type="button">Copy</button></div>
-          <div class="cmd"><code>flatpak run io.github.kaiyao7572_creator.PenguinCAD</code><button class="copy" type="button">Copy</button></div>
           <span class="term-note"># Updates come with everything else: flatpak update</span>
-          <span class="term-note"># No Flatpak yet? flathub.org/setup has one page per distribution.</span>
         </div>
       </div>
     </div>

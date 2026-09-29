@@ -229,11 +229,17 @@ Qt runtime comes from Flathub):
 
 Builds are for 64-bit PCs (x86-64) only for now.
 
-Or from a terminal:
+Or in one terminal command, which installs Flatpak too if you don't have it,
+adds Flathub and installs PenguinCAD ([the script](packaging/install.sh)):
+
+```bash
+curl -fsSL https://kaiyao7572-creator.github.io/PenguinCAD/install.sh | sh
+```
+
+With Flatpak already set up, that comes down to:
 
 ```bash
 flatpak install --user https://kaiyao7572-creator.github.io/PenguinCAD/penguincad.flatpakref
-flatpak run io.github.kaiyao7572_creator.PenguinCAD
 ```
 
 Each [release](https://github.com/kaiyao7572-creator/PenguinCAD/releases) also

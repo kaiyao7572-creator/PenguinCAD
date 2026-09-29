@@ -3,6 +3,7 @@
 #   /                         website/index.html, one self-contained page
 #   /penguincad.flatpakref    adds the repository and installs PenguinCAD
 #   /penguincad.flatpakrepo   adds the repository only
+#   /install.sh               installs Flatpak if needed, Flathub and PenguinCAD
 #   /repo/                    the signed Flatpak repository of the latest release
 #
 # The page is built from website/src/ by website/build.py and committed; this
@@ -14,7 +15,7 @@ name: Website
 on:
   push:
     branches: [main]
-    paths: ["website/**", "packaging/repo/**", ".github/workflows/pages.yml"]
+    paths: ["website/**", "packaging/repo/**", "packaging/install.sh", ".github/workflows/pages.yml"]
   workflow_run:
     workflows: [Flatpak]
     types: [completed]
@@ -60,6 +61,7 @@ jobs:
           mkdir _site
           cp website/index.html _site/index.html
           cp packaging/repo/penguincad.flatpakref packaging/repo/penguincad.flatpakrepo _site/
+          cp packaging/install.sh _site/install.sh
       # Pages replaces the whole site on every deploy, so a deploy without
       # the repository would cut off every installed copy's updates. Failing
       # instead leaves the previous deployment, repository and all, serving.
