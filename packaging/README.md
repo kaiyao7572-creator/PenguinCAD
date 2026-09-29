@@ -32,6 +32,12 @@ flatpak run io.github.kaiyao7572_creator.PenguinCAD
 After installing, PenguinCAD shows up in the application grid and in search
 like any other app.
 
+### PenguinCAD's own repository
+
+Releases are published as a signed Flatpak repository on the project's GitHub
+Pages site; [`repo/README.md`](repo/README.md) covers how, and the signing key.
+It is what the website's Install button adds.
+
 ### The one-file download
 
 CI (`.github/workflows/flatpak.yml`) builds `PenguinCAD-x86_64.flatpak` on
@@ -49,8 +55,8 @@ flatpak install --user PenguinCAD-x86_64.flatpak
 ```
 
 The bundle knows to fetch the KDE runtime from Flathub, so it works on any
-distribution with Flatpak and Flathub set up. A bundle does not update itself:
-a new version means downloading the new file.
+distribution with Flatpak and Flathub set up, and it names PenguinCAD's own
+repository as its origin, so once installed it updates from there.
 
 ### Flathub
 

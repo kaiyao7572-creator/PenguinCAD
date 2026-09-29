@@ -83,6 +83,12 @@
   </keywords>
 
   <releases>
+    <release version="0.1.1" date="2026-09-28">
+      <description>
+        <p>PenguinCAD now installs from its own signed Flatpak repository, so it appears in GNOME Software and KDE Discover and updates like any other app. Designs open in PenguinCAD when double-clicked.</p>
+        <p>If you installed 0.1.0 from the downloaded file, remove it once and install again from the website; from then on it updates itself.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-09-28">
       <description>
         <p>The first public build.</p>
