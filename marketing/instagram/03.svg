@@ -45,39 +45,35 @@
     <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
   </symbol>
 </defs><rect width="1080" height="1350" fill="#0b1119"/><rect width="1080" height="1350" fill="url(#minor)"/><rect width="1080" height="1350" fill="url(#major)"/><rect width="1080" height="1350" fill="url(#fade)"/>
-<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >PARAMETRIC DESIGN</text>
-<text x="80" y="262.0" font-size="96" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >Every number</text><text x="80" y="359.92" font-size="96" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >has a name.</text>
-<text x="80" y="470.0" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Type an expression anywhere a number goes.</text><text x="80" y="513.5" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Change one value and the whole part follows.</text>
-<rect x="80" y="600" width="920" height="500" rx="18" fill="#111a25" stroke="#223142" stroke-width="2"/>
-<rect x="80" y="600" width="920" height="62" rx="18" fill="#0d151e"/>
-<rect x="80" y="640" width="920" height="22" fill="#0d151e"/>
-<text x="110" y="641" font-size="20" style="font-family:'B612 Mono';letter-spacing:.12em" fill="#6f839a" text-anchor="start" >NAME</text>
-<text x="370" y="641" font-size="20" style="font-family:'B612 Mono';letter-spacing:.12em" fill="#6f839a" text-anchor="start" >EXPRESSION</text>
-<text x="970" y="641" font-size="20" style="font-family:'B612 Mono';letter-spacing:.12em" fill="#6f839a" text-anchor="end" >VALUE</text>
-<text x="110" y="716" font-size="32" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >flange_d</text>
-<rect x="360" y="678" width="360" height="54" rx="8" fill="#0b1119" stroke="#2c3d50" stroke-width="2"/>
-<text x="378" y="715" font-size="28" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >80 mm</text>
-<text x="970" y="716" font-size="30" style="font-family:'B612 Mono'" fill="#a9b8c8" text-anchor="end" >80.00 mm</text>
-<path d="M100 748H980" stroke="#223142" stroke-width="1.2"/>
-<text x="110" y="802" font-size="32" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >bolts</text>
-<rect x="360" y="764" width="360" height="54" rx="8" fill="#0b1119" stroke="#2c3d50" stroke-width="2"/>
-<text x="378" y="801" font-size="28" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >6</text>
-<text x="970" y="802" font-size="30" style="font-family:'B612 Mono'" fill="#a9b8c8" text-anchor="end" >6</text>
-<path d="M100 834H980" stroke="#223142" stroke-width="1.2"/>
-<text x="110" y="888" font-size="32" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >d3</text>
-<rect x="360" y="850" width="360" height="54" rx="8" fill="#0b1119" stroke="#2c3d50" stroke-width="2"/>
-<text x="378" y="887" font-size="28" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >thickness</text>
-<text x="970" y="888" font-size="30" style="font-family:'B612 Mono'" fill="#a9b8c8" text-anchor="end" >10.00 mm</text>
-<path d="M100 920H980" stroke="#223142" stroke-width="1.2"/>
-<rect x="86" y="926" width="908" height="74" rx="10" fill="#22a3e6" fill-opacity=".12" stroke="#22a3e6" stroke-width="2"/>
-<text x="110" y="974" font-size="32" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >d5</text>
-<rect x="360" y="936" width="360" height="54" rx="8" fill="#0b1119" stroke="#22a3e6" stroke-width="2"/>
-<text x="378" y="973" font-size="28" style="font-family:'B612 Mono'" fill="#7cc6ea" text-anchor="start" >d3 * 1.8</text>
-<text x="970" y="974" font-size="30" style="font-family:'B612 Mono'" fill="#ff9f43" text-anchor="end" >18.00 mm</text>
-<path d="M100 1006H980" stroke="#223142" stroke-width="1.2"/>
-<text x="110" y="1060" font-size="32" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >d9</text>
-<rect x="360" y="1022" width="360" height="54" rx="8" fill="#0b1119" stroke="#2c3d50" stroke-width="2"/>
-<text x="378" y="1059" font-size="28" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >(d1 + d4) / 2</text>
-<text x="970" y="1060" font-size="30" style="font-family:'B612 Mono'" fill="#a9b8c8" text-anchor="end" >63.00 mm</text>
-<text x="80" y="1150" font-size="28" style="font-family:Archivo;font-weight:500" fill="#6f839a" text-anchor="start" >Units are checked, too: 10 mm + 5 deg is refused.</text>
+<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >IF YOU KNOW FUSION</text>
+<text x="80" y="250.0" font-size="84" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >It works the way</text><text x="80" y="342.4" font-size="84" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >Fusion does.</text>
+<circle cx="330" cy="790" r="190" fill="none" stroke="#223142" stroke-width="2" stroke-dasharray="6 10"/>
+<rect x="269.7" y="579.6" width="120.6" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="330.0" y="608.4" font-size="24" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Repeat</text>
+<rect x="377.2" y="635.2" width="174.4" height="40.8" rx="8" fill="#22a3e6" stroke="#22a3e6" stroke-width="2"/><text x="464.350288425444" y="664.049711574556" font-size="24" style="font-family:Archivo;font-weight:600" fill="#03121c" text-anchor="middle" >Press Pull</text>
+<rect x="473.1" y="769.6" width="93.8" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="520.0" y="798.4" font-size="24" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Redo</text>
+<rect x="417.5" y="904.0" width="93.8" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="464.35028842544403" y="932.750288425444" font-size="24" style="font-family:Archivo;font-weight:600" fill="#6f839a" text-anchor="middle" >Hole</text>
+<rect x="269.7" y="959.6" width="120.6" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="330.0" y="988.4" font-size="24" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Sketch</text>
+<rect x="148.8" y="904.0" width="93.8" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="195.649711574556" y="932.7502884254441" font-size="24" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Move</text>
+<rect x="93.1" y="769.6" width="93.8" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="140.0" y="798.4" font-size="24" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Undo</text>
+<rect x="135.3" y="635.2" width="120.6" height="40.8" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="195.64971157455594" y="664.049711574556" font-size="24" style="font-family:Archivo;font-weight:600" fill="#6f839a" text-anchor="middle" >Delete</text>
+<circle cx="330" cy="790" r="34" fill="#16202c" stroke="#34485e" stroke-width="2.5"/>
+<path d="M356 764 L435 685" stroke="#22a3e6" stroke-width="6" stroke-linecap="round"/>
+<path transform="translate(430 682) scale(1.8)" d="M0 0v26l7-7 5 11 4.4-2-5-10.6h9.8z" fill="#e7eef5" stroke="#0b1119" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="640" y="607" width="86" height="86" rx="14" fill="#070b10"/>
+<rect x="640" y="600" width="86" height="86" rx="14" fill="#172230" stroke="#22a3e6" stroke-width="2"/>
+<text x="683" y="658" font-size="44" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5" text-anchor="middle" >E</text>
+<text x="750" y="656" font-size="32" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Extrude</text>
+<rect x="640" y="719" width="86" height="86" rx="14" fill="#070b10"/>
+<rect x="640" y="712" width="86" height="86" rx="14" fill="#172230" stroke="#22a3e6" stroke-width="2"/>
+<text x="683" y="770" font-size="44" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5" text-anchor="middle" >Q</text>
+<text x="750" y="768" font-size="32" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Press Pull</text>
+<rect x="640" y="831" width="86" height="86" rx="14" fill="#070b10"/>
+<rect x="640" y="824" width="86" height="86" rx="14" fill="#172230" stroke="#22a3e6" stroke-width="2"/>
+<text x="683" y="882" font-size="44" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5" text-anchor="middle" >F</text>
+<text x="750" y="880" font-size="32" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Fillet</text>
+<rect x="640" y="943" width="86" height="86" rx="14" fill="#070b10"/>
+<rect x="640" y="936" width="86" height="86" rx="14" fill="#172230" stroke="#22a3e6" stroke-width="2"/>
+<text x="683" y="994" font-size="44" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5" text-anchor="middle" >L</text>
+<text x="750" y="992" font-size="32" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Line</text>
+<text x="80" y="1100.0" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Right-click brings up the same ring of commands.</text><text x="80" y="1143.5" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >If you learned on Fusion, you already know your way around.</text>
 <use href="#penguin" x="64" y="1258.28" width="52.9" height="52.9"/><text x="126.1" y="1296" font-size="28.52" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5">Penguin<tspan fill="#22a3e6">CAD</tspan></text><text x="1016" y="1290" font-size="22" style="font-family:'B612 Mono'" fill="#6f839a" text-anchor="end" >03 / 06</text><path d="M64 1234H1016" stroke="#223142" stroke-width="1.5"/></svg>

@@ -45,9 +45,7 @@
     <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
   </symbol>
 </defs><rect width="1200" height="630" fill="#0b1119"/><rect width="1200" height="630" fill="url(#minor)"/><rect width="1200" height="630" fill="url(#major)"/><rect width="1200" height="630" fill="url(#fade)"/>
-<ellipse cx="900" cy="330" rx="420" ry="300" fill="url(#glowOrange)"/>
-<ellipse cx="890" cy="427.24" rx="288" ry="132" fill="url(#glow)"/>
-<ellipse cx="890.0" cy="420.7" rx="217.5" ry="113.1" fill="#000" fill-opacity=".45"/>
+<ellipse cx="890.0" cy="440.0" rx="221.4" ry="115.1" fill="#000" fill-opacity=".35"/>
 <path d="M676.8 360.0 L676.8 412.5 A213.2 110.9 0 0 0 1103.2 412.5 L1103.2 360.0 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
 <ellipse cx="890.0" cy="360.0" rx="213.2" ry="110.9" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
 <ellipse cx="1034.9" cy="403.5" rx="20.5" ry="10.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
@@ -73,5 +71,5 @@
 <use href="#penguin" x="64" y="64.44" width="66.69999999999999" height="66.69999999999999"/><text x="142.3" y="112" font-size="35.96" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5">Penguin<tspan fill="#22a3e6">CAD</tspan></text>
 <text x="64" y="200" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >OPEN SOURCE · LINUX · HELP WANTED</text>
 <text x="64" y="286.0" font-size="64" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >A Fusion-style</text><text x="64" y="351.28" font-size="64" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >CAD for Linux.</text>
-<text x="64" y="438.0" font-size="27" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Timeline, marking menu, parameters,</text><text x="64" y="477.15" font-size="27" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >and the keys you already know.</text>
+<text x="64" y="438.0" font-size="27" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Early and free. Try it, break it,</text><text x="64" y="477.15" font-size="27" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >and help build it.</text>
 <text x="64" y="560" font-size="22" style="font-family:'B612 Mono'" fill="#22a3e6" text-anchor="start" >kaiyao7572-creator.github.io/PenguinCAD</text></svg>

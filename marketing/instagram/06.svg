@@ -45,20 +45,19 @@
     <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
   </symbol>
 </defs><rect width="1080" height="1350" fill="#0b1119"/><rect width="1080" height="1350" fill="url(#minor)"/><rect width="1080" height="1350" fill="url(#major)"/><rect width="1080" height="1350" fill="url(#fade)"/>
-<ellipse cx="540" cy="700" rx="520" ry="330" fill="url(#glowOrange)"/>
-<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >GET IT · FREE</text>
-<text x="80" y="262.0" font-size="100" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >One line.</text><text x="80" y="364.0" font-size="100" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >Then it's yours.</text>
-<rect x="80" y="552" width="920" height="330" rx="22" fill="#05080c"/>
-<rect x="80" y="540" width="920" height="330" rx="22" fill="#0a1018" stroke="#223142" stroke-width="2"/>
-<rect x="80" y="540" width="920" height="60" rx="22" fill="#0d151e"/>
-<rect x="80" y="578" width="920" height="22" fill="#0d151e"/>
-<circle cx="116" cy="570" r="9" fill="#ff5f57" opacity=".8"/>
-<circle cx="146" cy="570" r="9" fill="#febc2e" opacity=".8"/>
-<circle cx="176" cy="570" r="9" fill="#28c840" opacity=".8"/>
-<text x="120" y="668" font-size="34" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >$ curl -fsSL \</text>
-<text x="156" y="720" font-size="34" style="font-family:'B612 Mono'" fill="#7cc6ea" text-anchor="start" >kaiyao7572-creator.github.io/</text>
-<text x="156" y="772" font-size="34" style="font-family:'B612 Mono'" fill="#7cc6ea" text-anchor="start" >PenguinCAD/install.sh | sh</text>
-<text x="120" y="830" font-size="25" style="font-family:'B612 Mono'" fill="#46c08a" text-anchor="start" >==> Done. Find PenguinCAD in your apps.</text>
-<text x="80" y="960.0" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Any Linux distribution. Updates itself.</text><text x="80" y="1003.5" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Open source, GPL-3.0, and looking for help.</text>
-<text x="80" y="1110" font-size="32" style="font-family:Archivo;font-stretch:112%;font-weight:700" fill="#ff9f43" text-anchor="start" >Link in bio  →</text>
+<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >TRY IT TONIGHT</text>
+<text x="80" y="250.0" font-size="84" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >One command</text><text x="80" y="342.4" font-size="84" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >installs it.</text>
+<rect x="80" y="532" width="920" height="330" rx="22" fill="#05080c"/>
+<rect x="80" y="520" width="920" height="330" rx="22" fill="#0a1018" stroke="#223142" stroke-width="2"/>
+<rect x="80" y="520" width="920" height="60" rx="22" fill="#0d151e"/>
+<rect x="80" y="558" width="920" height="22" fill="#0d151e"/>
+<circle cx="116" cy="550" r="9" fill="#ff5f57" opacity=".8"/>
+<circle cx="146" cy="550" r="9" fill="#febc2e" opacity=".8"/>
+<circle cx="176" cy="550" r="9" fill="#28c840" opacity=".8"/>
+<text x="120" y="648" font-size="34" style="font-family:'B612 Mono'" fill="#e7eef5" text-anchor="start" >$ curl -fsSL \</text>
+<text x="156" y="700" font-size="34" style="font-family:'B612 Mono'" fill="#7cc6ea" text-anchor="start" >kaiyao7572-creator.github.io/</text>
+<text x="156" y="752" font-size="34" style="font-family:'B612 Mono'" fill="#7cc6ea" text-anchor="start" >PenguinCAD/install.sh | sh</text>
+<text x="120" y="810" font-size="25" style="font-family:'B612 Mono'" fill="#46c08a" text-anchor="start" >==> Done. Find PenguinCAD in your apps.</text>
+<text x="80" y="940.0" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Most Linux distros, free, and it updates itself.</text><text x="80" y="983.5" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Then tell me what breaks, or what you'd add.</text>
+<text x="80" y="1100" font-size="32" style="font-family:Archivo;font-stretch:112%;font-weight:700" fill="#ff9f43" text-anchor="start" >Link in bio  →</text>
 <use href="#penguin" x="64" y="1258.28" width="52.9" height="52.9"/><text x="126.1" y="1296" font-size="28.52" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5">Penguin<tspan fill="#22a3e6">CAD</tspan></text><text x="1016" y="1290" font-size="22" style="font-family:'B612 Mono'" fill="#6f839a" text-anchor="end" >06 / 06</text><path d="M64 1234H1016" stroke="#223142" stroke-width="1.5"/></svg>

@@ -249,161 +249,141 @@ def keycap(x, y, key, label, same=True, u=150):
 def og():
     w, h = 1200, 630
     body = [ground(w, h),
-            f'<ellipse cx="900" cy="330" rx="420" ry="300" fill="url(#glowOrange)"/>',
-            flange(890, 360, 0.82),
+            shadow(890, 440, 0.82),
+            flange(890, 360, 0.82, glow=False),
             dim_h(677, 1103, 572, "Ø80.00", 22, 26),
             dim_v(1128, 263, 360, "d5", 22),
             brand(64, 112, 58),
             eyebrow(64, 200, "OPEN SOURCE · LINUX · HELP WANTED"),
             headline(64, 286, ["A Fusion-style", "CAD for Linux."], 64),
-            para(64, 438, ["Timeline, marking menu, parameters,", "and the keys you already know."], 27),
+            para(64, 438, ["Early and free. Try it, break it,", "and help build it."], 27),
             text(64, 560, "kaiyao7572-creator.github.io/PenguinCAD", 22, MONO, BLUE)]
     return w, h, body
+
+
+def shadow(cx, cy, s):
+    return ell(cx, cy, 270 * s, fill="#000", fill_opacity=".35")
+
+
+def tick(x, y, ok=True):
+    """A drawn check mark, or an open orange circle for "not yet"."""
+    if ok:
+        return (f'<circle cx="{x}" cy="{y}" r="17" fill="#46c08a" fill-opacity=".16" stroke="#46c08a" stroke-width="2"/>'
+                f'<path d="M{x - 8} {y} {x - 2} {y + 7} {x + 9} {y - 7}" fill="none" stroke="#46c08a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>')
+    return f'<circle cx="{x}" cy="{y}" r="15" fill="none" stroke="{ORANGE}" stroke-width="2.6" stroke-dasharray="5 4"/>'
+
+
+def checklist(x, y, items, ok=True, size=34, gap=86):
+    out = []
+    for i, item in enumerate(items):
+        yy = y + i * gap
+        out.append(tick(x + 17, yy - size * 0.32, ok))
+        out.append(text(x + 58, yy, item, size, BODY, INK))
+    return "".join(out)
+
+
+TALK = "font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em"
+
+
+def talk(x, y, lines, size=78, fill=INK):
+    return "".join(text(x, y + i * size * 1.1, ln, size, TALK, fill) for i, ln in enumerate(lines))
 
 
 def post1():
     w, h = 1080, 1350
     return w, h, [ground(w, h),
-                  f'<ellipse cx="540" cy="760" rx="520" ry="360" fill="url(#glowOrange)"/>',
-                  eyebrow(80, 150, "NEW · FREE · OPEN SOURCE"),
-                  headline(80, 262, ["The CAD your", "hands already", "know. On Linux."], 86),
-                  flange(540, 860, 1.25),
-                  dim_h(215, 865, 1150, "Ø80.00", 30, 40),
-                  dim_v(905, 713, 860, "18.00", 28),
-                  text(265, 610, "d1 = flange_d", 26, MONO, BLUE2),
+                  eyebrow(80, 150, "OPEN SOURCE · LINUX"),
+                  talk(80, 250, ["I'm building a", "Fusion-style CAD", "for Linux."], 80),
+                  para(80, 540, ["It's free, it's early, and it's rough around", "the edges. I'd love some help with it."], 32),
+                  shadow(540, 1000, 1.05),
+                  flange(540, 900, 1.05, glow=False),
+                  dim_h(267, 813, 1165, "Ø80.00", 28, 30),
+                  dim_v(880, 776, 900, "18.00", 26),
                   footer(w, h, 1)]
 
 
 def post2():
     w, h = 1080, 1350
-    cx, cy, rr = 540, 760, 285
-    labels = ["Repeat", "Press Pull", "Redo", "Hole", "Sketch", "Move/Copy", "Undo", "Delete"]
-    parts = [ground(w, h),
-             f'<circle cx="{cx}" cy="{cy}" r="400" fill="url(#glow)"/>',
-             eyebrow(80, 150, "THE MARKING MENU"),
-             headline(80, 262, ["Right-click.", "Flick. Done."], 96),
-             f'<circle cx="{cx}" cy="{cy}" r="{rr}" fill="none" stroke="{LINE}" stroke-width="2" stroke-dasharray="6 10"/>']
-    lit = 1
-    for i, lab in enumerate(labels):
-        a = i * math.pi / 4
-        x, y = cx + rr * math.sin(a), cy - rr * math.cos(a)
-        parts.append(pill(x, y, lab, lit=(i == lit), dim=lab in ("Hole", "Delete")))
-    # hub with the lit wedge's slice
-    a0, a1 = math.radians(lit * 45 - 22.5 - 90), math.radians(lit * 45 + 22.5 - 90)
-    r = 44
-    parts += [f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#16202c" stroke="#34485e" stroke-width="2.5"/>',
-              f'<path d="M{cx} {cy} L{cx + r * math.cos(a0):.1f} {cy + r * math.sin(a0):.1f} A{r} {r} 0 0 1 '
-              f'{cx + r * math.cos(a1):.1f} {cy + r * math.sin(a1):.1f} Z" fill="{BLUE}"/>']
-    tx, ty = cx + 170 * math.sin(math.pi / 4), cy - 170 * math.cos(math.pi / 4)
-    parts += [f'<path d="M{cx + 40} {cy - 40} L{tx:.0f} {ty:.0f}" stroke="{BLUE}" stroke-width="7" stroke-linecap="round"/>',
-              cursor(tx - 4, ty - 4, 2.2),
-              para(80, 1130, ["Eight commands, always in the same place.", "Your hand learns where Undo is in a week."], 30),
-              footer(w, h, 2)]
-    return w, h, parts
+    items = ["Sketches with constraints and dimensions",
+             "Extrude, revolve, sweep and loft",
+             "Fillet, chamfer, shell, patterns",
+             "Parameters: type d3 * 1.8 into any box",
+             "Save and open your designs",
+             "STEP import and export"]
+    return w, h, [ground(w, h),
+                  eyebrow(80, 150, "TRY IT"),
+                  talk(80, 250, ["Here's what", "already works."], 84),
+                  checklist(80, 520, items, True, 34, 88),
+                  para(80, 1100, ["Enough to model a real part.", "Not enough to replace your day job's CAD. Yet."], 30),
+                  footer(w, h, 2)]
 
 
 def post3():
     w, h = 1080, 1350
-    rows = [("flange_d", "80 mm", "80.00 mm", False),
-            ("bolts", "6", "6", False),
-            ("d3", "thickness", "10.00 mm", False),
-            ("d5", "d3 * 1.8", "18.00 mm", True),
-            ("d9", "(d1 + d4) / 2", "63.00 mm", False)]
-    x0, y0, rw = 80, 600, 920
+    cx, cy, rr = 330, 790, 190
+    labels = ["Repeat", "Press Pull", "Redo", "Hole", "Sketch", "Move", "Undo", "Delete"]
     parts = [ground(w, h),
-             eyebrow(80, 150, "PARAMETRIC DESIGN"),
-             headline(80, 262, ["Every number", "has a name."], 96),
-             para(80, 470, ["Type an expression anywhere a number goes.", "Change one value and the whole part follows."], 30),
-             f'<rect x="{x0}" y="{y0}" width="{rw}" height="{70 + 86 * len(rows)}" rx="18" fill="#111a25" stroke="{LINE}" stroke-width="2"/>',
-             f'<rect x="{x0}" y="{y0}" width="{rw}" height="62" rx="18" fill="#0d151e"/>',
-             f'<rect x="{x0}" y="{y0 + 40}" width="{rw}" height="22" fill="#0d151e"/>',
-             text(x0 + 30, y0 + 41, "NAME", 20, MONO + ";letter-spacing:.12em", INK3),
-             text(x0 + 290, y0 + 41, "EXPRESSION", 20, MONO + ";letter-spacing:.12em", INK3),
-             text(x0 + rw - 30, y0 + 41, "VALUE", 20, MONO + ";letter-spacing:.12em", INK3, "end")]
-    for i, (name, expr, val, lit) in enumerate(rows):
-        y = y0 + 62 + 86 * i
-        if lit:
-            parts.append(f'<rect x="{x0 + 6}" y="{y + 6}" width="{rw - 12}" height="74" rx="10" fill="{BLUE}" fill-opacity=".12" stroke="{BLUE}" stroke-width="2"/>')
-        parts += [text(x0 + 30, y + 54, name, 32, MONO, INK),
-                  f'<rect x="{x0 + 280}" y="{y + 16}" width="360" height="54" rx="8" fill="#0b1119" stroke="{BLUE if lit else "#2c3d50"}" stroke-width="2"/>',
-                  text(x0 + 298, y + 53, expr, 28, MONO, BLUE2 if lit else INK),
-                  text(x0 + rw - 30, y + 54, val, 30, MONO, ORANGE if lit else INK2, "end")]
-        if i < len(rows) - 1:
-            parts.append(f'<path d="M{x0 + 20} {y + 86}H{x0 + rw - 20}" stroke="{LINE}" stroke-width="1.2"/>')
-    parts += [text(80, 1150, "Units are checked, too: 10 mm + 5 deg is refused.", 28, BODY, INK3),
+             eyebrow(80, 150, "IF YOU KNOW FUSION"),
+             talk(80, 250, ["It works the way", "Fusion does."], 84),
+             f'<circle cx="{cx}" cy="{cy}" r="{rr}" fill="none" stroke="{LINE}" stroke-width="2" stroke-dasharray="6 10"/>']
+    for i, lab in enumerate(labels):
+        a = i * math.pi / 4
+        parts.append(pill(cx + rr * math.sin(a), cy - rr * math.cos(a), lab, lit=(i == 1), dim=lab in ("Hole", "Delete"), size=24))
+    parts += [f'<circle cx="{cx}" cy="{cy}" r="34" fill="#16202c" stroke="#34485e" stroke-width="2.5"/>',
+              f'<path d="M{cx + 26} {cy - 26} L{cx + 105} {cy - 105}" stroke="{BLUE}" stroke-width="6" stroke-linecap="round"/>',
+              cursor(cx + 100, cy - 108, 1.8)]
+    for i, (k, lab) in enumerate((("E", "Extrude"), ("Q", "Press Pull"), ("F", "Fillet"), ("L", "Line"))):
+        y = 600 + i * 112
+        parts += [f'<rect x="640" y="{y + 7}" width="86" height="86" rx="14" fill="#070b10"/>',
+                  f'<rect x="640" y="{y}" width="86" height="86" rx="14" fill="#172230" stroke="{BLUE}" stroke-width="2"/>',
+                  text(683, y + 58, k, 44, DISPLAY, INK, "middle"),
+                  text(750, y + 56, lab, 32, BODY, INK2)]
+    parts += [para(80, 1100, ["Right-click brings up the same ring of commands.", "If you learned on Fusion, you already know your way around."], 30),
               footer(w, h, 3)]
     return w, h, parts
 
 
 def post4():
     w, h = 1080, 1350
-    parts = [ground(w, h),
-             eyebrow(80, 150, "THE TIMELINE"),
-             headline(80, 262, ["Sketch. Extrude.", "Fillet. Rewind."], 88)]
-    # three stages across
-    y = 690
-    # 1: the sketch, in blue lines
-    sx = 200
-    parts += [f'<ellipse cx="{sx}" cy="{y}" rx="130" ry="{130 * K}" fill="{BLUE}" fill-opacity=".12" stroke="{BLUE}" stroke-width="3"/>',
-              f'<ellipse cx="{sx}" cy="{y}" rx="46" ry="{46 * K}" fill="{BG}" stroke="{BLUE}" stroke-width="3"/>']
-    for i in range(6):
-        a = math.pi / 6 + i * math.pi / 3
-        parts.append(f'<ellipse cx="{sx + 102 * math.cos(a):.1f}" cy="{y + 102 * K * math.sin(a):.1f}" rx="12" ry="{12 * K}" fill="none" stroke="{BLUE}" stroke-width="2.4"/>')
-    parts.append(dim_h(70, 330, y + 118, "Ø80", 24, 20))
-    # 2: extruded plate
-    parts.append(flange(540, y - 10, 0.5, hub=False, glow=False))
-    parts.append(f'<path d="M540 {y - 60}V{y - 160}" stroke="{BLUE}" stroke-width="5"/>')
-    parts.append(f'<path d="M526 {y - 150} 540 {y - 176} 554 {y - 150}z" fill="{BLUE}"/>')
-    # 3: the finished part
-    parts.append(flange(880, y - 10, 0.5, glow=False))
-    for x1, x2 in ((345, 405), (690, 740)):
-        parts.append(f'<path d="M{x1} {y}H{x2}" stroke="{INK3}" stroke-width="3" marker-end="url(#arrow)"/>')
-    # the timeline bar
-    by = 960
-    parts.append(f'<rect x="80" y="{by}" width="920" height="120" rx="18" fill="#111a25" stroke="{LINE}" stroke-width="2"/>')
-    names = ["Sketch1", "Extrude1", "Sketch2", "Extrude2", "Fillet1", "Sketch3", "Extrude3"]
-    for i, n in enumerate(names):
-        x = 120 + i * 122
-        on = i < 5
-        parts.append(f'<rect x="{x}" y="{by + 26}" width="96" height="68" rx="10" fill="{"#16202c" if on else "#0f1720"}" stroke="{BLUE if i == 4 else "#34485e"}" stroke-width="2" opacity="{1 if on else .45}"/>')
-        kind = n.rstrip("0123456789")
-        parts.append(timeline_icon(kind, x + 48, by + 60, BLUE2 if on else INK3, 1 if on else .5))
-    mx = 120 + 5 * 122 - 13
-    parts += [f'<path d="M{mx} {by + 14}V{by + 106}" stroke="{ORANGE}" stroke-width="5" stroke-linecap="round"/>',
-              f'<path d="M{mx - 12} {by + 10}h24l-12 14z" fill="{ORANGE}"/>',
-              para(80, 1165, ["Drag the marker back to any step, change it,", "and everything after it rebuilds."], 30),
-              footer(w, h, 4)]
-    return w, h, parts
+    items = ["Assemblies and joints",
+             "2D drawings",
+             "A proper Hole tool",
+             "Fillets on edges you pick",
+             "A nicer timeline",
+             "Getting it onto Flathub"]
+    return w, h, [ground(w, h),
+                  eyebrow(80, 150, "HELP WANTED"),
+                  talk(80, 250, ["What's still", "missing."], 84),
+                  checklist(80, 520, items, False, 34, 88),
+                  para(80, 1100, ["Pick one and it's yours to build.", "Small fixes help a lot too. It's C++ and Qt."], 30),
+                  footer(w, h, 4)]
 
 
 def post5():
     w, h = 1080, 1350
-    keys = [("E", "Extrude"), ("Q", "Press Pull"), ("F", "Fillet"), ("L", "Line"),
-            ("R", "Rectangle"), ("C", "Circle"), ("D", "Dimension"), ("M", "Move")]
+    rows = [("Try it and tell me what breaks", "Every bug report makes it better."),
+            ("Test it on your distro", "I can only check so many machines."),
+            ("Draw icons, write a tutorial", "Design and docs count just as much."),
+            ("Show it to a Fusion user on Linux", "That's how it finds its people.")]
     parts = [ground(w, h),
-             f'<ellipse cx="540" cy="760" rx="520" ry="340" fill="url(#glow)"/>',
-             eyebrow(80, 150, "SHORTCUTS"),
-             headline(80, 262, ["Your fingers", "already know it."], 94)]
-    u, gap = 196, 32
-    x0 = (w - (4 * u + 3 * gap)) / 2
-    for i, (k, lab) in enumerate(keys):
-        x = x0 + (i % 4) * (u + gap)
-        y = 560 + (i // 4) * (u + gap + 10)
-        parts.append(keycap(x, y, k, lab, True, u))
-    parts += [f'<circle cx="92" cy="1119" r="9" fill="{ORANGE}"/>',
-              text(116, 1128, "The same key as in Fusion 360", 28, BODY, INK2),
-              para(80, 1190, ["E extrudes. Q press-pulls. F fillets."], 30, INK),
-              footer(w, h, 5)]
+             eyebrow(80, 150, "NO CODE NEEDED"),
+             talk(80, 250, ["You don't need", "to code to help."], 84)]
+    for i, (head, sub) in enumerate(rows):
+        y = 490 + i * 150
+        parts += [f'<rect x="80" y="{y}" width="920" height="124" rx="16" fill="#111a25" stroke="{LINE}" stroke-width="2"/>',
+                  text(116, y + 56, f"{i + 1}", 34, DISPLAY, ORANGE),
+                  text(170, y + 56, head, 34, "font-family:Archivo;font-weight:700", INK),
+                  text(170, y + 98, sub, 26, BODY, INK3)]
+    parts += [footer(w, h, 5)]
     return w, h, parts
 
 
 def post6():
     w, h = 1080, 1350
-    tx, ty, tw, th = 80, 540, 920, 330
+    tx, ty, tw, th = 80, 520, 920, 330
     parts = [ground(w, h),
-             f'<ellipse cx="540" cy="700" rx="520" ry="330" fill="url(#glowOrange)"/>',
-             eyebrow(80, 150, "GET IT · FREE"),
-             headline(80, 262, ["One line.", "Then it's yours."], 100),
+             eyebrow(80, 150, "TRY IT TONIGHT"),
+             talk(80, 250, ["One command", "installs it."], 84),
              f'<rect x="{tx}" y="{ty + 12}" width="{tw}" height="{th}" rx="22" fill="#05080c"/>',
              f'<rect x="{tx}" y="{ty}" width="{tw}" height="{th}" rx="22" fill="#0a1018" stroke="{LINE}" stroke-width="2"/>',
              f'<rect x="{tx}" y="{ty}" width="{tw}" height="60" rx="22" fill="#0d151e"/>',
@@ -414,8 +394,8 @@ def post6():
               text(tx + 76, ty + 180, "kaiyao7572-creator.github.io/", 34, MONO, BLUE2),
               text(tx + 76, ty + 232, "PenguinCAD/install.sh | sh", 34, MONO, BLUE2),
               text(tx + 40, ty + 290, "==> Done. Find PenguinCAD in your apps.", 25, MONO, "#46c08a"),
-              para(80, 960, ["Any Linux distribution. Updates itself.", "Open source, GPL-3.0, and looking for help."], 30),
-              text(80, 1110, "Link in bio  →", 32, "font-family:Archivo;font-stretch:112%;font-weight:700", ORANGE),
+              para(80, 940, ["Most Linux distros, free, and it updates itself.", "Then tell me what breaks, or what you'd add."], 30),
+              text(80, 1100, "Link in bio  →", 32, "font-family:Archivo;font-stretch:112%;font-weight:700", ORANGE),
               footer(w, h, 6)]
     return w, h, parts
 

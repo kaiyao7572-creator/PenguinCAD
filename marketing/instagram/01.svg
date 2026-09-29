@@ -45,32 +45,30 @@
     <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
   </symbol>
 </defs><rect width="1080" height="1350" fill="#0b1119"/><rect width="1080" height="1350" fill="url(#minor)"/><rect width="1080" height="1350" fill="url(#major)"/><rect width="1080" height="1350" fill="url(#fade)"/>
-<ellipse cx="540" cy="760" rx="520" ry="360" fill="url(#glowOrange)"/>
-<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >NEW · FREE · OPEN SOURCE</text>
-<text x="80" y="262.0" font-size="86" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >The CAD your</text><text x="80" y="349.72" font-size="86" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >hands already</text><text x="80" y="437.44" font-size="86" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >know. On Linux.</text>
-<ellipse cx="540" cy="962.5" rx="439" ry="202" fill="url(#glow)"/>
-<ellipse cx="540.0" cy="952.5" rx="331.5" ry="172.4" fill="#000" fill-opacity=".45"/>
-<path d="M215.0 860.0 L215.0 940.0 A325.0 169.0 0 0 0 865.0 940.0 L865.0 860.0 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
-<ellipse cx="540.0" cy="860.0" rx="325.0" ry="169.0" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
-<ellipse cx="760.8" cy="926.3" rx="31.2" ry="16.2" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
-<path d="M729.6 926.3 A31.2 16.2 0 0 0 792.1 926.3" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
-<ellipse cx="540.0" cy="992.6" rx="31.2" ry="16.2" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
-<path d="M508.8 992.6 A31.2 16.2 0 0 0 571.2 992.6" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
-<ellipse cx="319.2" cy="926.3" rx="31.2" ry="16.2" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
-<path d="M287.9 926.3 A31.2 16.2 0 0 0 350.4 926.3" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
-<ellipse cx="319.2" cy="793.7" rx="31.2" ry="16.2" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
-<path d="M287.9 793.7 A31.2 16.2 0 0 0 350.4 793.7" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
-<ellipse cx="540.0" cy="727.4" rx="31.2" ry="16.2" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
-<path d="M508.8 727.4 A31.2 16.2 0 0 0 571.2 727.4" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
-<ellipse cx="760.8" cy="793.7" rx="31.2" ry="16.2" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
-<path d="M729.6 793.7 A31.2 16.2 0 0 0 792.1 793.7" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
-<ellipse cx="540.0" cy="856.2" rx="212.5" ry="110.5" fill="#c6d1dc" stroke="#8c9aa9" stroke-width="1.2"/>
-<ellipse cx="540.0" cy="850.0" rx="198.8" ry="103.4" fill="#aebbc8"/>
-<path d="M355.0 712.5 L355.0 850.0 A185.0 96.2 0 0 0 725.0 850.0 L725.0 712.5 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
-<ellipse cx="540.0" cy="712.5" rx="185.0" ry="96.2" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
-<ellipse cx="540.0" cy="712.5" rx="105.0" ry="54.6" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.8"/>
-<path d="M435.0 712.5 A105.0 54.6 0 0 0 645.0 712.5" fill="none" stroke="#c8d3de" stroke-opacity=".3" stroke-width="1.4"/>
-<g stroke="#ff9f43" stroke-width="1.6" fill="none"><path d="M215 1140V1190M865 1140V1190"/><path d="M218 1150H474.2M605.8 1150H862" marker-start="url(#arrow)" marker-end="url(#arrow)"/></g><text x="540.0" y="1160.8" font-size="30" style="font-family:'B612 Mono'" fill="#ff9f43" text-anchor="middle" >Ø80.00</text>
-<g stroke="#ff9f43" stroke-width="1.6" fill="none"><path d="M905 716V857" marker-start="url(#arrow)" marker-end="url(#arrow)"/><path d="M879 713H931M879 860H931"/></g><text x="927" y="796.58" font-size="28" style="font-family:'B612 Mono'" fill="#ff9f43" text-anchor="start" >18.00</text>
-<text x="265" y="610" font-size="26" style="font-family:'B612 Mono'" fill="#7cc6ea" text-anchor="start" >d1 = flange_d</text>
+<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >OPEN SOURCE · LINUX</text>
+<text x="80" y="250.0" font-size="80" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >I'm building a</text><text x="80" y="338.0" font-size="80" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >Fusion-style CAD</text><text x="80" y="426.0" font-size="80" style="font-family:Archivo;font-stretch:112%;font-weight:800;letter-spacing:-.01em" fill="#e7eef5" text-anchor="start" >for Linux.</text>
+<text x="80" y="540.0" font-size="32" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >It's free, it's early, and it's rough around</text><text x="80" y="586.4" font-size="32" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >the edges. I'd love some help with it.</text>
+<ellipse cx="540.0" cy="1000.0" rx="283.5" ry="147.4" fill="#000" fill-opacity=".35"/>
+<path d="M267.0 900.0 L267.0 967.2 A273.0 142.0 0 0 0 813.0 967.2 L813.0 900.0 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="540.0" cy="900.0" rx="273.0" ry="142.0" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="725.5" cy="955.7" rx="26.2" ry="13.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M699.3 955.7 A26.2 13.7 0 0 0 751.8 955.7" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="540.0" cy="1011.4" rx="26.2" ry="13.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M513.8 1011.4 A26.2 13.7 0 0 0 566.2 1011.4" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="354.5" cy="955.7" rx="26.2" ry="13.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M328.2 955.7 A26.2 13.7 0 0 0 380.7 955.7" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="354.5" cy="844.3" rx="26.2" ry="13.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M328.2 844.3 A26.2 13.7 0 0 0 380.7 844.3" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="540.0" cy="788.6" rx="26.2" ry="13.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M513.8 788.6 A26.2 13.7 0 0 0 566.2 788.6" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="725.5" cy="844.3" rx="26.2" ry="13.7" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M699.3 844.3 A26.2 13.7 0 0 0 751.8 844.3" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="540.0" cy="896.9" rx="178.5" ry="92.8" fill="#c6d1dc" stroke="#8c9aa9" stroke-width="1.2"/>
+<ellipse cx="540.0" cy="891.6" rx="167.0" ry="86.8" fill="#aebbc8"/>
+<path d="M384.6 776.1 L384.6 891.6 A155.4 80.8 0 0 0 695.4 891.6 L695.4 776.1 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="540.0" cy="776.1" rx="155.4" ry="80.8" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="540.0" cy="776.1" rx="88.2" ry="45.9" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.8"/>
+<path d="M451.8 776.1 A88.2 45.9 0 0 0 628.2 776.1" fill="none" stroke="#c8d3de" stroke-opacity=".3" stroke-width="1.4"/>
+<g stroke="#ff9f43" stroke-width="1.6" fill="none"><path d="M267 1155V1195M813 1155V1195"/><path d="M270 1165H477.92M602.08 1165H810" marker-start="url(#arrow)" marker-end="url(#arrow)"/></g><text x="540.0" y="1175.08" font-size="28" style="font-family:'B612 Mono'" fill="#ff9f43" text-anchor="middle" >Ø80.00</text>
+<g stroke="#ff9f43" stroke-width="1.6" fill="none"><path d="M880 779V897" marker-start="url(#arrow)" marker-end="url(#arrow)"/><path d="M854 776H906M854 900H906"/></g><text x="902" y="847.36" font-size="26" style="font-family:'B612 Mono'" fill="#ff9f43" text-anchor="start" >18.00</text>
 <use href="#penguin" x="64" y="1258.28" width="52.9" height="52.9"/><text x="126.1" y="1296" font-size="28.52" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5">Penguin<tspan fill="#22a3e6">CAD</tspan></text><text x="1016" y="1290" font-size="22" style="font-family:'B612 Mono'" fill="#6f839a" text-anchor="end" >01 / 06</text><path d="M64 1234H1016" stroke="#223142" stroke-width="1.5"/></svg>
