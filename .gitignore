@@ -31,3 +31,5 @@ ui_*.h
 # Store screenshots referenced by the AppStream metadata
 !packaging/screenshots/*.png
 tools/__pycache__/
+!marketing/*.png
+!marketing/instagram/*.png

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+<defs>
+  <pattern id="minor" width="36" height="36" patternUnits="userSpaceOnUse">
+    <path d="M36 0H0V36" fill="none" stroke="#80aad2" stroke-opacity=".06" stroke-width="1"/>
+  </pattern>
+  <pattern id="major" width="180" height="180" patternUnits="userSpaceOnUse">
+    <path d="M180 0H0V180" fill="none" stroke="#80aad2" stroke-opacity=".11" stroke-width="1"/>
+  </pattern>
+  <radialGradient id="fade" cx="50%" cy="40%" r="75%">
+    <stop offset="0" stop-color="#000" stop-opacity="0"/>
+    <stop offset="1" stop-color="#0b1119" stop-opacity=".95"/>
+  </radialGradient>
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0" stop-color="#22a3e6" stop-opacity=".30"/>
+    <stop offset="1" stop-color="#22a3e6" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glowOrange" cx="50%" cy="50%" r="50%">
+    <stop offset="0" stop-color="#ff9f43" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#ff9f43" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#eef3f7"/>
+    <stop offset="1" stop-color="#aebccb"/>
+  </linearGradient>
+  <linearGradient id="side" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#4c5c6e"/>
+    <stop offset=".45" stop-color="#9aa9b8"/>
+    <stop offset=".7" stop-color="#7b8a9a"/>
+    <stop offset="1" stop-color="#3f4e5f"/>
+  </linearGradient>
+  <linearGradient id="hole" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#0c131b"/>
+    <stop offset="1" stop-color="#2a3847"/>
+  </linearGradient>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+    <path d="M0 1.5 10 5 0 8.5z" fill="#ff9f43"/>
+  </marker>
+  <symbol id="penguin" viewBox="0 0 64 64">
+    <circle cx="32" cy="33" r="29" fill="none" stroke="#22a3e6" stroke-width="1.6" stroke-dasharray="4.2 3.2"/>
+    <path d="M30.5 7.5c9.8 0 15.9 7.6 16.6 17.2.5 7 3.4 11.4 3.4 18.3 0 9.6-7.9 15.5-18.5 15.5S13.6 52.4 13.6 42.4c0-6.2 2.6-10.6 2.6-17.4C16.2 14.9 21.6 7.5 30.5 7.5z" fill="#0E1722" stroke="#3B5068" stroke-width="1.2"/>
+    <path d="M33.8 14.6c5.6.4 8.6 4.6 9 10.2.4 6.2 3.4 10 3.4 17 0 7.4-5.6 11.9-13.3 11.9-7.4 0-12.4-4.4-12.4-11.3 0-6.5 3.6-9.8 4.4-15.6.9-7.3 3.4-12.6 8.9-12.2z" fill="#F4F7FA"/>
+    <path d="M40.6 20.2 52.8 23.6 40.9 26.9c-1.4-2.2-1.5-4.4-.3-6.7z" fill="#FF9F43"/>
+    <circle cx="35.6" cy="20.4" r="2.3" fill="#0E1722"/>
+    <circle cx="36.3" cy="19.7" r=".75" fill="#F4F7FA"/>
+    <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
+  </symbol>
+</defs><rect width="1080" height="1350" fill="#0b1119"/><rect width="1080" height="1350" fill="url(#minor)"/><rect width="1080" height="1350" fill="url(#major)"/><rect width="1080" height="1350" fill="url(#fade)"/>
+<circle cx="540" cy="760" r="400" fill="url(#glow)"/>
+<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >THE MARKING MENU</text>
+<text x="80" y="262.0" font-size="96" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >Right-click.</text><text x="80" y="359.92" font-size="96" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >Flick. Done.</text>
+<circle cx="540" cy="760" r="285" fill="none" stroke="#223142" stroke-width="2" stroke-dasharray="6 10"/>
+<rect x="469.6" y="449.5" width="140.8" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="540.0" y="485.5" font-size="30" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Repeat</text>
+<rect x="637.5" y="533.0" width="208.0" height="51.0" rx="8" fill="#22a3e6" stroke="#22a3e6" stroke-width="2"/><text x="741.525432638166" y="568.9745673618339" font-size="30" style="font-family:Archivo;font-weight:600" fill="#03121c" text-anchor="middle" >Press Pull</text>
+<rect x="771.4" y="734.5" width="107.2" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="825.0" y="770.5" font-size="30" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Redo</text>
+<rect x="687.9" y="936.0" width="107.2" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="741.5254326381661" y="972.025432638166" font-size="30" style="font-family:Archivo;font-weight:600" fill="#6f839a" text-anchor="middle" >Hole</text>
+<rect x="469.6" y="1019.5" width="140.8" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="540.0" y="1055.5" font-size="30" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Sketch</text>
+<rect x="242.9" y="936.0" width="191.2" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="338.474567361834" y="972.0254326381661" font-size="30" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Move/Copy</text>
+<rect x="201.4" y="734.5" width="107.2" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="255.0" y="770.5" font-size="30" style="font-family:Archivo;font-weight:600" fill="#e7eef5" text-anchor="middle" >Undo</text>
+<rect x="268.1" y="533.0" width="140.8" height="51.0" rx="8" fill="#16202c" stroke="#34485e" stroke-width="2"/><text x="338.4745673618339" y="568.974567361834" font-size="30" style="font-family:Archivo;font-weight:600" fill="#6f839a" text-anchor="middle" >Delete</text>
+<circle cx="540" cy="760" r="44" fill="#16202c" stroke="#34485e" stroke-width="2.5"/>
+<path d="M540 760 L556.8 719.3 A44 44 0 0 1 580.7 743.2 Z" fill="#22a3e6"/>
+<path d="M580 720 L660 640" stroke="#22a3e6" stroke-width="7" stroke-linecap="round"/>
+<path transform="translate(656.208152801713 635.7918471982869) scale(2.2)" d="M0 0v26l7-7 5 11 4.4-2-5-10.6h9.8z" fill="#e7eef5" stroke="#0b1119" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="80" y="1130.0" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Eight commands, always in the same place.</text><text x="80" y="1173.5" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Your hand learns where Undo is in a week.</text>
+<use href="#penguin" x="64" y="1258.28" width="52.9" height="52.9"/><text x="126.1" y="1296" font-size="28.52" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5">Penguin<tspan fill="#22a3e6">CAD</tspan></text><text x="1016" y="1290" font-size="22" style="font-family:'B612 Mono'" fill="#6f839a" text-anchor="end" >02 / 06</text><path d="M64 1234H1016" stroke="#223142" stroke-width="1.5"/></svg>

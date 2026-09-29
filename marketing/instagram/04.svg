@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+<defs>
+  <pattern id="minor" width="36" height="36" patternUnits="userSpaceOnUse">
+    <path d="M36 0H0V36" fill="none" stroke="#80aad2" stroke-opacity=".06" stroke-width="1"/>
+  </pattern>
+  <pattern id="major" width="180" height="180" patternUnits="userSpaceOnUse">
+    <path d="M180 0H0V180" fill="none" stroke="#80aad2" stroke-opacity=".11" stroke-width="1"/>
+  </pattern>
+  <radialGradient id="fade" cx="50%" cy="40%" r="75%">
+    <stop offset="0" stop-color="#000" stop-opacity="0"/>
+    <stop offset="1" stop-color="#0b1119" stop-opacity=".95"/>
+  </radialGradient>
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0" stop-color="#22a3e6" stop-opacity=".30"/>
+    <stop offset="1" stop-color="#22a3e6" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glowOrange" cx="50%" cy="50%" r="50%">
+    <stop offset="0" stop-color="#ff9f43" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#ff9f43" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#eef3f7"/>
+    <stop offset="1" stop-color="#aebccb"/>
+  </linearGradient>
+  <linearGradient id="side" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#4c5c6e"/>
+    <stop offset=".45" stop-color="#9aa9b8"/>
+    <stop offset=".7" stop-color="#7b8a9a"/>
+    <stop offset="1" stop-color="#3f4e5f"/>
+  </linearGradient>
+  <linearGradient id="hole" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#0c131b"/>
+    <stop offset="1" stop-color="#2a3847"/>
+  </linearGradient>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+    <path d="M0 1.5 10 5 0 8.5z" fill="#ff9f43"/>
+  </marker>
+  <symbol id="penguin" viewBox="0 0 64 64">
+    <circle cx="32" cy="33" r="29" fill="none" stroke="#22a3e6" stroke-width="1.6" stroke-dasharray="4.2 3.2"/>
+    <path d="M30.5 7.5c9.8 0 15.9 7.6 16.6 17.2.5 7 3.4 11.4 3.4 18.3 0 9.6-7.9 15.5-18.5 15.5S13.6 52.4 13.6 42.4c0-6.2 2.6-10.6 2.6-17.4C16.2 14.9 21.6 7.5 30.5 7.5z" fill="#0E1722" stroke="#3B5068" stroke-width="1.2"/>
+    <path d="M33.8 14.6c5.6.4 8.6 4.6 9 10.2.4 6.2 3.4 10 3.4 17 0 7.4-5.6 11.9-13.3 11.9-7.4 0-12.4-4.4-12.4-11.3 0-6.5 3.6-9.8 4.4-15.6.9-7.3 3.4-12.6 8.9-12.2z" fill="#F4F7FA"/>
+    <path d="M40.6 20.2 52.8 23.6 40.9 26.9c-1.4-2.2-1.5-4.4-.3-6.7z" fill="#FF9F43"/>
+    <circle cx="35.6" cy="20.4" r="2.3" fill="#0E1722"/>
+    <circle cx="36.3" cy="19.7" r=".75" fill="#F4F7FA"/>
+    <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
+  </symbol>
+</defs><rect width="1080" height="1350" fill="#0b1119"/><rect width="1080" height="1350" fill="url(#minor)"/><rect width="1080" height="1350" fill="url(#major)"/><rect width="1080" height="1350" fill="url(#fade)"/>
+<text x="80" y="150" font-size="24" style="font-family:'B612 Mono';letter-spacing:.14em" fill="#ff9f43" text-anchor="start" >THE TIMELINE</text>
+<text x="80" y="262.0" font-size="88" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >Sketch. Extrude.</text><text x="80" y="351.76" font-size="88" style="font-family:Archivo;font-stretch:125%;font-weight:800;letter-spacing:-.02em" fill="#e7eef5" text-anchor="start" >Fillet. Rewind.</text>
+<ellipse cx="200" cy="690" rx="130" ry="67.60000000000001" fill="#22a3e6" fill-opacity=".12" stroke="#22a3e6" stroke-width="3"/>
+<ellipse cx="200" cy="690" rx="46" ry="23.92" fill="#0b1119" stroke="#22a3e6" stroke-width="3"/>
+<ellipse cx="288.3" cy="716.5" rx="12" ry="6.24" fill="none" stroke="#22a3e6" stroke-width="2.4"/>
+<ellipse cx="200.0" cy="743.0" rx="12" ry="6.24" fill="none" stroke="#22a3e6" stroke-width="2.4"/>
+<ellipse cx="111.7" cy="716.5" rx="12" ry="6.24" fill="none" stroke="#22a3e6" stroke-width="2.4"/>
+<ellipse cx="111.7" cy="663.5" rx="12" ry="6.24" fill="none" stroke="#22a3e6" stroke-width="2.4"/>
+<ellipse cx="200.0" cy="637.0" rx="12" ry="6.24" fill="none" stroke="#22a3e6" stroke-width="2.4"/>
+<ellipse cx="288.3" cy="663.5" rx="12" ry="6.24" fill="none" stroke="#22a3e6" stroke-width="2.4"/>
+<g stroke="#ff9f43" stroke-width="1.6" fill="none"><path d="M70 798V828M330 798V828"/><path d="M73 808H167.68M232.32 808H327" marker-start="url(#arrow)" marker-end="url(#arrow)"/></g><text x="200.0" y="816.64" font-size="24" style="font-family:'B612 Mono'" fill="#ff9f43" text-anchor="middle" >Ø80</text>
+<path d="M410.0 680.0 L410.0 712.0 A130.0 67.6 0 0 0 670.0 712.0 L670.0 680.0 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="540.0" cy="680.0" rx="130.0" ry="67.6" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="628.3" cy="706.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M615.8 706.5 A12.5 6.5 0 0 0 640.8 706.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="540.0" cy="733.0" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M527.5 733.0 A12.5 6.5 0 0 0 552.5 733.0" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="451.7" cy="706.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M439.2 706.5 A12.5 6.5 0 0 0 464.2 706.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="451.7" cy="653.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M439.2 653.5 A12.5 6.5 0 0 0 464.2 653.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="540.0" cy="627.0" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M527.5 627.0 A12.5 6.5 0 0 0 552.5 627.0" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="628.3" cy="653.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M615.8 653.5 A12.5 6.5 0 0 0 640.8 653.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<path d="M540 630V530" stroke="#22a3e6" stroke-width="5"/>
+<path d="M526 540 540 514 554 540z" fill="#22a3e6"/>
+<path d="M750.0 680.0 L750.0 712.0 A130.0 67.6 0 0 0 1010.0 712.0 L1010.0 680.0 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="880.0" cy="680.0" rx="130.0" ry="67.6" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="968.3" cy="706.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M955.8 706.5 A12.5 6.5 0 0 0 980.8 706.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="880.0" cy="733.0" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M867.5 733.0 A12.5 6.5 0 0 0 892.5 733.0" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="791.7" cy="706.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M779.2 706.5 A12.5 6.5 0 0 0 804.2 706.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="791.7" cy="653.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M779.2 653.5 A12.5 6.5 0 0 0 804.2 653.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="880.0" cy="627.0" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M867.5 627.0 A12.5 6.5 0 0 0 892.5 627.0" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="968.3" cy="653.5" rx="12.5" ry="6.5" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.6"/>
+<path d="M955.8 653.5 A12.5 6.5 0 0 0 980.8 653.5" fill="none" stroke="#c8d3de" stroke-opacity=".35" stroke-width="1.2"/>
+<ellipse cx="880.0" cy="678.5" rx="85.0" ry="44.2" fill="#c6d1dc" stroke="#8c9aa9" stroke-width="1.2"/>
+<ellipse cx="880.0" cy="676.0" rx="79.5" ry="41.3" fill="#aebbc8"/>
+<path d="M806.0 621.0 L806.0 676.0 A74.0 38.5 0 0 0 954.0 676.0 L954.0 621.0 Z" fill="url(#side)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="880.0" cy="621.0" rx="74.0" ry="38.5" fill="url(#top)" stroke="#0a0f15" stroke-width="2"/>
+<ellipse cx="880.0" cy="621.0" rx="42.0" ry="21.8" fill="url(#hole)" stroke="#0a0f15" stroke-width="1.8"/>
+<path d="M838.0 621.0 A42.0 21.8 0 0 0 922.0 621.0" fill="none" stroke="#c8d3de" stroke-opacity=".3" stroke-width="1.4"/>
+<path d="M345 690H405" stroke="#6f839a" stroke-width="3" marker-end="url(#arrow)"/>
+<path d="M690 690H740" stroke="#6f839a" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="80" y="960" width="920" height="120" rx="18" fill="#111a25" stroke="#223142" stroke-width="2"/>
+<rect x="120" y="986" width="96" height="68" rx="10" fill="#16202c" stroke="#34485e" stroke-width="2" opacity="1"/>
+<g transform="translate(168 1020)" fill="none" stroke="#7cc6ea" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1"><rect x="-18" y="-10" width="26" height="22" rx="2"/><path d="M4 8 18 -6 22 -2 8 12 2 13z" fill="#ff9f43" stroke="#ff9f43" stroke-width="1.5"/></g>
+<rect x="242" y="986" width="96" height="68" rx="10" fill="#16202c" stroke="#34485e" stroke-width="2" opacity="1"/>
+<g transform="translate(290 1020)" fill="none" stroke="#7cc6ea" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1"><path d="M-18 10 0 1 18 10 0 19z"/><path d="M0 6V-16" stroke="#22a3e6"/><path d="M-7 -9 0 -18 7 -9z" fill="#22a3e6" stroke="#22a3e6" stroke-width="1.5"/></g>
+<rect x="364" y="986" width="96" height="68" rx="10" fill="#16202c" stroke="#34485e" stroke-width="2" opacity="1"/>
+<g transform="translate(412 1020)" fill="none" stroke="#7cc6ea" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1"><rect x="-18" y="-10" width="26" height="22" rx="2"/><path d="M4 8 18 -6 22 -2 8 12 2 13z" fill="#ff9f43" stroke="#ff9f43" stroke-width="1.5"/></g>
+<rect x="486" y="986" width="96" height="68" rx="10" fill="#16202c" stroke="#34485e" stroke-width="2" opacity="1"/>
+<g transform="translate(534 1020)" fill="none" stroke="#7cc6ea" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1"><path d="M-18 10 0 1 18 10 0 19z"/><path d="M0 6V-16" stroke="#22a3e6"/><path d="M-7 -9 0 -18 7 -9z" fill="#22a3e6" stroke="#22a3e6" stroke-width="1.5"/></g>
+<rect x="608" y="986" width="96" height="68" rx="10" fill="#16202c" stroke="#22a3e6" stroke-width="2" opacity="1"/>
+<g transform="translate(656 1020)" fill="none" stroke="#7cc6ea" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1"><path d="M-16 16V-16H-2V2A6 6 0 0 0 4 8H16V16Z"/><path d="M-2 -4V2A6 6 0 0 0 4 8H10A12 12 0 0 1 -2 -4Z" fill="#22a3e6" stroke="none"/></g>
+<rect x="730" y="986" width="96" height="68" rx="10" fill="#0f1720" stroke="#34485e" stroke-width="2" opacity="0.45"/>
+<g transform="translate(778 1020)" fill="none" stroke="#6f839a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.5"><rect x="-18" y="-10" width="26" height="22" rx="2"/><path d="M4 8 18 -6 22 -2 8 12 2 13z" fill="#ff9f43" stroke="#ff9f43" stroke-width="1.5"/></g>
+<rect x="852" y="986" width="96" height="68" rx="10" fill="#0f1720" stroke="#34485e" stroke-width="2" opacity="0.45"/>
+<g transform="translate(900 1020)" fill="none" stroke="#6f839a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.5"><path d="M-18 10 0 1 18 10 0 19z"/><path d="M0 6V-16" stroke="#22a3e6"/><path d="M-7 -9 0 -18 7 -9z" fill="#22a3e6" stroke="#22a3e6" stroke-width="1.5"/></g>
+<path d="M717 974V1066" stroke="#ff9f43" stroke-width="5" stroke-linecap="round"/>
+<path d="M705 970h24l-12 14z" fill="#ff9f43"/>
+<text x="80" y="1165.0" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >Drag the marker back to any step, change it,</text><text x="80" y="1208.5" font-size="30" style="font-family:Archivo;font-weight:500" fill="#a9b8c8" text-anchor="start" >and everything after it rebuilds.</text>
+<use href="#penguin" x="64" y="1258.28" width="52.9" height="52.9"/><text x="126.1" y="1296" font-size="28.52" style="font-family:Archivo;font-stretch:125%;font-weight:800" fill="#e7eef5">Penguin<tspan fill="#22a3e6">CAD</tspan></text><text x="1016" y="1290" font-size="22" style="font-family:'B612 Mono'" fill="#6f839a" text-anchor="end" >04 / 06</text><path d="M64 1234H1016" stroke="#223142" stroke-width="1.5"/></svg>
