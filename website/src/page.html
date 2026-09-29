@@ -1031,36 +1031,36 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
   <div class="wrap">
     <div class="section-head reveal">
       <p class="eyebrow">Install</p>
-      <h2 data-dim="d8">Download, double-click, find it in your apps.</h2>
+      <h2 data-dim="d8">Install it once, and it keeps itself up to date.</h2>
       <p class="lede">PenguinCAD ships as a Flatpak, so it runs the same on Fedora, Ubuntu, Arch, Mint or anything else with Flatpak. Remember what it is: an early build, for trying out and for helping, not yet for work you need to keep.</p>
     </div>
     <div class="install">
       <ol class="how reveal">
         <li>
-          <b>Download the Flatpak</b>
-          <span>One file of about 22 MB, for 64-bit PCs (x86-64).</span>
-          <a class="btn primary" href="https://github.com/kaiyao7572-creator/PenguinCAD/releases/latest/download/PenguinCAD-x86_64.flatpak"><svg aria-hidden="true"><use href="#i-download"/></svg>Download PenguinCAD.flatpak</a>
+          <b>Download the installer file</b>
+          <span>A small <code>.flatpakref</code> file that tells your system where PenguinCAD lives. For 64-bit PCs (x86-64).</span>
+          <a class="btn primary" href="https://kaiyao7572-creator.github.io/PenguinCAD/penguincad.flatpakref"><svg aria-hidden="true"><use href="#i-download"/></svg>Get penguincad.flatpakref</a>
         </li>
         <li>
-          <b>Double-click it</b>
-          <span>GNOME Software or KDE Discover opens and offers to install it. It fetches the Qt runtime it needs from Flathub on its own.</span>
+          <b>Open it</b>
+          <span>Double-click the downloaded file. GNOME Software or KDE Discover asks to install PenguinCAD. It adds PenguinCAD's own signed repository, so updates arrive like any other app's, and fetches the Qt runtime from Flathub.</span>
         </li>
         <li>
           <b>Search for “PenguinCAD”</b>
-          <span>It's in your app grid and launcher like any other application. Pin it to the dock if you like.</span>
+          <span>It's in your app grid and launcher like any other application, and in your software centre's search from now on.</span>
         </li>
       </ol>
       <div class="terminal reveal">
         <div class="term-tabs" aria-hidden="true"><button type="button" aria-selected="true" tabindex="-1">Terminal instead</button></div>
         <div class="term-body">
-          <div class="cmd"><code>flatpak install --user PenguinCAD-x86_64.flatpak</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>flatpak install --user https://kaiyao7572-creator.github.io/PenguinCAD/penguincad.flatpakref</code><button class="copy" type="button">Copy</button></div>
           <div class="cmd"><code>flatpak run io.github.kaiyao7572_creator.PenguinCAD</code><button class="copy" type="button">Copy</button></div>
+          <span class="term-note"># Updates come with everything else: flatpak update</span>
           <span class="term-note"># No Flatpak yet? flathub.org/setup has one page per distribution.</span>
-          <span class="term-note"># Not on Flathub yet, so it won't update itself: new versions are on the releases page.</span>
         </div>
       </div>
     </div>
-    <p class="fine reveal">Every version is on the <a href="https://github.com/kaiyao7572-creator/PenguinCAD/releases">releases page</a>. Getting PenguinCAD onto Flathub, so it's one search away inside the software centre and updates itself, is <a href="#help">one of the open jobs</a>.</p>
+    <p class="fine reveal">Rather have the whole app in one file? <a href="https://github.com/kaiyao7572-creator/PenguinCAD/releases/latest/download/PenguinCAD-x86_64.flatpak">Download the .flatpak</a> (about 22 MB, x86-64) and double-click it; it updates from the same repository. Installed 0.1.0 from a downloaded file? That version can't update itself: run <code>flatpak uninstall --user io.github.kaiyao7572_creator.PenguinCAD//master</code> once, then install as above. Every version is on the <a href="https://github.com/kaiyao7572-creator/PenguinCAD/releases">releases page</a>, and getting PenguinCAD onto Flathub itself is <a href="#help">one of the open jobs</a>.</p>
   </div>
 </section>
 

@@ -216,25 +216,33 @@ which solid-modelling features exist and which do not.
 
 ## Install
 
-PenguinCAD ships as a Flatpak, so it runs on any distribution with Flatpak
-and [Flathub set up](https://flathub.org/setup):
+PenguinCAD ships as a Flatpak from its own signed repository, so it runs on any
+distribution with Flatpak and [Flathub set up](https://flathub.org/setup) (the
+Qt runtime comes from Flathub):
 
-1. Download `PenguinCAD-x86_64.flatpak` from the
-   [latest release](https://github.com/kaiyao7572-creator/PenguinCAD/releases/latest).
-2. Double-click it; GNOME Software or KDE Discover installs it, fetching the
-   Qt runtime it needs from Flathub.
+1. Download
+   [penguincad.flatpakref](https://kaiyao7572-creator.github.io/PenguinCAD/penguincad.flatpakref)
+   and open it.
+2. GNOME Software or KDE Discover offers to install it, and adds the
+   repository so updates arrive like any other app's.
 3. Search for PenguinCAD in your applications.
+
+Builds are for 64-bit PCs (x86-64) only for now.
 
 Or from a terminal:
 
 ```bash
-flatpak install --user PenguinCAD-x86_64.flatpak
+flatpak install --user https://kaiyao7572-creator.github.io/PenguinCAD/penguincad.flatpakref
 flatpak run io.github.kaiyao7572_creator.PenguinCAD
 ```
 
-It isn't on Flathub yet, so it won't update itself; new versions are on the
-releases page. [`packaging/`](packaging/README.md) has the manifest and how to
-build the Flatpak yourself.
+Each [release](https://github.com/kaiyao7572-creator/PenguinCAD/releases) also
+carries the whole app as one `PenguinCAD-x86_64.flatpak` file, which updates
+from the same repository once installed. 0.1.0's downloaded file predates the
+repository and cannot update itself; if you installed it, run
+`flatpak uninstall --user io.github.kaiyao7572_creator.PenguinCAD//master`
+once and install as above. [`packaging/`](packaging/README.md) has the
+manifest and how to build the Flatpak yourself.
 
 ## Build
 
