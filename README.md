@@ -384,6 +384,13 @@ checked with `.IsNull()`. Comments explain why, not what. A command's `Icon()`
 returns an SVG in `resources/icons/`, drawn to the house style in
 `docs/ARCHITECTURE.md`; a check fails the test run if one is missing.
 
+## Support
+
+PenguinCAD is built by one person in their spare time. Code, bug reports and
+design help are the most valuable support (see
+[CONTRIBUTING.md](CONTRIBUTING.md)); if you would rather chip in money,
+[PayPal](https://paypal.me/KaiYao825) buys more of that time. Never expected, always appreciated.
+
 ## License
 
 PenguinCAD is free software under the [GNU General Public License v3.0 or
