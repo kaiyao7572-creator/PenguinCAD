@@ -4,7 +4,7 @@
     python3 marketing/src/make.py
 
 Writes marketing/og.png (the 1200 x 630 link preview); the Instagram posts
-come from casual.py. Every image is
+come from plain.py. Every image is
 an inline SVG in a small HTML page, rendered by headless Chrome so the
 site's own fonts (Archivo, B612 Mono) are used; the matching .svg sources
 are written next to each PNG.
@@ -422,7 +422,7 @@ def render(name, w, h, parts, target):
 
 
 def main():
-    # The Instagram posts come from casual.py now; post1..post6 here are the
+    # The Instagram posts come from plain.py now; post1..post6 here are the
     # earlier, polished set, kept for reference.
     w, h, p = og()
     render("og", w, h, p, OUT / "og.png")

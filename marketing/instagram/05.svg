@@ -1,33 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><defs>
-  <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
-    <path d="M36 0H0V36" fill="none" stroke="#9fc0dc" stroke-opacity=".38" stroke-width="1.2"/>
-  </pattern>
-  <filter id="rough" x="-10%" y="-10%" width="120%" height="120%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7"/>
-    <feDisplacementMap in="SourceGraphic" scale="7"/>
-  </filter>
-  <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
-    <feDropShadow dx="4" dy="10" stdDeviation="10" flood-color="#3a2f1e" flood-opacity=".28"/>
-  </filter>
-  <symbol id="penguin" viewBox="0 0 64 64">
-    <path d="M30.5 7.5c9.8 0 15.9 7.6 16.6 17.2.5 7 3.4 11.4 3.4 18.3 0 9.6-7.9 15.5-18.5 15.5S13.6 52.4 13.6 42.4c0-6.2 2.6-10.6 2.6-17.4C16.2 14.9 21.6 7.5 30.5 7.5z" fill="#0E1722"/>
-    <path d="M33.8 14.6c5.6.4 8.6 4.6 9 10.2.4 6.2 3.4 10 3.4 17 0 7.4-5.6 11.9-13.3 11.9-7.4 0-12.4-4.4-12.4-11.3 0-6.5 3.6-9.8 4.4-15.6.9-7.3 3.4-12.6 8.9-12.2z" fill="#F4F7FA"/>
-    <path d="M40.6 20.2 52.8 23.6 40.9 26.9c-1.4-2.2-1.5-4.4-.3-6.7z" fill="#FF9F43"/>
-    <circle cx="35.6" cy="20.4" r="2.3" fill="#0E1722"/>
-    <circle cx="36.3" cy="19.7" r=".75" fill="#F4F7FA"/>
-    <path d="M22 58.6h19.5" stroke="#FF9F43" stroke-width="3.2" stroke-linecap="round"/>
-  </symbol>
-</defs><rect width="1080" height="1350" fill="#f7f3ea"/><rect width="1080" height="1350" fill="url(#grid)"/><path d="M104 0V1350" stroke="#e39a9a" stroke-width="2.5" stroke-opacity=".7"/>
-<text x="140" y="180.0" font-size="104" style="font-family:Caveat;font-weight:700" fill="#1e2a36" text-anchor="start">you don't have to</text><text x="140" y="278.8" font-size="104" style="font-family:Caveat;font-weight:700" fill="#1e2a36" text-anchor="start">code to help!</text>
-<path d="M140 290 C284.0 296 476.0 285 620 293" fill="none" stroke="#f07818" stroke-width="8" stroke-linecap="round" stroke-opacity=".85" filter="url(#rough)"/>
-<text x="150" y="470" font-size="72" style="font-family:Caveat;font-weight:700" fill="#f07818" text-anchor="start">1.</text>
-<text x="230" y="466" font-size="48" style="font-family:'Patrick Hand'" fill="#1e2a36" text-anchor="start">try it + tell me what breaks</text>
-<text x="150" y="620" font-size="72" style="font-family:Caveat;font-weight:700" fill="#f07818" text-anchor="start">2.</text>
-<text x="230" y="616" font-size="48" style="font-family:'Patrick Hand'" fill="#1e2a36" text-anchor="start">test it on your distro</text>
-<text x="150" y="770" font-size="72" style="font-family:Caveat;font-weight:700" fill="#f07818" text-anchor="start">3.</text>
-<text x="230" y="766" font-size="48" style="font-family:'Patrick Hand'" fill="#1e2a36" text-anchor="start">make icons or a tutorial</text>
-<text x="150" y="920" font-size="72" style="font-family:Caveat;font-weight:700" fill="#f07818" text-anchor="start">4.</text>
-<text x="230" y="916" font-size="48" style="font-family:'Patrick Hand'" fill="#1e2a36" text-anchor="start">send it to a friend who uses fusion</text>
-<text x="150" y="1120.0" font-size="40" style="font-family:'Patrick Hand'" fill="#8a8171" text-anchor="start">(there's a donate button too,</text><text x="150" y="1172.0" font-size="40" style="font-family:'Patrick Hand'" fill="#8a8171" text-anchor="start">if you want to chip in)</text>
-<g transform="rotate(-12 895.0 1105.0)" filter="url(#shadow)"><circle cx="895.0" cy="1105.0" r="75.0" fill="#fff"/><circle cx="895.0" cy="1105.0" r="67.0" fill="#2aa7e8"/><use href="#penguin" x="841.0" y="1048.0" width="108.0" height="108.0"/></g>
-<text x="140" y="1290" font-size="44" style="font-family:Caveat;font-weight:700" fill="#1e2a36" text-anchor="start">penguincad</text><text x="1010" y="1290" font-size="44" style="font-family:Caveat;font-weight:500" fill="#8a8171" text-anchor="end">5/6</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="#ffffff"/><text x="90" y="170" font-size="62" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#111418" text-anchor="start">You don't need to code</text>
+<text x="90" y="245" font-size="62" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#111418" text-anchor="start">to help.</text>
+<text x="90" y="400" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#6b7280" text-anchor="start">1.</text>
+<text x="154" y="400" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#111418" text-anchor="start">Try it and tell me what breaks</text>
+<text x="90" y="520" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#6b7280" text-anchor="start">2.</text>
+<text x="154" y="520" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#111418" text-anchor="start">Test it on your Linux distro</text>
+<text x="90" y="640" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#6b7280" text-anchor="start">3.</text>
+<text x="154" y="640" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#111418" text-anchor="start">Make icons or write a tutorial</text>
+<text x="90" y="760" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#6b7280" text-anchor="start">4.</text>
+<text x="154" y="760" font-size="44" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#111418" text-anchor="start">Show it to a friend who uses Fusion</text>
+<text x="90" y="1010.0" font-size="34" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#6b7280" text-anchor="start">And if you want to chip in, there's a donate</text><text x="90" y="1054.2" font-size="34" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#6b7280" text-anchor="start">button on the website. No pressure.</text>
+<text x="90" y="1280" font-size="30" style="font-family:Archivo;font-stretch:100%;font-weight:700;letter-spacing:-.01em" fill="#111418" text-anchor="start">PenguinCAD</text><text x="990" y="1280" font-size="28" style="font-family:Archivo;font-stretch:100%;font-weight:400" fill="#6b7280" text-anchor="end">5 / 6</text></svg>
