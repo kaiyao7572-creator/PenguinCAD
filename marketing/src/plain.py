@@ -125,7 +125,7 @@ def post5():
     for i, r in enumerate(rows):
         y = 400 + i * 120
         out += [t(X, y, f"{i + 1}.", 44, HEAD, GREY), t(X + 64, y, r, 44)]
-    out += [lines(1010, ["And if you want to chip in, there's a donate", "button on the website. No pressure."], 34, BODY, GREY),
+    out += [lines(1010, ["Even a quick \"this crashed on my laptop\"", "helps more than you'd think."], 34, BODY, GREY),
             footer(5)]
     return out
 
