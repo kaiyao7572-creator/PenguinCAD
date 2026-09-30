@@ -83,8 +83,9 @@ def post1():
             t(X, 245, "for Linux.", 62, HEAD),
             lines(330, ["It works like Fusion 360: the timeline,", "the right-click menu, the shortcuts."], 34, BODY, GREY),
             shot("app.webp", 470),
-            t(X, 1090, "This is it right now. A plate with two holes,", 32, BODY, GREY),
-            t(X, 1135, "sketched, extruded and filleted.", 32, BODY, GREY),
+            t(X, 1080, "This is it right now: sketched, extruded, filleted.", 32, BODY, GREY),
+            t(X, 1150, "Linux for now. Windows and Mac should be doable", 32, BODY, INK),
+            t(X, 1192, "too, and I'd love help getting it there.", 32, BODY, INK),
             footer(1)]
 
 
