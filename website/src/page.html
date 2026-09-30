@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PenguinCAD</title>
-<meta name="description" content="PenguinCAD is an open-source, Fusion 360-style parametric CAD for Linux. It is early and half-built, and it is looking for contributors.">
+<meta name="description" content="PenguinCAD is a free, open-source CAD app for Linux that works like Fusion 360. It's early, so try it out and help build it.">
 <meta name="theme-color" content="#0b1119">
 <meta property="og:type" content="website">
-<meta property="og:title" content="PenguinCAD: a Fusion-style CAD for Linux, half-built in the open">
-<meta property="og:description" content="Open-source, native on Linux, built on OpenCASCADE. Early, honest about its gaps, and looking for people to help.">
+<meta property="og:title" content="PenguinCAD: a CAD app for Linux that works like Fusion 360">
+<meta property="og:description" content="Free and open source. It's early, so try it out, tell me what breaks, and help build it.">
 <meta property="og:url" content="https://kaiyao7572-creator.github.io/PenguinCAD/">
 <meta property="og:image" content="https://kaiyao7572-creator.github.io/PenguinCAD/og.png">
 <meta property="og:image:width" content="1200">
@@ -641,6 +641,18 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 .foot a:hover { color: var(--ink); }
 .foot .legal { max-width: 72ch; margin-top: 14px; font-size: 13px; line-height: 1.6; }
 
+
+/* plainer bits */
+.pin::after { display: none; }
+.small-print { color: var(--ink-3); font-size: 14.5px; }
+.status.two { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 920px) { .status.two { grid-template-columns: 1fr; } }
+.helplist { margin: 0; padding: 0 0 0 22px; display: grid; gap: 14px; max-width: 820px; color: var(--ink-2); font-size: 17px; }
+.helplist b { color: var(--ink); font-weight: 600; }
+.helplist a { font-weight: 600; margin-left: 4px; }
+.section-head h2 { margin-top: 0; }
+.hero h1 { font-size: clamp(38px, 5.8vw, 76px); }
+
 /* Readable at rest; the observer only adds a short lift as a block enters. */
 .reveal.in { animation: lift 0.7s var(--ease) both; }
 @keyframes lift { from { transform: translateY(16px); } }
@@ -685,10 +697,10 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#install">Install</a>
-      <a href="#why">Why</a>
+      <a href="#works">What works</a>
       <a href="#compare">Compare</a>
-      <a href="#status">Status</a>
-      <a href="#help">Help out</a>
+      <a href="#help">Help</a>
+      <a href="#faq">FAQ</a>
     </nav>
     <div class="nav-end">
       <div class="theme-switch" role="group" aria-label="Colour theme">
@@ -706,20 +718,14 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 <section class="hero" id="top">
   <div class="wrap">
     <div class="hero-copy">
-      <p class="eyebrow">Open-source CAD for Linux <b>·</b> early <b>·</b> looking for help</p>
-      <h1 data-dim="d1">A Fusion-style CAD for Linux, <span class="quiet">half‑built in the open.</span></h1>
-      <p class="lede">PenguinCAD copies the way Fusion&nbsp;360 works (the feature timeline, the marking menu, the shortcut keys) on OpenCASCADE, the open kernel FreeCAD also uses. Today you can sketch, extrude, fillet, drive it all from parameters and save your design. You can't make assemblies or drawings yet, and much of it is rough. If you want this to exist, the quickest way to get there is to help build it.</p>
+      <h1 data-dim="d1">A CAD app for Linux that works like Fusion&nbsp;360.</h1>
+      <p class="lede">Hi! I'm building PenguinCAD: a free, open-source CAD program that works the way Fusion 360 does. It has the timeline, the right-click menu and the same shortcut keys. You can already sketch, extrude, fillet, use parameters and save your work. There are no assemblies or drawings yet, and it's rough in places. I'd love for you to try it, and even more to help build it.</p>
       <div class="cta">
-        <a class="btn primary" href="#help">Find something to work on <svg aria-hidden="true"><use href="#i-arrow-down"/></svg></a>
-        <a class="btn" href="#install"><svg aria-hidden="true"><use href="#i-download"/></svg>Install it (Flatpak)</a>
+        <a class="btn primary" href="#install"><svg aria-hidden="true"><use href="#i-download"/></svg>Install it</a>
+        <a class="btn" href="#help">How you can help</a>
         <a class="btn donate-btn" href="https://paypal.me/KaiYao825"><svg aria-hidden="true"><use href="#i-heart"/></svg>Donate</a>
       </div>
-      <ul class="facts">
-        <li>GPL-3.0</li>
-        <li>C++17 · Qt 6 · OpenCASCADE 7.9</li>
-        <li>~49k lines · 26 test suites</li>
-        <li>1 maintainer so far</li>
-      </ul>
+      <p class="small-print">Free and open source (GPL-3.0) · Linux, 64-bit PCs · version 0.1.1</p>
     </div>
 
     <figure class="shot-frame reveal" style="margin-bottom:0">
@@ -733,14 +739,14 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
       </div>
     </figure>
     <div class="shot-caption">
-      <span>Unretouched: a sketch, an extrude and a fillet, captured by the app's own script harness.</span>
-      <span class="legend"><i></i>Rough edges, each a good first contribution</span>
+      <span>This is what it looks like right now. Nothing's been touched up.</span>
+      <span class="legend"><i></i>Rough edges that would make a good first fix</span>
     </div>
     <ol class="flaws" id="flaws">
-      <li data-flaw="0"><span><b>A stray scrollbar.</b> The ribbon grows a horizontal scrollbar under its buttons that Fusion doesn't have.</span></li>
-      <li data-flaw="1"><span><b>Clipped fields.</b> The properties panel cuts off its own values: "nm" is really "mm".</span></li>
-      <li data-flaw="2"><span><b>Truncated names.</b> The browser squeezes "Sketch1" down to "Sket…".</span></li>
-      <li data-flaw="3"><span><b>A bare timeline.</b> Fusion's has feature icons and a marker you drag. Ours is text buttons.</span></li>
+      <li data-flaw="0"><span><b>A stray scrollbar</b> under the toolbar that shouldn't be there.</span></li>
+      <li data-flaw="1"><span><b>Clipped text</b> in the properties panel: "nm" is supposed to say "mm".</span></li>
+      <li data-flaw="2"><span><b>Cut-off names</b> in the browser: "Sketch1" shows up as "Sket…".</span></li>
+      <li data-flaw="3"><span><b>A plain timeline.</b> Fusion's has icons and a marker you can drag.</span></li>
     </ol>
   </div>
 </section>
@@ -748,9 +754,8 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 <section class="section" id="install">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Install</p>
-      <h2 data-dim="d2">Install it once, and it keeps itself up to date.</h2>
-      <p class="lede">PenguinCAD ships as a Flatpak, so it runs the same on Fedora, Ubuntu, Arch, Mint or anything else with Flatpak. Remember what it is: an early build, for trying out and for helping, not yet for work you need to keep.</p>
+      <h2>Install</h2>
+      <p class="lede">It's a Flatpak, so it runs on pretty much any Linux distro, and it updates itself. It's an early version, though, so don't trust it with anything important yet.</p>
     </div>
     <div class="install">
       <ol class="how reveal">
@@ -784,26 +789,61 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
   </div>
 </section>
 
-<section class="section" id="why">
+<section class="section" id="works">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Why this exists</p>
-      <h2 data-dim="d3">Why build another CAD?</h2>
+      <h2>What works (and what doesn't yet)</h2>
     </div>
-    <div class="why">
-      <div class="prose reveal">
-        <p>Fusion&nbsp;360 taught a lot of people CAD: the timeline you can roll back, the ring of commands under the right mouse button, <kbd>E</kbd> for extrude. It doesn't run on Linux, and it keeps your designs in Autodesk's cloud.</p>
-        <p>The open-source options are real and some are excellent. <strong>None of them work the way Fusion does</strong>, and for someone who already knows Fusion, relearning a workflow is the hard part of switching.</p>
-        <p>PenguinCAD's bet is narrow: keep Fusion's interaction model as exactly as possible, on an open kernel, as a native Linux app. It is a long way from that goal. The table on the right is where we'd send you today, and it isn't mostly us.</p>
+    <div class="status two">
+      <div class="col works reveal">
+        <header><h3>Works now</h3></header>
+        <ul>
+          <li><strong>Sketching</strong>: lines, rectangles, circles, arcs, polygons, slots, splines</li>
+          <li><strong>Constraints and dimensions</strong> that actually drive the sketch</li>
+          <li><strong>Extrude, revolve, sweep and loft</strong>, as new bodies or cutting and joining</li>
+          <li>Fillet, chamfer and shell (they apply to every edge for now)</li>
+          <li>Patterns, mirror, combine and Press Pull</li>
+          <li><strong>Parameters</strong>: type an expression like <code>d3 * 1.8</code> into any box</li>
+          <li><strong>Saving and opening</strong> your designs</li>
+          <li>The right-click marking menu, Fusion's mouse controls and shortcuts</li>
+          <li>Measure, section view, STEP import/export, STL and OBJ export</li>
+        </ul>
       </div>
-      <ul class="route reveal" aria-label="Which tool to use for what">
-        <li><span class="want">A mature open-source CAD, today</span><span class="use">FreeCAD</span></li>
-        <li><span class="want">Fusion itself, on Windows or macOS</span><span class="use">Fusion 360</span></li>
-        <li><span class="want">Professional CAD in a browser, any OS</span><span class="use">Onshape</span></li>
-        <li><span class="want">Parts written as code, reproducible</span><span class="use">CadQuery · build123d · OpenSCAD</span></li>
-        <li><span class="want">Small, fast constraint modelling on Linux</span><span class="use">SolveSpace · Dune 3D</span></li>
-        <li class="gap"><span class="want">Fusion's way of working, native on Linux, open source</span><span class="use">Nothing yet. That's the gap.</span></li>
-      </ul>
+      <div class="col wanted reveal">
+        <header><h3>Not yet</h3></header>
+        <ul>
+          <li><strong>Assemblies and joints</strong></li>
+          <li><strong>2D drawings</strong></li>
+          <li>Picking which edges get filleted</li>
+          <li>A Hole tool</li>
+          <li>Sketching on construction planes</li>
+          <li>A Flathub listing</li>
+          <li>Mac and Windows (nobody has tried)</li>
+          <li>CAM</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="shots">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>More screenshots</h2>
+    </div>
+    <div class="gallery">
+      <figure class="wide reveal">
+        <button type="button" data-full="img/marking-menu.webp" aria-label="Enlarge the marking menu screenshot"><img src="img/marking-menu.webp" width="1800" height="1096" loading="lazy" alt="The marking menu open over the plate: eight commands in a ring around the cursor, with Hole, Delete, Redo and Press Pull greyed out."></button>
+        <figcaption><b>The right-click menu.</b> Hole and Delete are greyed out because I haven't built them yet.</figcaption>
+      </figure>
+      <figure class="reveal">
+        <button type="button" data-full="img/sketch.webp" aria-label="Enlarge the sketch screenshot"><img src="img/sketch.webp" width="1800" height="1096" loading="lazy" alt="Sketch mode: a rectangle with two circles, live dimensions on every edge, and the contextual Sketch tab open in the toolbar."></button>
+        <figcaption><b>Sketching,</b> with the dimensions showing while you draw.</figcaption>
+      </figure>
+      <figure class="reveal">
+        <button type="button" data-full="img/parameters.webp" aria-label="Enlarge the parameters screenshot"><img src="img/parameters.webp" width="1200" height="600" loading="lazy" alt="The Change Parameters dialog listing model parameters d1, d2 and d3 for Sketch1, Extrude1 and Fillet1, with their expressions and values."></button>
+        <figcaption><b>The parameters window.</b> It works, but it's pretty bare. A good thing to improve if you like UI work.</figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -811,9 +851,8 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 <section class="section" id="compare">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Comparison</p>
-      <h2 data-dim="d4">How it compares, honestly.</h2>
-      <p class="lede">PenguinCAD is the least capable tool on this list. Its row is here so you can see exactly what's missing, and the one column where it's trying to be different.</p>
+      <h2>How it compares</h2>
+      <p class="lede">Honestly, PenguinCAD does less than everything else on this list. If you need a CAD program for real work today, FreeCAD is the open-source one to get, and Fusion and Onshape are great if Windows, macOS or the cloud work for you. What I'm after is Fusion's way of working, running natively on Linux, and free.</p>
     </div>
     <div class="table-scroll reveal" tabindex="0" role="region" aria-label="Comparison of CAD tools">
       <table class="compare">
@@ -933,151 +972,32 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
     </div>
     <div class="compare-key" aria-hidden="true">
       <span><span class="mark y">✓</span>Yes</span>
-      <span><span class="mark p">~</span>Partly, or through an add-on</span>
+      <span><span class="mark p">~</span>Partly, or with an add-on</span>
       <span><span class="mark n">✕</span>No</span>
     </div>
-    <p class="fine">This is our reading as of September 2026, and other projects move fast. If we got something wrong, fix it: this page lives in the repository under <code>website/</code>, and a pull request correcting the table is a perfectly good first contribution.</p>
-  </div>
-</section>
-
-<section class="section" id="status">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <p class="eyebrow">Where it stands</p>
-      <h2 data-dim="d5">What works, what's being built, what nobody has started.</h2>
-    </div>
-    <div class="status">
-      <div class="col works reveal">
-        <header><h3>Works today</h3><span class="count">tested</span></header>
-        <ul>
-          <li><strong>Sketching</strong>: lines, rectangles, circles, arcs, polygons, slots, splines, conics</li>
-          <li><strong>12 constraints and 6 driving dimensions</strong>, on an in-house solver</li>
-          <li><strong>Extrude, revolve, sweep, loft</strong>, as a new body or join, cut or intersect</li>
-          <li>Fillet, chamfer and shell (on every edge, for now)</li>
-          <li>Patterns, mirror, combine, Press Pull</li>
-          <li><strong>Parameters and expressions</strong> with unit checking; every dimension is a d# name</li>
-          <li>Marking menu with click, flick and hold; Fusion's navigation and keys</li>
-          <li>Measure, section view, model properties</li>
-          <li>STEP import and export; STL and OBJ export</li>
-        </ul>
-      </div>
-      <div class="col now reveal">
-        <header><h3>Just landed</h3><span class="count">new</span></header>
-        <ul>
-          <li><strong>Saving and opening designs</strong>: a native, human-readable .pcad format, with a round-trip test for every one of the 23 feature types</li>
-          <li><strong>A real icon set</strong>: about a hundred SVG icons in place of the emoji</li>
-          <li><strong>A Flatpak</strong> you can download and double-click to install</li>
-        </ul>
-      </div>
-      <div class="col wanted reveal">
-        <header><h3>Not started: wanted</h3><span class="count">yours?</span></header>
-        <ul>
-          <li><strong>Assemblies and joints</strong></li>
-          <li><strong>2D drawings</strong> a workshop can build from</li>
-          <li>Picking edges for fillet and chamfer</li>
-          <li>A Hole command</li>
-          <li>Sketching on construction planes</li>
-          <li>Sweeps along open paths</li>
-          <li>A Flathub listing, so it installs from GNOME Software and Discover</li>
-          <li>More packages: AppImage, AUR, COPR</li>
-          <li>Running the test suites in CI</li>
-          <li>Native Wayland (it runs through XWayland)</li>
-          <li>CAM</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="shots">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <p class="eyebrow">Screenshots</p>
-      <h2 data-dim="d6">More of the real thing.</h2>
-    </div>
-    <div class="gallery">
-      <figure class="wide reveal">
-        <button type="button" data-full="img/marking-menu.webp" aria-label="Enlarge the marking menu screenshot"><img src="img/marking-menu.webp" width="1800" height="1096" loading="lazy" alt="The marking menu open over the plate: eight commands in a ring around the cursor, with Hole, Delete, Redo and Press Pull greyed out."></button>
-        <figcaption><b>The marking menu.</b> Right-click, flick or hold, with Fusion's thresholds. Hole and Delete are greyed because they don't exist yet.</figcaption>
-      </figure>
-      <figure class="reveal">
-        <button type="button" data-full="img/sketch.webp" aria-label="Enlarge the sketch screenshot"><img src="img/sketch.webp" width="1800" height="1096" loading="lazy" alt="Sketch mode: a rectangle with two circles, live dimensions on every edge, and the contextual Sketch tab open in the toolbar."></button>
-        <figcaption><b>The sketcher.</b> Live dimensions while you draw, and a contextual Sketch tab that appears and disappears as Fusion's does.</figcaption>
-      </figure>
-      <figure class="reveal">
-        <button type="button" data-full="img/parameters.webp" aria-label="Enlarge the parameters screenshot"><img src="img/parameters.webp" width="1200" height="600" loading="lazy" alt="The Change Parameters dialog listing model parameters d1, d2 and d3 for Sketch1, Extrude1 and Fillet1, with their expressions and values."></button>
-        <figcaption><b>Change Parameters.</b> Every dimension becomes a named model parameter any expression can read. It works, and it's plain; this dialog is another good place to start.</figcaption>
-      </figure>
-    </div>
+    <p class="fine">This is my best understanding as of September 2026. If I got something wrong, tell me or send a fix.</p>
   </div>
 </section>
 
 <section class="section" id="help">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Help out</p>
-      <h2 data-dim="d7">You don't need to know OpenCASCADE to help.</h2>
-      <p class="lede">Pick whatever matches what you're good at. Everything below is real, unclaimed work, and the list in <a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> goes into more detail.</p>
+      <h2>Want to help?</h2>
+      <p class="lede">Right now it's just me, so any help makes a real difference, and a lot of it doesn't need any code.</p>
     </div>
-    <div class="tracks">
-      <article class="track reveal">
-        <div class="tags"><span class="tag easy">No code</span><span class="tag">Fusion users</span></div>
-        <h3>Try it and tell us what breaks</h3>
-        <p>Build it and model something you'd model in Fusion. Every "that's not how Fusion does it" is worth an issue: it's the most valuable input this project can get.</p>
-        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/issues/new">Open an issue →</a>
-      </article>
-      <article class="track reveal">
-        <div class="tags"><span class="tag easy">Good first issue</span><span class="tag">Qt · C++</span></div>
-        <h3>Fix a rough edge</h3>
-        <ul>
-          <li>Clipped fields in the properties panel</li>
-          <li>Truncated names in the browser</li>
-          <li>Feature icons and a draggable marker on the timeline</li>
-          <li>The ribbon's stray horizontal scrollbar</li>
-        </ul>
-        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#good-first-issues">See the details →</a>
-      </article>
-      <article class="track reveal">
-        <div class="tags"><span class="tag mid">Medium</span><span class="tag">OCCT · geometry</span></div>
-        <h3>Close a modelling gap</h3>
-        <ul>
-          <li>Fillet and chamfer on picked edges</li>
-          <li>A Hole command</li>
-          <li>Sketch on a construction plane</li>
-          <li>Sweep along an open path</li>
-        </ul>
-        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#modelling-gaps">See the details →</a>
-      </article>
-      <article class="track reveal">
-        <div class="tags"><span class="tag big">Large</span><span class="tag">Design first</span></div>
-        <h3>Take on a big one</h3>
-        <p>Assemblies with joints, or 2D drawings. Each is a document-model project: start with a design discussion in an issue before writing code.</p>
-        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#big-projects">See the details →</a>
-      </article>
-      <article class="track reveal">
-        <div class="tags"><span class="tag easy">Linux packaging</span><span class="tag">CI</span></div>
-        <h3>Get it onto people's machines</h3>
-        <p>There's a Flatpak you download by hand. Getting it onto Flathub, and into AppImage, AUR and COPR, would put it one search away. So would running the test suites in CI, next to the Flatpak build that already runs.</p>
-        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md#packaging-and-ci">See the details →</a>
-      </article>
-      <article class="track reveal">
-        <div class="tags"><span class="tag easy">No C++</span><span class="tag">Design · docs</span></div>
-        <h3>Design and write</h3>
-        <p>A light theme, a pass over the panels' spacing, a first-model tutorial, this website, and the running audit of where PenguinCAD falls short of Fusion.</p>
-        <a class="more" href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/docs/FUSION360_COMPARISON.md">Read the audit →</a>
-      </article>
-    </div>
+    <ul class="helplist reveal">
+      <li><b>Try it and tell me what breaks.</b> If you know Fusion, "Fusion does this differently" is super useful too. <a href="https://github.com/kaiyao7572-creator/PenguinCAD/issues/new">Open an issue</a></li>
+      <li><b>Fix one of the rough edges</b> from the screenshot above. They're small Qt/C++ jobs and a nice way in.</li>
+      <li><b>Take on something bigger</b>, like picked-edge fillets, a Hole tool, or eventually assemblies. Open an issue first so we can talk it through.</li>
+      <li><b>Package it</b> for Flathub, the AUR or COPR, or add the tests to CI.</li>
+      <li><b>Design and docs:</b> a light theme, a beginner tutorial, or better screenshots.</li>
+    </ul>
+    <p class="fine reveal">To get started with code: build it (see below), run <code>./tests/run_tests.sh</code>, and skim <a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>. Then say on an issue what you're picking up. <a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> has the full list.</p>
 
-    <ol class="steps reveal" aria-label="How to make your first contribution">
-      <li><b>Build it</b><span>Three commands (below), then <code>./tests/run_tests.sh</code>. It should end with "All test suites passed."</span></li>
-      <li><b>Read the contract</b><span><a href="https://github.com/kaiyao7572-creator/PenguinCAD/blob/main/docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a> covers the feature lifecycle, references and the known traps.</span></li>
-      <li><b>Claim something</b><span>Open or comment on an issue saying what you'll take, so two people don't build the same thing.</span></li>
-      <li><b>Send a pull request with a test</b><span>The app can drive its own UI and screenshot it, so a UI change can come with evidence.</span></li>
-    </ol>
     <div class="support reveal" id="support">
       <div>
-        <h3><svg aria-hidden="true"><use href="#i-heart"/></svg>Can't code? You can still keep it going.</h3>
-        <p>PenguinCAD is built by one person in their spare time. A donation buys more of that time: more features, faster fixes. Never expected, always appreciated.</p>
+        <h3><svg aria-hidden="true"><use href="#i-heart"/></svg>Or chip in a few bucks</h3>
+        <p>I work on this in my spare time. If it's useful to you, a donation helps me spend more of that time on it. No pressure at all.</p>
       </div>
       <a class="btn donate-btn big" href="https://paypal.me/KaiYao825"><svg aria-hidden="true"><use href="#i-heart"/></svg>Donate with PayPal</a>
     </div>
@@ -1087,32 +1007,28 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 <section class="section" id="faq">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Questions</p>
-      <h2 data-dim="d8">Fair questions.</h2>
+      <h2>Questions</h2>
     </div>
     <div class="faq reveal">
       <details>
-        <summary>Can I do real work in it?</summary>
-        <div><p>Not yet. It can save and reopen a design now, but there are no assemblies or drawings, and plenty of rough edges. Treat it as something to build on, not something to depend on. If you need a CAD tool for a project this month, use one from the comparison above.</p></div>
+        <summary>Can I use it for real work?</summary>
+        <div><p>Not yet. It saves and opens designs now, but there are no assemblies or drawings, and some parts are rough. Play with it, but use something else for anything you need to get done this month.</p></div>
       </details>
       <details>
-        <summary>Why not contribute to FreeCAD instead?</summary>
-        <div>
-          <p>That's a reasonable choice, and FreeCAD is the better tool today. Fusion's feel isn't a theme you can put on top of another program, though. It lives in the selection model, the timeline and the way every command flows, all the way down.</p>
-          <p>PenguinCAD is a small codebase where that feel is the whole design rather than an option. If you'd rather make FreeCAD more Fusion-like, that's good work too.</p>
-        </div>
+        <summary>Why not just help FreeCAD instead?</summary>
+        <div><p>Fair question, and FreeCAD is the better tool today. But Fusion's feel isn't a skin you can put on another program. It comes from how selection, the timeline and every command work together. I wanted a small codebase built around that from the start.</p></div>
       </details>
       <details>
         <summary>Was this written with AI?</summary>
-        <div><p>Largely, yes, with Claude Code, and the commits say so. That's part of why it needs people: review from someone who knows the code, testing from someone who does CAD every day, and design judgment are exactly what it's short of.</p></div>
+        <div><p>A lot of it, yes. I use Claude Code, and the commits say so. That's a big part of why I want more people on it: reviews from someone who knows C++, testing from people who actually do CAD, and design taste.</p></div>
       </details>
       <details>
-        <summary>Will it run on Windows or macOS?</summary>
-        <div><p>Qt and OpenCASCADE both run there, so nothing fundamental stands in the way, but nobody has tried. It is developed on Fedora and only tested on Linux.</p></div>
+        <summary>Does it run on Windows or Mac?</summary>
+        <div><p>Probably could, since Qt and OpenCASCADE both run there, but nobody has tried. It's built and tested on Linux.</p></div>
       </details>
       <details>
-        <summary>Is this affiliated with Autodesk?</summary>
-        <div><p>No. It's an independent open-source project that imitates how Fusion&nbsp;360 feels to use. It shares no code with it.</p></div>
+        <summary>Is this made by Autodesk?</summary>
+        <div><p>No. It's an independent project that copies how Fusion 360 feels to use. It doesn't share any code with it.</p></div>
       </details>
     </div>
   </div>
@@ -1121,9 +1037,8 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
 <section class="section" id="build">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Build from source</p>
-      <h2 data-dim="d9">Or build it: three commands on Fedora.</h2>
-      <p class="lede">PenguinCAD needs Qt&nbsp;6 and OpenCASCADE 7.8 or newer. Fedora packages both. On other distributions, making this easy is one of the open jobs above.</p>
+      <h2>Building from source</h2>
+      <p class="lede">You need Qt 6 and OpenCASCADE 7.8 or newer. On Fedora that's one install line.</p>
     </div>
     <div class="build">
       <div class="terminal reveal">
@@ -1154,14 +1069,14 @@ h3 { font-size: 19px; font-stretch: 112%; font-weight: 700; letter-spacing: -0.0
           <dt>Build</dt><dd>CMake 3.16+</dd>
           <dt>Display</dt><dd>X11, or Wayland through XWayland</dd>
         </dl>
-        <p>Tested on Fedora 44. Built somewhere else? Tell us how it went; a working recipe for your distribution belongs in the README.</p>
+        <p>I develop and test on Fedora 44. If you build it somewhere else, let me know how it went.</p>
       </div>
     </div>
 
     <div class="closing reveal">
       <div>
-        <h2>Linux deserves a CAD that feels like this. It won't build itself.</h2>
-        <p>Star the repository if you want to follow along. Open an issue if you want to help, even if it's only to say which piece you'd like to take on.</p>
+        <h2>Thanks for reading!</h2>
+        <p>If this sounds useful, a star on GitHub helps other people find it. And if you try it, I'd really like to hear how it went, even if it's just "it crashed on my laptop".</p>
       </div>
       <div class="cta">
         <a class="btn primary" href="https://github.com/kaiyao7572-creator/PenguinCAD"><svg aria-hidden="true"><use href="#i-github"/></svg>PenguinCAD on GitHub</a>
